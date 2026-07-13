@@ -1,0 +1,47 @@
+{
+  "case_id": "sample_project_security_review_001",
+  "task": "Review the sample project and find possible security or maintainability issues.",
+  "must_inspect_files": [
+    "sample_project/config.py",
+    "sample_project/auth.py",
+    "sample_project/app.py"
+  ],
+  "must_use_tools": [
+    "list_files",
+    "read_file",
+    "add_finding",
+    "write_report"
+  ],
+  "expected_findings": [
+    {
+      "file": "sample_project/config.py",
+      "issue_contains": "SECRET_KEY",
+      "severity": "HIGH",
+      "category": "SECURITY"
+    },
+    {
+      "file": "sample_project/config.py",
+      "issue_contains": "DATABASE_URL",
+      "severity": "HIGH",
+      "category": "SECURITY"
+    },
+    {
+      "file": "sample_project/auth.py",
+      "issue_contains": "admin credentials",
+      "severity": "HIGH",
+      "category": "SECURITY"
+    },
+    {
+      "file": "sample_project/auth.py",
+      "issue_contains": "token validation",
+      "severity": "HIGH",
+      "category": "SECURITY"
+    },
+    {
+      "file": "sample_project/app.py",
+      "issue_contains": "DEBUG",
+      "severity": "MEDIUM",
+      "category": "SECURITY"
+    }
+  ]
+}
