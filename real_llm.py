@@ -8,7 +8,7 @@ class RealLLM:
         self.client = OpenAI()
         self.model = model
 
-    def complete(self, messages: list[dict]) -> dict:
+    def complete(self, messages: list[dict], state=None) -> dict:
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,

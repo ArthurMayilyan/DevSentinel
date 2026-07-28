@@ -28,14 +28,7 @@ class Agent:
         messages = [
             {
                 "role": "system",
-                "content": (
-                    "You are a code review agent. "
-                    "You may use tools to inspect files and write a report. "
-                    "Use tools only when needed. "
-                    "Do not produce final answer until enough relevant files are inspected.\n\n"
-                    "Available tools:\n"
-                    f"{self.build_tools_description()}"
-                )
+                "content": self.build_system_prompt()
             },
             {
                 "role": "user",
@@ -59,31 +52,29 @@ class Agent:
                 allowed, reason = self.validate_final_answer_allowed(state)
 
                 if not allowed:
+                    state.rejected_final_answer_count += 1
                     state.errors.append(reason)
 
-                    trace_step["error"] = reason
+                    trace_step["guardrail_result"] = {
+                        "name": "completion_guardrail",
+                        "allowed": False,
+                        "reason": reason,
+                    }
+                    trace_step["error"] = None
                     trace_step["state_after"] = state.to_dict()
 
                     self.trace_recorder.record(trace_step)
 
                     messages.append({
-                        "role": "system",
-                        "content": reason
+                        "role": "user",
+                        "content": (
+                            f"Final answer rejected by completion guardrail:\n"
+                            f"{reason}\n\n"
+                            "Choose the next valid JSON action."
+                        )
                     })
 
-                    continue
-
-
-#Review completed. I inspected config.py, auth.py, and app.py.
-#
-#Findings:
-#- 4 high severity issues
-#- 1 medium severity issue
-#
-#Report saved to: report.md
-
-                
-
+                    continue           
                 trace_step["final_answer"] = llm_output.get("answer")
                 trace_step["state_after"] = state.to_dict()
 
@@ -91,24 +82,46 @@ class Agent:
                 return llm_output.get("answer", "")
 
             if llm_output.get("type") != "tool_call":
-                trace_step["error"] = "Invalid LLM output type"
+                reason = "Invalid LLM output type. Use tool_call or final_answer."
+
+                trace_step["error"] = reason
+                state.errors.append(reason)
+                trace_step["state_after"] = state.to_dict()
+
                 self.trace_recorder.record(trace_step)
+
                 messages.append({
-                    "role": "system",
-                    "content": "Invalid output type. Use tool_call or final_answer."
+                    "role": "user",
+                    "content": (
+                        f"Your previous output was invalid:\n"
+                        f"{llm_output}\n\n"
+                        f"{reason}\n"
+                        "Return only valid JSON."
+                    )
                 })
+
                 continue
 
             tool_name = llm_output.get("tool")
             arguments = llm_output.get("arguments", {})
 
             if tool_name not in self.tools:
-                trace_step["error"] = f"Unknown tool: {tool_name}"
+                reason = f"Unknown tool: {tool_name}. Available tools: {list(self.tools.keys())}"
+
+                trace_step["error"] = reason
+                state.errors.append(reason)
+                trace_step["state_after"] = state.to_dict()
+
                 self.trace_recorder.record(trace_step)
+
                 messages.append({
-                    "role": "system",
-                    "content": f"Unknown tool: {tool_name}. Available tools: {list(self.tools.keys())}"
+                    "role": "user",
+                    "content": (
+                        f"{reason}\n\n"
+                        "Choose the next valid JSON action using only available tools."
+                    )
                 })
+
                 continue
 
             try:
@@ -134,21 +147,28 @@ class Agent:
                 )
 
                 messages.append({
-                    "role": "tool",
-                    "name": tool_name,
-                    "content": str(tool_result)
+                    "role": "user",
+                    "content": (
+                        f"Observation from tool `{tool_name}` with arguments {arguments}:\n"
+                        f"{tool_result}\n\n"
+                        "Choose the next valid JSON action."
+                    )
                 })
 
             except Exception as error:
-                trace_step["error"] = repr(error)
-                state.errors.append(repr(error))
+                error_message = repr(error)
+
+                trace_step["error"] = error_message
+                state.errors.append(error_message)
 
                 messages.append({
-                    "role": "tool",
-                    "name": tool_name,
-                    "content": f"Tool error: {repr(error)}"
+                    "role": "user",
+                    "content": (
+                        f"Tool `{tool_name}` failed with error:\n"
+                        f"{error_message}\n\n"
+                        "Choose the next valid JSON action."
+                    )
                 })
-
             trace_step["state_after"] = state.to_dict()
             self.trace_recorder.record(trace_step)
 
@@ -261,3 +281,47 @@ When not to use: {tool.when_not_to_use}
 
         self.state.findings.append(finding)
         return "Finding added."
+
+
+def build_system_prompt(self) -> str:
+        return f"""
+    You are a code review agent.
+
+    You must respond ONLY with valid JSON.
+
+    You can choose one of two actions:
+
+    1. Tool call:
+    {{
+    "type": "tool_call",
+    "tool": "<tool_name>",
+    "arguments": {{ }}
+    }}
+
+    2. Final answer:
+    {{
+    "type": "final_answer",
+    "answer": "<human-readable final answer>"
+    }}
+
+    Available tools:
+    {self.build_tools_description()}
+
+    Allowed severity values:
+    LOW, MEDIUM, HIGH
+
+    Allowed category values:
+    SECURITY, MAINTAINABILITY, RELIABILITY, PERFORMANCE
+
+    Rules:
+    - Do not call tools that are not listed.
+    - Call list_files first to discover files.
+    - Use read_file before adding findings for a file.
+    - Use add_finding for each issue before writing the report.
+    - Do not call write_report until findings are collected.
+    - Do not produce final_answer until all relevant discovered Python files are inspected.
+    - Every finding must include file, severity, category, issue, evidence, and recommendation.
+    - Use only allowed enum values for severity and category.
+    - Do not invent file paths.
+    - Do not include markdown or explanations outside JSON.
+    """.strip()
