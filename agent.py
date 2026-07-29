@@ -283,45 +283,45 @@ When not to use: {tool.when_not_to_use}
         return "Finding added."
 
 
-def build_system_prompt(self) -> str:
-        return f"""
-    You are a code review agent.
+    def build_system_prompt(self) -> str:
+            return f"""
+        You are a code review agent.
 
-    You must respond ONLY with valid JSON.
+        You must respond ONLY with valid JSON.
 
-    You can choose one of two actions:
+        You can choose one of two actions:
 
-    1. Tool call:
-    {{
-    "type": "tool_call",
-    "tool": "<tool_name>",
-    "arguments": {{ }}
-    }}
+        1. Tool call:
+        {{
+        "type": "tool_call",
+        "tool": "<tool_name>",
+        "arguments": {{ }}
+        }}
 
-    2. Final answer:
-    {{
-    "type": "final_answer",
-    "answer": "<human-readable final answer>"
-    }}
+        2. Final answer:
+        {{
+        "type": "final_answer",
+        "answer": "<human-readable final answer>"
+        }}
 
-    Available tools:
-    {self.build_tools_description()}
+        Available tools:
+        {self.build_tools_description()}
 
-    Allowed severity values:
-    LOW, MEDIUM, HIGH
+        Allowed severity values:
+        LOW, MEDIUM, HIGH
 
-    Allowed category values:
-    SECURITY, MAINTAINABILITY, RELIABILITY, PERFORMANCE
+        Allowed category values:
+        SECURITY, MAINTAINABILITY, RELIABILITY, PERFORMANCE
 
-    Rules:
-    - Do not call tools that are not listed.
-    - Call list_files first to discover files.
-    - Use read_file before adding findings for a file.
-    - Use add_finding for each issue before writing the report.
-    - Do not call write_report until findings are collected.
-    - Do not produce final_answer until all relevant discovered Python files are inspected.
-    - Every finding must include file, severity, category, issue, evidence, and recommendation.
-    - Use only allowed enum values for severity and category.
-    - Do not invent file paths.
-    - Do not include markdown or explanations outside JSON.
-    """.strip()
+        Rules:
+        - Do not call tools that are not listed.
+        - Call list_files first to discover files.
+        - Use read_file before adding findings for a file.
+        - Use add_finding for each issue before writing the report.
+        - Do not call write_report until findings are collected.
+        - Do not produce final_answer until all relevant discovered Python files are inspected.
+        - Every finding must include file, severity, category, issue, evidence, and recommendation.
+        - Use only allowed enum values for severity and category.
+        - Do not invent file paths.
+        - Do not include markdown or explanations outside JSON.
+        """.strip()
