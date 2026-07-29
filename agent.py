@@ -126,6 +126,7 @@ class Agent:
 
             try:
                 if tool_name == "write_report":
+                    arguments.pop("state", None)
                     arguments = {
                         **arguments,
                         "state": state,
