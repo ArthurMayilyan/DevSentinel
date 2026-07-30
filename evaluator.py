@@ -267,9 +267,11 @@ def evaluate_trace_process(trace: list[dict], eval_case: dict) -> list[str]:
 
             # 2. Tools that must receive empty arguments
             if tool in TOOLS_REQUIRING_EMPTY_ARGUMENTS and arguments:
+                argument_keys = sorted(arguments.keys())
+
                 failures.append(
-                    f"Step {step_number}: tool `{tool}` must be called with "
-                    f"empty arguments, but received: {arguments}"
+                    f"Step {step_number}: tool `{tool}` must be called with empty arguments, "
+                    f"but received argument keys: {argument_keys}"
                 )
 
             # 3. add_finding should be called only after reading that file
@@ -497,11 +499,64 @@ def evaluate_run(trace: list[dict], eval_case: dict) -> dict:
         },
     }
 
+def render_eval_report(result: dict, trace_path: str, eval_case_path: str) -> str:
+    lines = []
+
+    status = "PASSED" if result["passed"] else "FAILED"
+
+    lines.append("# Evaluation Report")
+    lines.append("")
+    lines.append(f"Status: **{status}**")
+    lines.append("")
+    lines.append("## Inputs")
+    lines.append("")
+    lines.append(f"- **Trace:** `{trace_path}`")
+    lines.append(f"- **Eval case:** `{eval_case_path}`")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append("")
+
+    summary = result.get("summary", {})
+
+    if summary:
+        for key, value in summary.items():
+            lines.append(f"- **{key}:** {value}")
+    else:
+        lines.append("No summary available.")
+
+    lines.append("")
+    lines.append("## Failures")
+    lines.append("")
+
+    failures = result.get("failures", [])
+
+    if failures:
+        for index, failure in enumerate(failures, start=1):
+            lines.append(f"{index}. {failure}")
+    else:
+        lines.append("No failures.")
+
+    lines.append("")
+
+    return "\n".join(lines)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("trace_path")
-    parser.add_argument("eval_case_path")
+
+    parser.add_argument(
+        "trace_path",
+        nargs="?",
+        default="traces/trace_20260730_161818.json",
+        help="Path to trace JSON file."
+    )
+
+    parser.add_argument(
+        "eval_case_path",
+        nargs="?",
+        default="eval_cases/security_review_eval.json",
+        help="Path to eval case JSON file."
+    )
+
     parser.add_argument(
         "--report",
         default=None,
@@ -518,12 +573,15 @@ def main():
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
     if args.report:
-        report = render_eval_report(
+        markdown_report = render_eval_report(
             result=result,
             trace_path=args.trace_path,
             eval_case_path=args.eval_case_path,
         )
-        Path(args.report).write_text(report, encoding="utf-8")
+
+        Path(args.report).write_text(markdown_report, encoding="utf-8")
+
+        print(f"\nEvaluation report written to: {args.report}")
 
 if __name__ == "__main__":
     main()
