@@ -58,18 +58,81 @@ def search_in_files(query: str, path: str) -> list[dict]:
 
     return results
 
+def render_report_from_state(state: AgentState) -> str:
+    lines = []
 
-def write_report(state: AgentState, markdown: str) -> str:
+    lines.append("# Code Review Report")
+    lines.append("")
+    lines.append("## Summary")
+    lines.append("")
+
+    findings_count = len(state.findings)
+
+    lines.append(
+        f"Reviewed the project and found {findings_count} issue(s)."
+    )
+    lines.append("")
+
+    if state.inspected_files:
+        lines.append("## Inspected Files")
+        lines.append("")
+
+        for file in state.inspected_files:
+            lines.append(f"- `{file}`")
+
+        lines.append("")
+
+    lines.append("## Findings")
+    lines.append("")
+
+    if not state.findings:
+        lines.append("No findings were recorded.")
+        lines.append("")
+    else:
+        for index, finding in enumerate(state.findings, start=1):
+            lines.append(f"### {index}. {finding['issue']}")
+            lines.append("")
+            lines.append(f"- **File:** `{finding['file']}`")
+            lines.append(f"- **Severity:** {finding['severity']}")
+            lines.append(f"- **Category:** {finding['category']}")
+            lines.append(f"- **Evidence:** {finding['evidence']}")
+            lines.append(f"- **Recommendation:** {finding['recommendation']}")
+            lines.append("")
+
+    if state.errors:
+        lines.append("## Errors")
+        lines.append("")
+
+        for error in state.errors:
+            lines.append(f"- {error}")
+
+        lines.append("")
+
+    lines.append("## Overall Recommendation")
+    lines.append("")
+
+    if state.findings:
+        lines.append(
+            "Prioritize HIGH severity findings first, especially security issues "
+            "related to authentication, secrets, and access control."
+        )
+    else:
+        lines.append(
+            "No issues were recorded by the agent. Review evaluator results to confirm coverage."
+        )
+
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def write_report(state: AgentState) -> str:
+    markdown = render_report_from_state(state)
+
     report_path = Path("report.md")
+    report_path.write_text(markdown, encoding="utf-8")
 
-    report = ""
-    for finding in state.findings:
-        if "file" not in finding or "evidence" not in finding or "severity" not in finding:
-            raise ValueError("Each finding must have file, evidence, and severity.")
-        report += "In the file: " + finding["file"] + "\n"
-        report += "Found evidence: " + finding["evidence"] + "\n"
-        report += "Severity: " + finding["severity"] + "\n"
-        report += "\n" 
-    report_path.write_text(report, encoding="utf-8")
- #   report_path.write_text(markdown, encoding="utf-8")
+    state.report_written = True
+    state.report_path = str(report_path)
+
     return str(report_path)

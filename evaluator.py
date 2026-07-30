@@ -50,6 +50,19 @@ def finding_combined_text(finding: dict) -> str:
         finding.get("recommendation", ""),
     ]).lower()
 
+def expected_text_matches(combined_text: str, expected: dict) -> bool:
+    if "match_any" in expected:
+        return any(
+            item.lower() in combined_text
+            for item in expected["match_any"]
+        )
+
+    if "issue_contains" in expected:
+        return expected["issue_contains"].lower() in combined_text
+
+    raise ValueError(
+        "Expected finding must contain either 'issue_contains' or 'match_any'."
+    )
 
 def finding_matches_expected(finding: dict, expected: dict) -> bool:
     finding_file = normalize_path(finding.get("file", ""))
@@ -59,11 +72,10 @@ def finding_matches_expected(finding: dict, expected: dict) -> bool:
 
     return (
         finding_file == expected_file
-        and expected["issue_contains"].lower() in combined_text
+        and expected_text_matches(combined_text, expected)
         and finding.get("severity") == expected["severity"]
         and finding.get("category") == expected["category"]
     )
-
 
 def evaluate_trace_process(trace: list[dict]) -> list[str]:
     failures: list[str] = []

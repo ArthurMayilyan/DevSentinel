@@ -15,19 +15,30 @@
   "expected_findings": [
     {
       "file": "sample_project/config.py",
-      "issue_contains": "SECRET_KEY",
+      "match_any": [
+        "SECRET_KEY",
+        "super-secret-hardcoded-key"
+      ],
       "severity": "HIGH",
       "category": "SECURITY"
-    },
+    },    
     {
       "file": "sample_project/config.py",
-      "issue_contains": "DATABASE_URL",
+      "match_any": [
+        "DATABASE_URL",
+        "super-secret-hardcoded-key"
+      ],
       "severity": "HIGH",
       "category": "SECURITY"
     },
     {
       "file": "sample_project/auth.py",
-      "issue_contains": "admin credentials",
+      "match_any": [
+        "admin credentials",
+        "administrator credentials",
+        "username == \"admin\"",
+        "password == \"admin\""
+      ],
       "severity": "HIGH",
       "category": "SECURITY"
     },
@@ -38,8 +49,14 @@
       "category": "SECURITY"
     },
     {
-      "file": "sample_project/app.py",
-      "issue_contains": "DEBUG",
+      "file": "sample_project/config.py",
+      "match_any": [
+        "DEBUG = True",
+        "debug mode",
+        "debug state",
+        "\"debug\": DEBUG",
+        "includes this value in the user profile response"
+      ],
       "severity": "MEDIUM",
       "category": "SECURITY"
     }

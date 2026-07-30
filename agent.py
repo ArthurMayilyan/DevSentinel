@@ -125,11 +125,19 @@ class Agent:
                 continue
 
             try:
+                # Arguments originally produced by the LLM
+                arguments = llm_output.get("arguments", {}) or {}
+
+                # Defensive copy, so we do not mutate llm_output inside the trace
+                arguments = dict(arguments)
+
                 if tool_name == "write_report":
-                    arguments.pop("state", None)
+                    # Important:
+                    # Ignore ALL arguments from the LLM for write_report.
+                    # The LLM must not provide markdown or state.
+                    # The runtime injects only internal AgentState.
                     arguments = {
-                        **arguments,
-                        "state": state,
+                        "state": state
                     }
 
                 tool_result = self.tools[tool_name](**arguments)

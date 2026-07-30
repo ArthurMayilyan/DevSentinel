@@ -55,20 +55,21 @@ TOOL_SPECS = {
     "write_report": ToolSpec(
         name="write_report",
         description=(
-            "Write a markdown review report to report.md. "
-            "The LLM must provide only the markdown argument. "
-            "The agent runtime will inject internal state if needed."
+            "Generate and write a markdown review report to report.md. "
+            "The report is generated automatically from the current AgentState findings. "
+            "The LLM must not provide markdown or state."
         ),
-        parameters={
-            "markdown": "The complete markdown content of the report."
-        },
+        parameters={},
         returns="The path of the written report file.",
         when_to_use=(
-            "Use this only after enough inspection has been done and findings are ready."
+            "Use this only after all relevant files have been inspected "
+            "and all findings have been added with add_finding."
         ),
         when_not_to_use=(
             "Do not use this before inspecting relevant files. "
-            "Do not provide state as an argument. State is internal and is injected by the agent runtime."
+            "Do not provide markdown. "
+            "Do not provide state. "
+            "State and report content are handled internally by the agent runtime."
         ),
         function=write_report,
     ),
