@@ -2,7 +2,11 @@ from tools import list_files, read_file, search_in_files, write_report
 from tool_specs import TOOL_SPECS, IssueCategory, IssueSeverity
 from agent_state import AgentState
 
+ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
+ALLOWED_CATEGORIES = {item.value for item in IssueCategory}
 
+def normalize_path(path: str) -> str:
+    return path.replace("\\", "/").strip()
 
 
 class Agent:
@@ -49,7 +53,8 @@ class Agent:
             trace_step["llm_output"] = llm_output
 
             if llm_output.get("type") == "final_answer":
-                allowed, reason = self.validate_final_answer_allowed(state)
+                answer = llm_output.get("answer")
+                allowed, reason = self.validate_final_answer_allowed(state, answer)
 
                 if not allowed:
                     state.rejected_final_answer_count += 1
@@ -74,12 +79,13 @@ class Agent:
                         )
                     })
 
-                    continue           
-                trace_step["final_answer"] = llm_output.get("answer")
+                    continue
+
+                trace_step["final_answer"] = answer
                 trace_step["state_after"] = state.to_dict()
 
                 self.trace_recorder.record(trace_step)
-                return llm_output.get("answer", "")
+                return answer
 
             if llm_output.get("type") != "tool_call":
                 reason = "Invalid LLM output type. Use tool_call or final_answer."
@@ -124,23 +130,307 @@ class Agent:
 
                 continue
 
+
             try:
-                # Arguments originally produced by the LLM
-                arguments = llm_output.get("arguments", {}) or {}
+                # Arguments originally produced by the LLM.
+                # Keep them separate from runtime execution arguments.
+                llm_arguments = llm_output.get("arguments", {}) or {}
 
-                # Defensive copy, so we do not mutate llm_output inside the trace
-                arguments = dict(arguments)
+                if not isinstance(llm_arguments, dict):
+                    reason = (
+                        f"Invalid arguments for tool `{tool_name}`. "
+                        f"Expected dict, got {type(llm_arguments).__name__}."
+                    )
 
+                    trace_step["error"] = reason
+                    state.errors.append(reason)
+                    trace_step["state_after"] = state.to_dict()
+
+                    self.trace_recorder.record(trace_step)
+
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            f"Tool call rejected:\n{reason}\n\n"
+                            "Choose the next valid JSON action."
+                        )
+                    })
+
+                    continue
+
+                # Defensive copy, so we do not mutate llm_output inside the trace.
+                llm_arguments = dict(llm_arguments)
+
+                # ------------------------------------------------------------------
+                # Runtime guardrail: add_finding is allowed only after file inspection.
+                # ------------------------------------------------------------------
+                if tool_name == "add_finding":
+                    finding_file = normalize_path(llm_arguments.get("file", ""))
+
+                    inspected_files = {
+                        normalize_path(path)
+                        for path in state.inspected_files
+                    }
+
+                    if not finding_file:
+                        reason = "add_finding rejected: missing required file argument."
+
+                        trace_step["tool_result"] = None
+                        trace_step["error"] = reason
+                        state.errors.append(reason)
+                        trace_step["state_after"] = state.to_dict()
+
+                        self.trace_recorder.record(trace_step)
+
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                f"Tool call rejected:\n{reason}\n\n"
+                                "Choose the next valid JSON action."
+                            )
+                        })
+
+                        continue
+
+                    if finding_file not in inspected_files:
+                        reason = (
+                            f"add_finding rejected: file `{finding_file}` has not been inspected. "
+                            "Call read_file for this file before adding findings."
+                        )
+
+                        trace_step["tool_result"] = None
+                        trace_step["error"] = reason
+                        state.errors.append(reason)
+                        trace_step["state_after"] = state.to_dict()
+
+                        self.trace_recorder.record(trace_step)
+
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                f"Tool call rejected:\n{reason}\n\n"
+                                "Choose the next valid JSON action."
+                            )
+                        })
+
+                        continue
+
+                    severity = llm_arguments.get("severity")
+                    category = llm_arguments.get("category")
+
+                    if severity not in ALLOWED_SEVERITIES:
+                        reason = (
+                            f"add_finding rejected: invalid severity `{severity}`. "
+                            f"Allowed values: {sorted(ALLOWED_SEVERITIES)}"
+                        )
+
+                        trace_step["tool_result"] = None
+                        trace_step["error"] = reason
+                        state.errors.append(reason)
+                        trace_step["state_after"] = state.to_dict()
+
+                        self.trace_recorder.record(trace_step)
+
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                f"Tool call rejected:\n{reason}\n\n"
+                                "Choose the next valid JSON action."
+                            )
+                        })
+
+                        continue
+
+                    if category not in ALLOWED_CATEGORIES:
+                        reason = (
+                            f"add_finding rejected: invalid category `{category}`. "
+                            f"Allowed values: {sorted(ALLOWED_CATEGORIES)}"
+                        )
+
+                        trace_step["tool_result"] = None
+                        trace_step["error"] = reason
+                        state.errors.append(reason)
+                        trace_step["state_after"] = state.to_dict()
+
+                        self.trace_recorder.record(trace_step)
+
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                f"Tool call rejected:\n{reason}\n\n"
+                                "Choose the next valid JSON action."
+                            )
+                        })
+
+                        continue
+
+                    finding_file = normalize_path(llm_arguments.get("file", ""))
+
+                    inspected_files = {
+                        normalize_path(path)
+                        for path in state.inspected_files
+                    }
+
+                    if not finding_file:
+                        reason = "add_finding rejected: missing required file argument."
+
+                        trace_step["tool_result"] = None
+                        trace_step["error"] = reason
+                        state.errors.append(reason)
+                        trace_step["state_after"] = state.to_dict()
+
+                        self.trace_recorder.record(trace_step)
+
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                f"Tool call rejected:\n{reason}\n\n"
+                                "Choose the next valid JSON action."
+                            )
+                        })
+
+                        continue
+
+                    if finding_file not in inspected_files:
+                        reason = (
+                            f"add_finding rejected: file `{finding_file}` has not been inspected. "
+                            "Call read_file for this file before adding findings."
+                        )
+
+                        trace_step["tool_result"] = None
+                        trace_step["error"] = reason
+                        state.errors.append(reason)
+                        trace_step["state_after"] = state.to_dict()
+
+                        self.trace_recorder.record(trace_step)
+
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                f"Tool call rejected:\n{reason}\n\n"
+                                "Choose the next valid JSON action."
+                            )
+                        })
+
+                        continue
+
+                # ------------------------------------------------------------------
+                # Runtime execution arguments.
+                # For most tools, execution args are the same as LLM args.
+                # For write_report, ignore all LLM args and inject internal state.
+                # ------------------------------------------------------------------
+                execution_arguments = dict(llm_arguments)
+                observation_arguments = dict(llm_arguments)
+
+
+                # ------------------------------------------------------------------
+                # Runtime guardrail: write_report is allowed only after inspection
+                # and after at least one finding has been added.
+                # ------------------------------------------------------------------
                 if tool_name == "write_report":
-                    # Important:
-                    # Ignore ALL arguments from the LLM for write_report.
-                    # The LLM must not provide markdown or state.
-                    # The runtime injects only internal AgentState.
-                    arguments = {
+                    discovered_files = {
+                        normalize_path(path)
+                        for path in state.discovered_files
+                        if normalize_path(path).endswith(".py")
+                    }
+
+                    inspected_files = {
+                        normalize_path(path)
+                        for path in state.inspected_files
+                    }
+
+                    skipped_files = {
+                        normalize_path(path)
+                        for path in state.skipped_files.keys()
+                    }
+
+                    failed_files = {
+                        normalize_path(path)
+                        for path in state.failed_files.keys()
+                    }
+
+                    completed_files = inspected_files | skipped_files | failed_files
+
+                    missing_files = sorted(discovered_files - completed_files)
+
+                    if not discovered_files:
+                        reason = (
+                            "write_report rejected: no files have been discovered. "
+                            "Call list_files before writing the report."
+                        )
+
+                        trace_step["tool_result"] = None
+                        trace_step["error"] = reason
+                        state.errors.append(reason)
+                        trace_step["state_after"] = state.to_dict()
+
+                        self.trace_recorder.record(trace_step)
+
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                f"Tool call rejected:\n{reason}\n\n"
+                                "Choose the next valid JSON action."
+                            )
+                        })
+
+                        continue
+
+                    if missing_files:
+                        reason = (
+                            "write_report rejected: not all discovered Python files have been "
+                            f"inspected, skipped, or failed. Missing files: {missing_files}"
+                        )
+
+                        trace_step["tool_result"] = None
+                        trace_step["error"] = reason
+                        state.errors.append(reason)
+                        trace_step["state_after"] = state.to_dict()
+
+                        self.trace_recorder.record(trace_step)
+
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                f"Tool call rejected:\n{reason}\n\n"
+                                "Choose the next valid JSON action."
+                            )
+                        })
+
+                        continue
+
+                    if not state.findings:
+                        reason = (
+                            "write_report rejected: no findings have been added. "
+                            "Call add_finding before writing the report."
+                        )
+
+                        trace_step["tool_result"] = None
+                        trace_step["error"] = reason
+                        state.errors.append(reason)
+                        trace_step["state_after"] = state.to_dict()
+
+                        self.trace_recorder.record(trace_step)
+
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                f"Tool call rejected:\n{reason}\n\n"
+                                "Choose the next valid JSON action."
+                            )
+                        })
+
+                        continue
+                
+                    execution_arguments = {
                         "state": state
                     }
 
-                tool_result = self.tools[tool_name](**arguments)
+                    # LLM should see that write_report was called with empty public args.
+                    # Do not expose AgentState back into the prompt.
+                    observation_arguments = {}
+
+                tool_result = self.tools[tool_name](**execution_arguments)
 
                 if tool_name == "write_report":
                     state.report_written = True
@@ -151,14 +441,14 @@ class Agent:
                 self.update_state_after_tool_call(
                     state=state,
                     tool_name=tool_name,
-                    arguments=arguments,
+                    arguments=observation_arguments,
                     tool_result=tool_result
                 )
 
                 messages.append({
                     "role": "user",
                     "content": (
-                        f"Observation from tool `{tool_name}` with arguments {arguments}:\n"
+                        f"Observation from tool `{tool_name}` with arguments {observation_arguments}:\n"
                         f"{tool_result}\n\n"
                         "Choose the next valid JSON action."
                     )
@@ -178,6 +468,7 @@ class Agent:
                         "Choose the next valid JSON action."
                     )
                 })
+
             trace_step["state_after"] = state.to_dict()
             self.trace_recorder.record(trace_step)
 
@@ -201,7 +492,19 @@ When not to use: {tool.when_not_to_use}
 
         return "\n".join(descriptions)
 
-    def validate_final_answer_allowed(self, state: AgentState) -> tuple[bool, str]:
+    def validate_final_answer_allowed(self, state: AgentState, answer: object) -> tuple[bool, str]:
+        if not isinstance(answer, str):
+            return False, "final_answer rejected: answer must be a string."
+
+        if not answer.strip():
+            return False, "final_answer rejected: answer must be a non-empty string."
+
+        if not state.report_written:
+            return False, "final_answer rejected: report has not been written yet."
+
+        if not state.report_path:
+            return False, "final_answer rejected: report_path is missing."
+    
         python_files = [
             file for file in state.discovered_files
             if file.endswith(".py")
@@ -334,3 +637,5 @@ When not to use: {tool.when_not_to_use}
         - Do not invent file paths.
         - Do not include markdown or explanations outside JSON.
         """.strip()
+
+
