@@ -175,20 +175,12 @@ class Agent:
                     if not finding_file:
                         reason = "add_finding rejected: missing required file argument."
 
-                        trace_step["tool_result"] = None
-                        trace_step["error"] = reason
-                        state.errors.append(reason)
-                        trace_step["state_after"] = state.to_dict()
-
-                        self.trace_recorder.record(trace_step)
-
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"Tool call rejected:\n{reason}\n\n"
-                                "Choose the next valid JSON action."
-                            )
-                        })
+                        self.reject_tool_call(
+                            trace_step=trace_step,
+                            state=state,
+                            messages=messages,
+                            reason=reason,
+                        )
 
                         continue
 
@@ -198,20 +190,12 @@ class Agent:
                             "Call read_file for this file before adding findings."
                         )
 
-                        trace_step["tool_result"] = None
-                        trace_step["error"] = reason
-                        state.errors.append(reason)
-                        trace_step["state_after"] = state.to_dict()
-
-                        self.trace_recorder.record(trace_step)
-
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"Tool call rejected:\n{reason}\n\n"
-                                "Choose the next valid JSON action."
-                            )
-                        })
+                        self.reject_tool_call(
+                            trace_step=trace_step,
+                            state=state,
+                            messages=messages,
+                            reason=reason,
+                        )
 
                         continue
 
@@ -224,20 +208,12 @@ class Agent:
                             f"Allowed values: {sorted(ALLOWED_SEVERITIES)}"
                         )
 
-                        trace_step["tool_result"] = None
-                        trace_step["error"] = reason
-                        state.errors.append(reason)
-                        trace_step["state_after"] = state.to_dict()
-
-                        self.trace_recorder.record(trace_step)
-
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"Tool call rejected:\n{reason}\n\n"
-                                "Choose the next valid JSON action."
-                            )
-                        })
+                        self.reject_tool_call(
+                            trace_step=trace_step,
+                            state=state,
+                            messages=messages,
+                            reason=reason,
+                        )
 
                         continue
 
@@ -247,20 +223,12 @@ class Agent:
                             f"Allowed values: {sorted(ALLOWED_CATEGORIES)}"
                         )
 
-                        trace_step["tool_result"] = None
-                        trace_step["error"] = reason
-                        state.errors.append(reason)
-                        trace_step["state_after"] = state.to_dict()
-
-                        self.trace_recorder.record(trace_step)
-
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"Tool call rejected:\n{reason}\n\n"
-                                "Choose the next valid JSON action."
-                            )
-                        })
+                        self.reject_tool_call(
+                            trace_step=trace_step,
+                            state=state,
+                            messages=messages,
+                            reason=reason,
+                        )
 
                         continue
 
@@ -274,20 +242,12 @@ class Agent:
                     if not finding_file:
                         reason = "add_finding rejected: missing required file argument."
 
-                        trace_step["tool_result"] = None
-                        trace_step["error"] = reason
-                        state.errors.append(reason)
-                        trace_step["state_after"] = state.to_dict()
-
-                        self.trace_recorder.record(trace_step)
-
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"Tool call rejected:\n{reason}\n\n"
-                                "Choose the next valid JSON action."
-                            )
-                        })
+                        self.reject_tool_call(
+                            trace_step=trace_step,
+                            state=state,
+                            messages=messages,
+                            reason=reason,
+                        )
 
                         continue
 
@@ -297,20 +257,12 @@ class Agent:
                             "Call read_file for this file before adding findings."
                         )
 
-                        trace_step["tool_result"] = None
-                        trace_step["error"] = reason
-                        state.errors.append(reason)
-                        trace_step["state_after"] = state.to_dict()
-
-                        self.trace_recorder.record(trace_step)
-
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"Tool call rejected:\n{reason}\n\n"
-                                "Choose the next valid JSON action."
-                            )
-                        })
+                        self.reject_tool_call(
+                            trace_step=trace_step,
+                            state=state,
+                            messages=messages,
+                            reason=reason,
+                        )
 
                         continue
 
@@ -359,20 +311,12 @@ class Agent:
                             "Call list_files before writing the report."
                         )
 
-                        trace_step["tool_result"] = None
-                        trace_step["error"] = reason
-                        state.errors.append(reason)
-                        trace_step["state_after"] = state.to_dict()
-
-                        self.trace_recorder.record(trace_step)
-
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"Tool call rejected:\n{reason}\n\n"
-                                "Choose the next valid JSON action."
-                            )
-                        })
+                        self.reject_tool_call(
+                            trace_step=trace_step,
+                            state=state,
+                            messages=messages,
+                            reason=reason,
+                        )
 
                         continue
 
@@ -382,20 +326,12 @@ class Agent:
                             f"inspected, skipped, or failed. Missing files: {missing_files}"
                         )
 
-                        trace_step["tool_result"] = None
-                        trace_step["error"] = reason
-                        state.errors.append(reason)
-                        trace_step["state_after"] = state.to_dict()
-
-                        self.trace_recorder.record(trace_step)
-
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"Tool call rejected:\n{reason}\n\n"
-                                "Choose the next valid JSON action."
-                            )
-                        })
+                        self.reject_tool_call(
+                            trace_step=trace_step,
+                            state=state,
+                            messages=messages,
+                            reason=reason,
+                        )
 
                         continue
 
@@ -405,20 +341,12 @@ class Agent:
                             "Call add_finding before writing the report."
                         )
 
-                        trace_step["tool_result"] = None
-                        trace_step["error"] = reason
-                        state.errors.append(reason)
-                        trace_step["state_after"] = state.to_dict()
-
-                        self.trace_recorder.record(trace_step)
-
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"Tool call rejected:\n{reason}\n\n"
-                                "Choose the next valid JSON action."
-                            )
-                        })
+                        self.reject_tool_call(
+                            trace_step=trace_step,
+                            state=state,
+                            messages=messages,
+                            reason=reason,
+                        )
 
                         continue
                 
@@ -637,5 +565,28 @@ When not to use: {tool.when_not_to_use}
         - Do not invent file paths.
         - Do not include markdown or explanations outside JSON.
         """.strip()
+
+    def reject_tool_call(
+        self,
+        *,
+        trace_step: dict,
+        state: AgentState,
+        messages: list[dict],
+        reason: str,
+    ) -> None:
+        trace_step["tool_result"] = None
+        trace_step["error"] = reason
+        state.errors.append(reason)
+        trace_step["state_after"] = state.to_dict()
+
+        self.trace_recorder.record(trace_step)
+
+        messages.append({
+            "role": "user",
+            "content": (
+                f"Tool call rejected:\n{reason}\n\n"
+                "Choose the next valid JSON action."
+            )
+        })
 
 
