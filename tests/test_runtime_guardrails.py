@@ -24,6 +24,12 @@ from bad_llm import (
     bad_read_file_missing_path_then_recovers,
     bad_read_file_unexpected_argument_then_recovers,
     bad_empty_final_answer_then_recovers,
+    bad_non_string_final_answer_then_recovers,
+    bad_tool_call_missing_tool_name_then_recovers,
+    bad_tool_name_not_string_then_recovers,
+    bad_invalid_output_type_then_recovers,
+    bad_missing_output_type_then_recovers,
+    bad_llm_output_not_dict_then_recovers,
 )
 
 def snapshot_trace_files() -> dict[Path, int]:
@@ -556,4 +562,307 @@ def test_empty_final_answer_is_rejected_then_recovers():
     assert final_state["report_written"] is True
     assert final_state["report_path"] == "report.md"
     assert final_state["rejected_final_answer_count"] >= 1
+
+def test_non_string_final_answer_is_rejected_then_recovers():
+    llm = bad_non_string_final_answer_then_recovers()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        max_steps=20,
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer == "Review complete. Report written to report.md."
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+    final_state = trace[-1]["state_after"]
+
+    # Step 11 is the bad non-string final_answer.
+    bad_step = trace[10]
+
+    assert bad_step["llm_output"]["type"] == "final_answer"
+    assert bad_step["llm_output"]["answer"] == {
+        "message": "Review complete. Report written to report.md."
+    }
+
+    guardrail_result = bad_step.get("guardrail_result")
+
+    assert guardrail_result is not None
+    assert guardrail_result["allowed"] is False
+
+    reason = guardrail_result["reason"].lower()
+
+    assert (
+        "answer" in reason
+        and (
+            "string" in reason
+            or "str" in reason
+        )
+    ), guardrail_result["reason"]
+
+    assert final_state["report_written"] is True
+    assert final_state["report_path"] == "report.md"
+    assert final_state["rejected_final_answer_count"] >= 1
+
+def test_tool_call_missing_tool_name_is_rejected_then_recovers():
+    llm = bad_tool_call_missing_tool_name_then_recovers()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        max_steps=20,
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer == "Review complete. Report written to report.md."
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+    final_state = trace[-1]["state_after"]
+
+    # Step 1 is the bad tool_call without tool name.
+    bad_step = trace[0]
+
+    assert bad_step["llm_output"]["type"] == "tool_call"
+    assert "tool" not in bad_step["llm_output"]
+
+    assert bad_step.get("error") is not None
+
+    error_text = bad_step["error"].lower()
+
+    assert (
+        "missing" in error_text
+        and (
+            "tool" in error_text
+            or "name" in error_text
+        )
+    ), bad_step["error"]
+
+    # Nothing should be discovered or inspected from this bad step.
+    assert bad_step["state_after"]["discovered_files"] == []
+    assert bad_step["state_after"]["inspected_files"] == []
+
+    # But the agent should recover later.
+    assert final_state["report_written"] is True
+    assert final_state["report_path"] == "report.md"
+    assert len(final_state["findings"]) >= 1
+
+def test_tool_name_must_be_string_then_recovers():
+    llm = bad_tool_name_not_string_then_recovers()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        max_steps=20,
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer == "Review complete. Report written to report.md."
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+    final_state = trace[-1]["state_after"]
+
+    # Step 1 is the bad tool_call with non-string tool name.
+    bad_step = trace[0]
+
+    assert bad_step["llm_output"]["type"] == "tool_call"
+    assert bad_step["llm_output"]["tool"] == 123
+
+    assert bad_step.get("error") is not None
+
+    error_text = bad_step["error"].lower()
+
+    assert (
+        "tool" in error_text
+        and (
+            "string" in error_text
+            or "str" in error_text
+        )
+    ), bad_step["error"]
+
+    # Nothing should be discovered or inspected from this bad step.
+    assert bad_step["state_after"]["discovered_files"] == []
+    assert bad_step["state_after"]["inspected_files"] == []
+
+    # But the agent should recover later.
+    assert final_state["report_written"] is True
+    assert final_state["report_path"] == "report.md"
+    assert len(final_state["findings"]) >= 1    
+
+def test_invalid_llm_output_type_is_rejected_then_recovers():
+    llm = bad_invalid_output_type_then_recovers()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        max_steps=20,
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer == "Review complete. Report written to report.md."
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+    final_state = trace[-1]["state_after"]
+
+    # Step 1 is invalid output type.
+    bad_step = trace[0]
+
+    assert bad_step["llm_output"]["type"] == "analysis"
+
+    assert bad_step.get("error") is not None
+
+    error_text = bad_step["error"].lower()
+
+    assert (
+        "invalid" in error_text
+        and (
+            "type" in error_text
+            or "tool_call" in error_text
+            or "final_answer" in error_text
+        )
+    ), bad_step["error"]
+
+    # Nothing should happen from invalid output.
+    assert bad_step["state_after"]["discovered_files"] == []
+    assert bad_step["state_after"]["inspected_files"] == []
+    assert bad_step["state_after"]["findings"] == []
+
+    # But the agent should recover later.
+    assert final_state["report_written"] is True
+    assert final_state["report_path"] == "report.md"
+    assert len(final_state["findings"]) >= 1
+
+def test_missing_llm_output_type_is_rejected_then_recovers():
+    llm = bad_missing_output_type_then_recovers()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        max_steps=20,
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer == "Review complete. Report written to report.md."
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+    final_state = trace[-1]["state_after"]
+
+    # Step 1 is invalid because "type" is missing.
+    bad_step = trace[0]
+
+    assert "type" not in bad_step["llm_output"]
+    assert bad_step["llm_output"]["tool"] == "list_files"
+
+    assert bad_step.get("error") is not None
+
+    error_text = bad_step["error"].lower()
+
+    assert (
+        "type" in error_text
+        and (
+            "missing" in error_text
+            or "invalid" in error_text
+            or "tool_call" in error_text
+            or "final_answer" in error_text
+        )
+    ), bad_step["error"]
+
+    # Nothing should happen from invalid output.
+    assert bad_step["state_after"]["discovered_files"] == []
+    assert bad_step["state_after"]["inspected_files"] == []
+    assert bad_step["state_after"]["findings"] == []
+
+    # But the agent should recover later.
+    assert final_state["report_written"] is True
+    assert final_state["report_path"] == "report.md"
+    assert len(final_state["findings"]) >= 1
+
+def test_llm_output_must_be_dict_then_recovers():
+    llm = bad_llm_output_not_dict_then_recovers()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        max_steps=20,
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer == "Review complete. Report written to report.md."
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+    final_state = trace[-1]["state_after"]
+
+    # Step 1 is invalid because llm_output is not a dict.
+    bad_step = trace[0]
+
+    assert bad_step["llm_output"] == "not a json object"
+
+    assert bad_step.get("error") is not None
+
+    error_text = bad_step["error"].lower()
+
+    assert (
+        "llm output" in error_text
+        or "json object" in error_text
+        or "dict" in error_text
+    ), bad_step["error"]
+
+    # Nothing should happen from invalid output.
+    assert bad_step["state_after"]["discovered_files"] == []
+    assert bad_step["state_after"]["inspected_files"] == []
+    assert bad_step["state_after"]["findings"] == []
+
+    # But the agent should recover later.
+    assert final_state["report_written"] is True
+    assert final_state["report_path"] == "report.md"
+    assert len(final_state["findings"]) >= 1
+
 

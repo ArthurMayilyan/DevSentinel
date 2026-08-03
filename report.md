@@ -52,6 +52,10 @@ Reviewed the project and found 5 issue(s).
 - **Evidence:** config.py sets DEBUG = True.
 - **Recommendation:** Disable debug mode in production.
 
+## Errors
+
+- Invalid LLM output. Expected JSON object/dict, got str.
+
 ## Overall Recommendation
 
 Prioritize HIGH severity findings first, especially security issues related to authentication, secrets, and access control.

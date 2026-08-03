@@ -52,6 +52,30 @@ class Agent:
             llm_output = self.llm.complete(messages, state)
             trace_step["llm_output"] = llm_output
 
+            if not isinstance(llm_output, dict):
+                reason = (
+                    f"Invalid LLM output. Expected JSON object/dict, "
+                    f"got {type(llm_output).__name__}."
+                )
+
+                trace_step["error"] = reason
+                state.errors.append(reason)
+                trace_step["state_after"] = state.to_dict()
+
+                self.trace_recorder.record(trace_step)
+
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        f"Your previous output was invalid:\n"
+                        f"{llm_output}\n\n"
+                        f"{reason}\n"
+                        "Return only valid JSON object with type tool_call or final_answer."
+                    )
+                })
+
+                continue
+
             if llm_output.get("type") == "final_answer":
                 answer = llm_output.get("answer")
                 allowed, reason = self.validate_final_answer_allowed(state, answer)
@@ -110,6 +134,33 @@ class Agent:
 
             tool_name = llm_output.get("tool")
             arguments = llm_output.get("arguments", {})
+
+            if "tool" not in llm_output or tool_name is None or tool_name == "":
+                reason = "tool_call rejected: missing tool name."
+
+                self.reject_tool_call(
+                    trace_step=trace_step,
+                    state=state,
+                    messages=messages,
+                    reason=reason,
+                )
+
+                continue
+
+            if not isinstance(tool_name, str):
+                reason = (
+                    f"tool_call rejected: tool name must be a string. "
+                    f"Got {type(tool_name).__name__}."
+                )
+
+                self.reject_tool_call(
+                    trace_step=trace_step,
+                    state=state,
+                    messages=messages,
+                    reason=reason,
+                )
+
+                continue
 
             if tool_name not in self.tools:
                 reason = f"Unknown tool: {tool_name}. Available tools: {list(self.tools.keys())}"

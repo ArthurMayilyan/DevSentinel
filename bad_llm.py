@@ -7,7 +7,7 @@ class ScriptedBadLLM:
     This lets us simulate bad LLM behavior reliably.
     """
 
-    def __init__(self, outputs: list[dict]):
+    def __init__(self, outputs: list[object]):
         self.outputs = outputs
         self.call_count = 0
 
@@ -1374,3 +1374,554 @@ def bad_non_string_final_answer_then_recovers() -> ScriptedBadLLM:
             "answer": "Review complete. Report written to report.md."
         },
     ])
+
+
+def bad_tool_call_missing_tool_name_then_recovers() -> ScriptedBadLLM:
+    return ScriptedBadLLM([
+        # Bad behavior:
+        # type is tool_call, but tool name is missing.
+        {
+            "type": "tool_call",
+            "arguments": {
+                "path": "./sample_project"
+            }
+        },
+
+        # Recovery path
+        {
+            "type": "tool_call",
+            "tool": "list_files",
+            "arguments": {
+                "path": "./sample_project"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\app.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\auth.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\config.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Authentication uses hardcoded administrator credentials.",
+                "evidence": "login() grants access when username == \"admin\" and password == \"admin\".",
+                "recommendation": "Remove hardcoded credentials and use secure password hashing."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Token verification accepts any non-empty token as valid.",
+                "evidence": "verify_token(token) returns True whenever token is truthy.",
+                "recommendation": "Validate token signature, expiry, issuer, audience, and revocation status."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Sensitive secrets and database credentials are hardcoded in source code.",
+                "evidence": "config.py defines SECRET_KEY and DATABASE_URL with credentials.",
+                "recommendation": "Move secrets to environment variables or a secrets manager."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\app.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "User profile endpoint exposes hardcoded administrative user data and debug state.",
+                "evidence": "get_user_profile() returns fixed Admin profile and debug flag.",
+                "recommendation": "Return authenticated user-specific profile data and avoid exposing debug state."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "Debug mode is enabled in configuration.",
+                "evidence": "config.py sets DEBUG = True.",
+                "recommendation": "Disable debug mode in production."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "write_report",
+            "arguments": {}
+        },
+        {
+            "type": "final_answer",
+            "answer": "Review complete. Report written to report.md."
+        },
+    ])
+
+def bad_tool_name_not_string_then_recovers() -> ScriptedBadLLM:
+    return ScriptedBadLLM([
+        # Bad behavior:
+        # tool name must be a string.
+        {
+            "type": "tool_call",
+            "tool": 123,
+            "arguments": {
+                "path": "./sample_project"
+            }
+        },
+
+        # Recovery path
+        {
+            "type": "tool_call",
+            "tool": "list_files",
+            "arguments": {
+                "path": "./sample_project"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\app.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\auth.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\config.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Authentication uses hardcoded administrator credentials.",
+                "evidence": "login() grants access when username == \"admin\" and password == \"admin\".",
+                "recommendation": "Remove hardcoded credentials and use secure password hashing."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Token verification accepts any non-empty token as valid.",
+                "evidence": "verify_token(token) returns True whenever token is truthy.",
+                "recommendation": "Validate token signature, expiry, issuer, audience, and revocation status."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Sensitive secrets and database credentials are hardcoded in source code.",
+                "evidence": "config.py defines SECRET_KEY and DATABASE_URL with credentials.",
+                "recommendation": "Move secrets to environment variables or a secrets manager."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\app.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "User profile endpoint exposes hardcoded administrative user data and debug state.",
+                "evidence": "get_user_profile() returns fixed Admin profile and debug flag.",
+                "recommendation": "Return authenticated user-specific profile data and avoid exposing debug state."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "Debug mode is enabled in configuration.",
+                "evidence": "config.py sets DEBUG = True.",
+                "recommendation": "Disable debug mode in production."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "write_report",
+            "arguments": {}
+        },
+        {
+            "type": "final_answer",
+            "answer": "Review complete. Report written to report.md."
+        },
+    ])
+
+def bad_invalid_output_type_then_recovers() -> ScriptedBadLLM:
+    return ScriptedBadLLM([
+        # Bad behavior:
+        # Only tool_call and final_answer are valid output types.
+        {
+            "type": "analysis",
+            "content": "I should inspect the project files first."
+        },
+
+        # Recovery path
+        {
+            "type": "tool_call",
+            "tool": "list_files",
+            "arguments": {
+                "path": "./sample_project"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\app.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\auth.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\config.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Authentication uses hardcoded administrator credentials.",
+                "evidence": "login() grants access when username == \"admin\" and password == \"admin\".",
+                "recommendation": "Remove hardcoded credentials and use secure password hashing."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Token verification accepts any non-empty token as valid.",
+                "evidence": "verify_token(token) returns True whenever token is truthy.",
+                "recommendation": "Validate token signature, expiry, issuer, audience, and revocation status."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Sensitive secrets and database credentials are hardcoded in source code.",
+                "evidence": "config.py defines SECRET_KEY and DATABASE_URL with credentials.",
+                "recommendation": "Move secrets to environment variables or a secrets manager."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\app.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "User profile endpoint exposes hardcoded administrative user data and debug state.",
+                "evidence": "get_user_profile() returns fixed Admin profile and debug flag.",
+                "recommendation": "Return authenticated user-specific profile data and avoid exposing debug state."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "Debug mode is enabled in configuration.",
+                "evidence": "config.py sets DEBUG = True.",
+                "recommendation": "Disable debug mode in production."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "write_report",
+            "arguments": {}
+        },
+        {
+            "type": "final_answer",
+            "answer": "Review complete. Report written to report.md."
+        },
+    ])
+
+def bad_missing_output_type_then_recovers() -> ScriptedBadLLM:
+    return ScriptedBadLLM([
+        # Bad behavior:
+        # Missing required "type" field.
+        {
+            "tool": "list_files",
+            "arguments": {
+                "path": "./sample_project"
+            }
+        },
+
+        # Recovery path
+        {
+            "type": "tool_call",
+            "tool": "list_files",
+            "arguments": {
+                "path": "./sample_project"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\app.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\auth.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\config.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Authentication uses hardcoded administrator credentials.",
+                "evidence": "login() grants access when username == \"admin\" and password == \"admin\".",
+                "recommendation": "Remove hardcoded credentials and use secure password hashing."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Token verification accepts any non-empty token as valid.",
+                "evidence": "verify_token(token) returns True whenever token is truthy.",
+                "recommendation": "Validate token signature, expiry, issuer, audience, and revocation status."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Sensitive secrets and database credentials are hardcoded in source code.",
+                "evidence": "config.py defines SECRET_KEY and DATABASE_URL with credentials.",
+                "recommendation": "Move secrets to environment variables or a secrets manager."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\app.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "User profile endpoint exposes hardcoded administrative user data and debug state.",
+                "evidence": "get_user_profile() returns fixed Admin profile and debug flag.",
+                "recommendation": "Return authenticated user-specific profile data and avoid exposing debug state."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "Debug mode is enabled in configuration.",
+                "evidence": "config.py sets DEBUG = True.",
+                "recommendation": "Disable debug mode in production."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "write_report",
+            "arguments": {}
+        },
+        {
+            "type": "final_answer",
+            "answer": "Review complete. Report written to report.md."
+        },
+    ])
+
+def bad_llm_output_not_dict_then_recovers() -> ScriptedBadLLM:
+    return ScriptedBadLLM([
+        # Bad behavior:
+        # LLM output must be a JSON object/dict.
+        "not a json object",
+
+        # Recovery path
+        {
+            "type": "tool_call",
+            "tool": "list_files",
+            "arguments": {
+                "path": "./sample_project"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\app.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\auth.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "read_file",
+            "arguments": {
+                "path": "sample_project\\config.py"
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Authentication uses hardcoded administrator credentials.",
+                "evidence": "login() grants access when username == \"admin\" and password == \"admin\".",
+                "recommendation": "Remove hardcoded credentials and use secure password hashing."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\auth.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Token verification accepts any non-empty token as valid.",
+                "evidence": "verify_token(token) returns True whenever token is truthy.",
+                "recommendation": "Validate token signature, expiry, issuer, audience, and revocation status."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Sensitive secrets and database credentials are hardcoded in source code.",
+                "evidence": "config.py defines SECRET_KEY and DATABASE_URL with credentials.",
+                "recommendation": "Move secrets to environment variables or a secrets manager."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\app.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "User profile endpoint exposes hardcoded administrative user data and debug state.",
+                "evidence": "get_user_profile() returns fixed Admin profile and debug flag.",
+                "recommendation": "Return authenticated user-specific profile data and avoid exposing debug state."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "add_finding",
+            "arguments": {
+                "file": "sample_project\\config.py",
+                "severity": "MEDIUM",
+                "category": "SECURITY",
+                "issue": "Debug mode is enabled in configuration.",
+                "evidence": "config.py sets DEBUG = True.",
+                "recommendation": "Disable debug mode in production."
+            }
+        },
+        {
+            "type": "tool_call",
+            "tool": "write_report",
+            "arguments": {}
+        },
+        {
+            "type": "final_answer",
+            "answer": "Review complete. Report written to report.md."
+        },
+    ])
+
