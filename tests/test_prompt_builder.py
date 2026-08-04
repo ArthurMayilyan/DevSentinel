@@ -153,4 +153,41 @@ def test_prompt_builder_includes_custom_examples():
     assert "Review complete. Report written to report.md." in prompt
 
 
+def test_default_agent_prompt_includes_code_review_examples():
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+        max_steps=1,
+    )
+
+    prompt = agent.build_system_prompt()
+
+    assert "Examples:" in prompt
+    assert '"type": "tool_call"' in prompt
+    assert '"tool": "list_files"' in prompt
+    assert '"tool": "write_report"' in prompt
+    assert '"type": "final_answer"' in prompt
+
+def test_injected_prompt_builder_can_omit_default_examples():
+    prompt_builder = PromptBuilder(
+        agent_role="a documentation review agent",
+        task_description="review documentation for clarity",
+        rules=[
+            "Use only read-only tools.",
+        ],
+        examples=[],
+    )
+
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+        max_steps=1,
+        prompt_builder=prompt_builder,
+    )
+
+    prompt = agent.build_system_prompt()
+
+    assert "You are a documentation review agent." in prompt
+    assert "Examples:" not in prompt
+
         

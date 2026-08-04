@@ -4,6 +4,7 @@ from agent_state import AgentState
 from runtime_tool_registry import ToolRegistry
 from default_tool_registry import build_default_tool_registry
 from prompt_builder import PromptBuilder
+from prompt_examples import CODE_REVIEW_JSON_EXAMPLES
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
 ALLOWED_CATEGORIES = {item.value for item in IssueCategory}
@@ -25,7 +26,9 @@ class Agent:
         self.llm = llm
         self.trace_recorder = trace_recorder
         self.max_steps = max_steps
-        self.prompt_builder = prompt_builder or PromptBuilder()
+        self.prompt_builder = prompt_builder or PromptBuilder(
+            examples=CODE_REVIEW_JSON_EXAMPLES,
+        )
 
         self._tools = {
             "list_files": list_files,
