@@ -6,6 +6,7 @@ class ToolArgumentContract:
     required: set[str]
     allowed: set[str]
     non_empty_string_fields: set[str]
+    enum_fields: dict[str, set[str]]
 
 
 TOOL_ARGUMENT_CONTRACTS = {
@@ -13,16 +14,19 @@ TOOL_ARGUMENT_CONTRACTS = {
         required={"path"},
         allowed={"path"},
         non_empty_string_fields={"path"},
+        enum_fields={},
     ),
     "read_file": ToolArgumentContract(
         required={"path"},
         allowed={"path"},
         non_empty_string_fields={"path"},
+        enum_fields={},
     ),
     "search_in_files": ToolArgumentContract(
         required={"query", "path"},
         allowed={"query", "path"},
         non_empty_string_fields={"query", "path"},
+        enum_fields={},
     ),
     "add_finding": ToolArgumentContract(
         required={
@@ -49,11 +53,21 @@ TOOL_ARGUMENT_CONTRACTS = {
             "evidence",
             "recommendation",
         },
+        enum_fields={
+            "severity": {"LOW", "MEDIUM", "HIGH", "CRITICAL"},
+            "category": {
+                "SECURITY",
+                "MAINTAINABILITY",
+                "RELIABILITY",
+                "PERFORMANCE",
+            },
+        },
     ),
     "write_report": ToolArgumentContract(
         required=set(),
         allowed=set(),
         non_empty_string_fields=set(),
+        enum_fields={},
     ),
 }
 
@@ -111,4 +125,39 @@ def validate_tool_arguments(
                 ),
             )
 
+    for field_name, allowed_values in contract.enum_fields.items():
+        value = arguments.get(field_name)
+
+        if value not in allowed_values:
+            return (
+                False,
+                (
+                    f"Tool `{tool_name}` rejected: argument `{field_name}` "
+                    f"has invalid value `{value}`. "
+                    f"Allowed values: {sorted(allowed_values)}"
+                ),
+            )        
+
     return True, ""
+
+def format_tool_contract_for_prompt(tool_name: str) -> str:
+    contract = TOOL_ARGUMENT_CONTRACTS.get(tool_name)
+
+    if contract is None:
+        return f"No argument contract registered for tool `{tool_name}`."
+
+    lines = [
+        f"Required arguments: {sorted(contract.required)}",
+        f"Allowed arguments: {sorted(contract.allowed)}",
+        f"Non-empty string fields: {sorted(contract.non_empty_string_fields)}",
+    ]
+
+    if contract.enum_fields:
+        lines.append("Enum values:")
+
+        for field_name, allowed_values in sorted(contract.enum_fields.items()):
+            lines.append(f"- {field_name}: {sorted(allowed_values)}")
+    else:
+        lines.append("Enum values: none")
+
+    return "\n".join(lines)

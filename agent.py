@@ -1,7 +1,7 @@
 from tools import list_files, read_file, search_in_files, write_report
 from tool_specs import TOOL_SPECS, IssueCategory, IssueSeverity
 from agent_state import AgentState
-from tool_contracts import validate_tool_arguments
+from tool_contracts import validate_tool_arguments, format_tool_contract_for_prompt
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
 ALLOWED_CATEGORIES = {item.value for item in IssueCategory}
@@ -308,15 +308,19 @@ class Agent:
         descriptions = []
 
         for tool in self.tool_specs.values():
+            argument_contract = format_tool_contract_for_prompt(tool.name)
+
             descriptions.append(
                 f"""
-Tool: {tool.name}
-Description: {tool.description}
-Parameters: {tool.parameters}
-Returns: {tool.returns}
-When to use: {tool.when_to_use}
-When not to use: {tool.when_not_to_use}
-"""
+    Tool: {tool.name}
+    Description: {tool.description}
+    Parameters: {tool.parameters}
+    Argument contract:
+    {argument_contract}
+    Returns: {tool.returns}
+    When to use: {tool.when_to_use}
+    When not to use: {tool.when_not_to_use}
+    """
             )
 
         return "\n".join(descriptions)
@@ -611,27 +615,6 @@ When not to use: {tool.when_not_to_use}
                 (
                     f"add_finding rejected: file `{finding_file}` has not been inspected. "
                     "Call read_file for this file before adding findings."
-                ),
-            )
-
-        severity = llm_arguments.get("severity")
-        category = llm_arguments.get("category")
-
-        if severity not in ALLOWED_SEVERITIES:
-            return (
-                False,
-                (
-                    f"add_finding rejected: invalid severity `{severity}`. "
-                    f"Allowed values: {sorted(ALLOWED_SEVERITIES)}"
-                ),
-            )
-
-        if category not in ALLOWED_CATEGORIES:
-            return (
-                False,
-                (
-                    f"add_finding rejected: invalid category `{category}`. "
-                    f"Allowed values: {sorted(ALLOWED_CATEGORIES)}"
                 ),
             )
 
