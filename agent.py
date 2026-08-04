@@ -3,6 +3,7 @@ from tool_specs import IssueCategory, IssueSeverity
 from agent_state import AgentState
 from runtime_tool_registry import ToolRegistry
 from default_tool_registry import build_default_tool_registry
+from prompt_builder import PromptBuilder
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
 ALLOWED_CATEGORIES = {item.value for item in IssueCategory}
@@ -19,10 +20,12 @@ class Agent:
         trace_recorder,
         max_steps: int = 8,
         tool_registry: ToolRegistry | None = None,
+        prompt_builder: PromptBuilder | None = None,
     ):
         self.llm = llm
         self.trace_recorder = trace_recorder
         self.max_steps = max_steps
+        self.prompt_builder = prompt_builder or PromptBuilder()
 
         self._tools = {
             "list_files": list_files,
@@ -421,47 +424,9 @@ class Agent:
 
 
     def build_system_prompt(self) -> str:
-            return f"""
-        You are a code review agent.
-
-        You must respond ONLY with valid JSON.
-
-        You can choose one of two actions:
-
-        1. Tool call:
-        {{
-        "type": "tool_call",
-        "tool": "<tool_name>",
-        "arguments": {{ }}
-        }}
-
-        2. Final answer:
-        {{
-        "type": "final_answer",
-        "answer": "<human-readable final answer>"
-        }}
-
-        Available tools:
-        {self.build_tools_description()}
-
-        Allowed severity values:
-        LOW, MEDIUM, HIGH
-
-        Allowed category values:
-        SECURITY, MAINTAINABILITY, RELIABILITY, PERFORMANCE
-
-        Rules:
-        - Do not call tools that are not listed.
-        - Call list_files first to discover files.
-        - Use read_file before adding findings for a file.
-        - Use add_finding for each issue before writing the report.
-        - Do not call write_report until findings are collected.
-        - Do not produce final_answer until all relevant discovered Python files are inspected.
-        - Every finding must include file, severity, category, issue, evidence, and recommendation.
-        - Use only allowed enum values for severity and category.
-        - Do not invent file paths.
-        - Do not include markdown or explanations outside JSON.
-        """.strip()
+        return self.prompt_builder.build_system_prompt(
+            tools_description=self.build_tools_description(),
+        )
 
     def reject_tool_call(
         self,
