@@ -60,3 +60,11 @@ def test_write_report_prompt_contract_requires_empty_arguments():
     assert "Tool: write_report" in text
     assert "Required arguments: []" in text
     assert "Allowed arguments: []" in text
+
+def test_tools_description_does_not_include_legacy_parameters_line():
+    agent = make_agent()
+
+    text = agent.build_tools_description()
+
+    assert "Parameters:" not in text
+    assert "Argument contract:" in text    

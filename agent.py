@@ -314,7 +314,6 @@ class Agent:
                 f"""
     Tool: {tool.name}
     Description: {tool.description}
-    Parameters: {tool.parameters}
     Argument contract:
     {argument_contract}
     Returns: {tool.returns}
