@@ -1,7 +1,8 @@
 from tools import list_files, read_file, search_in_files, write_report
-from tool_specs import TOOL_SPECS, IssueCategory, IssueSeverity
+from tool_specs import IssueCategory, IssueSeverity
 from agent_state import AgentState
-from tool_contracts import validate_tool_arguments, format_tool_contract_for_prompt
+from runtime_tool_registry import ToolRegistry
+from default_tool_registry import build_default_tool_registry
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
 ALLOWED_CATEGORIES = {item.value for item in IssueCategory}
@@ -12,19 +13,28 @@ def normalize_path(path: str) -> str:
 
 class Agent:
 
-    def __init__(self, llm, trace_recorder, max_steps: int = 8):
-        self.tool_specs = TOOL_SPECS
+    def __init__(
+        self,
+        llm,
+        trace_recorder,
+        max_steps: int = 8,
+        tool_registry: ToolRegistry | None = None,
+    ):
         self.llm = llm
         self.trace_recorder = trace_recorder
         self.max_steps = max_steps
 
-        self.tools = {
+        self._tools = {
             "list_files": list_files,
             "read_file": read_file,
             "search_in_files": search_in_files,
             "write_report": write_report,
             "add_finding": self.add_finding,
         }
+
+        self.tool_registry = tool_registry or build_default_tool_registry(
+            tool_functions=self._tools,
+        )
     
     def run(self, user_task: str) -> str:
         state = AgentState()
@@ -132,8 +142,8 @@ class Agent:
 
                 continue
 
-            if tool_name not in self.tools:
-                reason = f"Unknown tool: {tool_name}. Available tools: {list(self.tools.keys())}"
+            if not self.tool_registry.has(tool_name):
+                reason = f"Unknown tool: {tool_name}. Available tools: {self.tool_registry.names()}"
 
                 self.reject_tool_call(
                     trace_step=trace_step,
@@ -167,7 +177,7 @@ class Agent:
                 # Defensive copy, so we do not mutate llm_output inside the trace.
                 llm_arguments = dict(llm_arguments)
 
-                allowed, reason = validate_tool_arguments(
+                allowed, reason = self.tool_registry.validate_arguments(
                     tool_name=tool_name,
                     arguments=llm_arguments,
                 )
@@ -305,24 +315,7 @@ class Agent:
     
 
     def build_tools_description(self) -> str:
-        descriptions = []
-
-        for tool in self.tool_specs.values():
-            argument_contract = format_tool_contract_for_prompt(tool.name)
-
-            descriptions.append(
-                f"""
-    Tool: {tool.name}
-    Description: {tool.description}
-    Argument contract:
-    {argument_contract}
-    Returns: {tool.returns}
-    When to use: {tool.when_to_use}
-    When not to use: {tool.when_not_to_use}
-    """
-            )
-
-        return "\n".join(descriptions)
+        return self.tool_registry.format_tools_for_prompt()
 
     def validate_final_answer_allowed(self, state: AgentState, answer: object) -> tuple[bool, str]:
         if not isinstance(answer, str):
@@ -568,7 +561,8 @@ class Agent:
             }
             observation_arguments = {}
 
-        tool_result = self.tools[tool_name](**execution_arguments)
+        tool_function = self.tool_registry.function(tool_name)
+        tool_result = tool_function(**execution_arguments)
 
         if tool_name == "write_report":
             state.report_written = True
@@ -618,3 +612,4 @@ class Agent:
             )
 
         return True, ""        
+    

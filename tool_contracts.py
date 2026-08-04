@@ -146,6 +146,9 @@ def format_tool_contract_for_prompt(tool_name: str) -> str:
     if contract is None:
         return f"No argument contract registered for tool `{tool_name}`."
 
+    return format_argument_contract_for_prompt(contract)
+
+def format_argument_contract_for_prompt(contract: ToolArgumentContract) -> str:
     lines = [
         f"Required arguments: {sorted(contract.required)}",
         f"Allowed arguments: {sorted(contract.allowed)}",

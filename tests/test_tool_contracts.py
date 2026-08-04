@@ -1,4 +1,9 @@
-from tool_contracts import validate_tool_arguments, format_tool_contract_for_prompt
+from tool_contracts import (
+    TOOL_ARGUMENT_CONTRACTS,
+    validate_tool_arguments,
+    format_tool_contract_for_prompt,
+    format_argument_contract_for_prompt,
+)
 
 
 def test_valid_read_file_arguments_pass():
@@ -190,3 +195,18 @@ def test_format_tool_contract_for_prompt_unknown_tool():
 
     assert "No argument contract registered" in text
     assert "delete_project" in text    
+
+def test_format_argument_contract_for_prompt_uses_contract_object():
+    contract = TOOL_ARGUMENT_CONTRACTS["add_finding"]
+
+    text = format_argument_contract_for_prompt(contract)
+
+    assert "Required arguments" in text
+    assert "Allowed arguments" in text
+    assert "Enum values" in text
+
+    assert "severity" in text
+    assert "HIGH" in text
+
+    assert "category" in text
+    assert "SECURITY" in text    
