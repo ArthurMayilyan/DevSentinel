@@ -340,8 +340,16 @@ def bad_write_report_with_markdown_then_completes() -> ScriptedBadLLM:
             "type": "tool_call",
             "tool": "write_report",
             "arguments": {
-                "markdown": "# Fake report from LLM\n\nThis content must be ignored by runtime."
+                "markdown": "# Fake report from LLM\n\nThis content must be rejected by runtime."
             }
+        },
+
+        # Recovery path:
+        # Correct write_report call must have empty arguments.
+        {
+            "type": "tool_call",
+            "tool": "write_report",
+            "arguments": {}
         },
         {
             "type": "final_answer",

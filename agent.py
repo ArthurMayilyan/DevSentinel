@@ -1,6 +1,7 @@
 from tools import list_files, read_file, search_in_files, write_report
 from tool_specs import TOOL_SPECS, IssueCategory, IssueSeverity
 from agent_state import AgentState
+from tool_contracts import validate_tool_arguments
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
 ALLOWED_CATEGORIES = {item.value for item in IssueCategory}
@@ -166,6 +167,21 @@ class Agent:
                 # Defensive copy, so we do not mutate llm_output inside the trace.
                 llm_arguments = dict(llm_arguments)
 
+                allowed, reason = validate_tool_arguments(
+                    tool_name=tool_name,
+                    arguments=llm_arguments,
+                )
+
+                if not allowed:
+                    self.reject_tool_call(
+                        trace_step=trace_step,
+                        state=state,
+                        messages=messages,
+                        reason=reason,
+                    )
+
+                    continue
+
                 # ------------------------------------------------------------------
                 # Runtime guardrail: add_finding is allowed only after file inspection.
                 # ------------------------------------------------------------------
@@ -184,7 +200,7 @@ class Agent:
                         )
 
                         continue
-                    
+
                 # ------------------------------------------------------------------
                 # Runtime guardrail: write_report is allowed only after inspection
                 # and after at least one finding has been added.

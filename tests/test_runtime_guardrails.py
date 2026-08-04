@@ -124,7 +124,7 @@ def test_unknown_tool_is_rejected_then_agent_recovers():
     assert final_state["report_path"] == "report.md"
     assert len(final_state["findings"]) >= 1    
 
-def test_write_report_with_markdown_is_ignored_by_runtime_but_fails_eval():
+def test_write_report_with_markdown_is_rejected_then_recovers():
     llm = bad_write_report_with_markdown_then_completes()
     trace_recorder = TraceRecorder()
 
@@ -140,7 +140,7 @@ def test_write_report_with_markdown_is_ignored_by_runtime_but_fails_eval():
         "Review the sample project and find possible security or maintainability issues."
     )
 
-    assert final_answer is not None
+    assert final_answer == "Review complete. Report written to report.md."
 
     latest_trace_path = find_new_or_modified_trace(before_snapshot)
 
@@ -153,25 +153,42 @@ def test_write_report_with_markdown_is_ignored_by_runtime_but_fails_eval():
         if step.get("llm_output", {}).get("tool") == "write_report"
     ]
 
-    assert len(write_report_steps) == 1
+    assert len(write_report_steps) == 2
 
-    write_report_step = write_report_steps[0]
+    bad_write_report_step = write_report_steps[0]
+    good_write_report_step = write_report_steps[1]
 
-    # The LLM violated the contract.
-    assert "markdown" in write_report_step["llm_output"]["arguments"]
+    # The first write_report call violated the tool contract.
+    assert "markdown" in bad_write_report_step["llm_output"]["arguments"]
 
-    # But runtime still protected execution and wrote the report.
+    assert bad_write_report_step.get("error") is not None
+
+    error_text = bad_write_report_step["error"].lower()
+
+    assert (
+        "unexpected" in error_text
+        or "markdown" in error_text
+        or "arguments" in error_text
+    ), bad_write_report_step["error"]
+
+    # The bad call must not write the report.
+    assert bad_write_report_step["tool_result"] is None
+    assert bad_write_report_step["state_after"]["report_written"] is False
+    assert bad_write_report_step["state_after"]["report_path"] is None
+
+    # The second write_report call is valid.
+    assert good_write_report_step["llm_output"]["arguments"] == {}
+    assert good_write_report_step["tool_result"] == "report.md"
+    assert good_write_report_step["state_after"]["report_written"] is True
+    assert good_write_report_step["state_after"]["report_path"] == "report.md"
+
+    # Final state should be successful.
     assert final_state["report_written"] is True
     assert final_state["report_path"] == "report.md"
     assert len(final_state["findings"]) >= 1
 
-    # The physical report should be deterministic, not the fake LLM markdown.
-    report_text = Path("report.md").read_text(encoding="utf-8")
-
-    assert "Fake report from LLM" not in report_text
-    assert "Code Review Report" in report_text
-
-    # Evaluator should still fail this trace because the LLM violated tool contract.
+    # Evaluator should still fail this trace because the LLM attempted
+    # an invalid write_report call first.
     eval_case = load_json("eval_cases/security_review_eval.json")
     result = evaluate_run(trace, eval_case)
 
@@ -180,7 +197,7 @@ def test_write_report_with_markdown_is_ignored_by_runtime_but_fails_eval():
         "write_report" in failure and "markdown" in failure
         for failure in result["failures"]
     ), result["failures"]
-
+    
 def test_add_finding_before_file_inspection_is_rejected_then_recovers():
     llm = bad_add_finding_before_read_then_recovers()
     trace_recorder = TraceRecorder()
