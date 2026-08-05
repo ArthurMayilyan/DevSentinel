@@ -36,3 +36,16 @@ def test_agent_uses_injected_config():
 
     assert agent.config is config
     assert agent.max_steps == 15
+
+def test_agent_config_takes_precedence_over_max_steps_argument():
+    config = AgentConfig(max_steps=5)
+
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+        max_steps=20,
+        config=config,
+    )
+
+    assert agent.config is config
+    assert agent.max_steps == 5

@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from agent import Agent
 from tool_specs import TOOL_SPECS
+from agent_config import AgentConfig
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -11,7 +12,11 @@ from agent import Agent
 from bad_llm import bad_final_answer_too_early_then_recovers
 from evaluator import evaluate_run, load_json
 from trace import TraceRecorder
-
+from agent_stop_reasons import (
+    STOP_REJECTED_FINAL_ANSWERS,
+    STOP_REJECTED_TOOL_CALLS,
+    STOP_INVALID_LLM_OUTPUTS,
+)
 from bad_llm import (
     bad_final_answer_too_early_then_recovers,
     bad_unknown_tool_then_recovers,
@@ -31,6 +36,28 @@ from bad_llm import (
     bad_missing_output_type_then_recovers,
     bad_llm_output_not_dict_then_recovers,
 )
+
+class AlwaysFinalAnswerTooEarlyLLM:
+    def complete(self, messages, state=None):
+        return {
+            "type": "final_answer",
+            "answer": "Done too early."
+        }
+
+class AlwaysUnknownToolLLM:
+    def complete(self, messages, state=None):
+        return {
+            "type": "tool_call",
+            "tool": "delete_project",
+            "arguments": {
+                "path": "./sample_project"
+            },
+        }
+
+class AlwaysInvalidLLMOutput:
+    def complete(self, messages, state=None):
+        return "not a json object"
+        
 
 def snapshot_trace_files() -> dict[Path, int]:
     return {
@@ -882,4 +909,116 @@ def test_llm_output_must_be_dict_then_recovers():
     assert final_state["report_path"] == "report.md"
     assert len(final_state["findings"]) >= 1
 
+
+def test_agent_stops_after_rejected_final_answer_limit():
+    llm = AlwaysFinalAnswerTooEarlyLLM()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        config=AgentConfig(
+            max_steps=20,
+            max_rejected_final_answers=2,
+        ),
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer == STOP_REJECTED_FINAL_ANSWERS
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+    final_state = trace[-1]["state_after"]
+
+    assert len(trace) == 2
+    assert final_state["rejected_final_answer_count"] == 2
+    assert final_state["report_written"] is False
+
+    for step in trace:
+        guardrail_result = step.get("guardrail_result")
+        assert guardrail_result is not None
+        assert guardrail_result["allowed"] is False
+
+def test_agent_stops_after_rejected_tool_call_limit():
+    llm = AlwaysUnknownToolLLM()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        config=AgentConfig(
+            max_steps=20,
+            max_rejected_tool_calls=2,
+        ),
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer == STOP_REJECTED_TOOL_CALLS
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+    final_state = trace[-1]["state_after"]
+
+    assert len(trace) == 2
+    assert final_state["rejected_tool_call_count"] == 2
+    assert final_state["report_written"] is False
+
+    for step in trace:
+        assert step["llm_output"]["tool"] == "delete_project"
+        assert step.get("error") is not None
+        assert "unknown tool" in step["error"].lower()
+
+def test_agent_stops_after_invalid_llm_output_limit():
+    llm = AlwaysInvalidLLMOutput()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        config=AgentConfig(
+            max_steps=20,
+            max_invalid_llm_outputs=2,
+        ),
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer == STOP_INVALID_LLM_OUTPUTS
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+    final_state = trace[-1]["state_after"]
+
+    assert len(trace) == 2
+    assert final_state["invalid_llm_output_count"] == 2
+    assert final_state["report_written"] is False
+
+    for step in trace:
+        assert step["llm_output"] == "not a json object"
+        assert step.get("error") is not None
+
+        error_text = step["error"].lower()
+
+        assert (
+            "invalid llm output" in error_text
+            or "json object" in error_text
+            or "dict" in error_text
+        ), step["error"]
 
