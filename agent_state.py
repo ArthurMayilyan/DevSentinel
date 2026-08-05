@@ -27,6 +27,8 @@ class AgentState:
     errors: list[str] = field(default_factory=list)
 
     rejected_final_answer_count: int = 0
+    rejected_tool_call_count: int = 0
+    invalid_llm_output_count: int = 0
 
     def to_dict(self) -> dict:
         return asdict(self)

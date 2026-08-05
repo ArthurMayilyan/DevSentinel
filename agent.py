@@ -5,6 +5,14 @@ from runtime_tool_registry import ToolRegistry
 from default_tool_registry import build_default_tool_registry
 from prompt_builder import PromptBuilder
 from prompt_examples import CODE_REVIEW_JSON_EXAMPLES
+from agent_config import AgentConfig
+from agent_stop_reasons import (
+    STOP_MAX_STEPS,
+    STOP_REJECTED_FINAL_ANSWERS,
+    STOP_REJECTED_TOOL_CALLS,
+    STOP_INVALID_LLM_OUTPUTS,
+)
+
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
 ALLOWED_CATEGORIES = {item.value for item in IssueCategory}
@@ -22,10 +30,12 @@ class Agent:
         max_steps: int = 8,
         tool_registry: ToolRegistry | None = None,
         prompt_builder: PromptBuilder | None = None,
+        config: AgentConfig | None = None,
     ):
         self.llm = llm
         self.trace_recorder = trace_recorder
-        self.max_steps = max_steps
+        self.config = config or AgentConfig(max_steps=max_steps)
+        self.max_steps = self.config.max_steps
         self.prompt_builder = prompt_builder or PromptBuilder(
             examples=CODE_REVIEW_JSON_EXAMPLES,
         )
@@ -58,6 +68,12 @@ class Agent:
         ]
 
         for step in range(1, self.max_steps + 1):
+            if state.rejected_tool_call_count >= self.config.max_rejected_tool_calls:
+                return STOP_REJECTED_TOOL_CALLS
+
+            if state.invalid_llm_output_count >= self.config.max_invalid_llm_outputs:
+                return STOP_INVALID_LLM_OUTPUTS
+
             trace_step = {
                 "step": step,
                 "llm_output": None,
@@ -96,6 +112,9 @@ class Agent:
                         messages=messages,
                         reason=reason,
                     )
+
+                    if state.rejected_final_answer_count >= self.config.max_rejected_final_answers:
+                        return STOP_REJECTED_FINAL_ANSWERS
 
                     continue
 
@@ -317,7 +336,7 @@ class Agent:
             trace_step["state_after"] = state.to_dict()
             self.trace_recorder.record(trace_step)
 
-        return "Agent stopped because max_steps limit was reached."
+        return STOP_MAX_STEPS
     
 
     def build_tools_description(self) -> str:
@@ -439,6 +458,8 @@ class Agent:
         messages: list[dict],
         reason: str,
     ) -> None:
+        state.rejected_tool_call_count += 1
+        
         trace_step["tool_result"] = None
         trace_step["error"] = reason
         state.errors.append(reason)
@@ -464,6 +485,8 @@ class Agent:
         reason: str,
         llm_output: object,
     ) -> None:
+        state.invalid_llm_output_count += 1
+
         trace_step["error"] = reason
         state.errors.append(reason)
         trace_step["state_after"] = state.to_dict()
