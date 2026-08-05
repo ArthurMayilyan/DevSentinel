@@ -7,12 +7,12 @@ from prompt_builder import PromptBuilder
 from prompt_examples import CODE_REVIEW_JSON_EXAMPLES
 from agent_config import AgentConfig
 from agent_stop_reasons import (
-    STOP_MAX_STEPS,
-    STOP_REJECTED_FINAL_ANSWERS,
-    STOP_REJECTED_TOOL_CALLS,
-    STOP_INVALID_LLM_OUTPUTS,
+    STOP_CODE_MAX_STEPS,
+    STOP_CODE_REJECTED_FINAL_ANSWERS,
+    STOP_CODE_REJECTED_TOOL_CALLS,
+    STOP_CODE_INVALID_LLM_OUTPUTS,
 )
-
+from agent_run_result import AgentRunResult
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
 ALLOWED_CATEGORIES = {item.value for item in IssueCategory}
@@ -52,7 +52,7 @@ class Agent:
             tool_functions=self._tools,
         )
     
-    def run(self, user_task: str) -> str:
+    def run_with_result(self, task: str) -> AgentRunResult:
         state = AgentState()
         self.state = state
 
@@ -63,16 +63,17 @@ class Agent:
             },
             {
                 "role": "user",
-                "content": user_task
+                "content": task
             }
         ]
 
         for step in range(1, self.max_steps + 1):
             if state.rejected_tool_call_count >= self.config.max_rejected_tool_calls:
-                return STOP_REJECTED_TOOL_CALLS
+                return AgentRunResult.stopped_with_code(STOP_CODE_REJECTED_TOOL_CALLS)
 
             if state.invalid_llm_output_count >= self.config.max_invalid_llm_outputs:
-                return STOP_INVALID_LLM_OUTPUTS
+                return AgentRunResult.stopped_with_code(STOP_CODE_INVALID_LLM_OUTPUTS)
+                
 
             trace_step = {
                 "step": step,
@@ -114,7 +115,7 @@ class Agent:
                     )
 
                     if state.rejected_final_answer_count >= self.config.max_rejected_final_answers:
-                        return STOP_REJECTED_FINAL_ANSWERS
+                        return AgentRunResult.stopped_with_code(STOP_CODE_REJECTED_FINAL_ANSWERS)
 
                     continue
 
@@ -122,7 +123,7 @@ class Agent:
                 trace_step["state_after"] = state.to_dict()
 
                 self.trace_recorder.record(trace_step)
-                return answer
+                return AgentRunResult.completed(answer)
 
             if llm_output.get("type") != "tool_call":
                 reason = "Invalid LLM output type. Use tool_call or final_answer."
@@ -336,8 +337,18 @@ class Agent:
             trace_step["state_after"] = state.to_dict()
             self.trace_recorder.record(trace_step)
 
-        return STOP_MAX_STEPS
+        return AgentRunResult.stopped_with_code(STOP_CODE_MAX_STEPS)
     
+
+    def run(self, task: str) -> str:
+        result = self.run_with_result(task)
+
+        if result.is_completed:
+            assert result.answer is not None
+            return result.answer
+
+        assert result.stop_reason is not None
+        return result.stop_reason
 
     def build_tools_description(self) -> str:
         return self.tool_registry.format_tools_for_prompt()
