@@ -1,4 +1,6 @@
 import pytest
+import json
+from pathlib import Path
 
 from agent import Agent
 from agent_config import AgentConfig
@@ -192,3 +194,61 @@ def test_from_dict_rejects_missing_stop_reason_code_field():
             "answer": None,
             "stop_reason": STOP_MAX_STEPS,
         })            
+
+def test_run_with_result_writes_summary_for_completed_result():
+    trace_recorder = TraceRecorder()
+
+    agent = Agent(
+        llm=CompleteReviewLLM(),
+        trace_recorder=trace_recorder,
+        config=AgentConfig(max_steps=20),
+    )
+
+    result = agent.run_with_result(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    summary_path = (
+        Path("run_summaries") / f"{trace_recorder.trace_path.stem}_summary.json"
+    )
+
+    assert summary_path.exists()
+
+    summary_data = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    assert summary_data["result"] == result.to_dict()
+    assert summary_data["result"]["status"] == "completed"
+    assert summary_data["result"]["answer"] == "Review complete. Report written to report.md."
+    assert summary_data["steps_count"] > 0
+    assert summary_data["final_state"]["report_written"] is True
+
+
+def test_run_with_result_writes_summary_for_stopped_result():
+    trace_recorder = TraceRecorder()
+
+    agent = Agent(
+        llm=AlwaysInvalidLLMOutput(),
+        trace_recorder=trace_recorder,
+        config=AgentConfig(
+            max_steps=20,
+            max_invalid_llm_outputs=2,
+        ),
+    )
+
+    result = agent.run_with_result(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    summary_path = (
+        Path("run_summaries") / f"{trace_recorder.trace_path.stem}_summary.json"
+    )
+
+    assert summary_path.exists()
+
+    summary_data = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    assert summary_data["result"] == result.to_dict()
+    assert summary_data["result"]["status"] == "stopped"
+    assert summary_data["result"]["stop_reason_code"] == STOP_CODE_INVALID_LLM_OUTPUTS
+    assert summary_data["steps_count"] == 2
+    assert summary_data["final_state"]["invalid_llm_output_count"] == 2        

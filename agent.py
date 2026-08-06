@@ -13,6 +13,8 @@ from agent_stop_reasons import (
     STOP_CODE_INVALID_LLM_OUTPUTS,
 )
 from agent_run_result import AgentRunResult
+from agent_run_summary import build_agent_run_summary
+
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
 ALLOWED_CATEGORIES = {item.value for item in IssueCategory}
@@ -69,10 +71,10 @@ class Agent:
 
         for step in range(1, self.max_steps + 1):
             if state.rejected_tool_call_count >= self.config.max_rejected_tool_calls:
-                return AgentRunResult.stopped_with_code(STOP_CODE_REJECTED_TOOL_CALLS)
+                return self.finalize_run_result(AgentRunResult.stopped_with_code(STOP_CODE_REJECTED_TOOL_CALLS))
 
             if state.invalid_llm_output_count >= self.config.max_invalid_llm_outputs:
-                return AgentRunResult.stopped_with_code(STOP_CODE_INVALID_LLM_OUTPUTS)
+                return self.finalize_run_result(AgentRunResult.stopped_with_code(STOP_CODE_INVALID_LLM_OUTPUTS))
                 
 
             trace_step = {
@@ -115,7 +117,7 @@ class Agent:
                     )
 
                     if state.rejected_final_answer_count >= self.config.max_rejected_final_answers:
-                        return AgentRunResult.stopped_with_code(STOP_CODE_REJECTED_FINAL_ANSWERS)
+                        return self.finalize_run_result(AgentRunResult.stopped_with_code(STOP_CODE_REJECTED_FINAL_ANSWERS))
 
                     continue
 
@@ -123,7 +125,9 @@ class Agent:
                 trace_step["state_after"] = state.to_dict()
 
                 self.trace_recorder.record(trace_step)
-                return AgentRunResult.completed(answer)
+                return self.finalize_run_result(
+                    AgentRunResult.completed(answer)
+                )
 
             if llm_output.get("type") != "tool_call":
                 reason = "Invalid LLM output type. Use tool_call or final_answer."
@@ -337,7 +341,7 @@ class Agent:
             trace_step["state_after"] = state.to_dict()
             self.trace_recorder.record(trace_step)
 
-        return AgentRunResult.stopped_with_code(STOP_CODE_MAX_STEPS)
+        return self.finalize_run_result(AgentRunResult.stopped_with_code(STOP_CODE_MAX_STEPS))
     
 
     def run(self, task: str) -> str:
@@ -615,3 +619,14 @@ class Agent:
 
         return True, ""        
     
+    def finalize_run_result(self, result: AgentRunResult) -> AgentRunResult:
+        trace_steps = self.trace_recorder.read_steps()
+
+        summary = build_agent_run_summary(
+            result=result,
+            trace_steps=trace_steps,
+        )
+
+        self.trace_recorder.write_summary(summary)
+
+        return result
