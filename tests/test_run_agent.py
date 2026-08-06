@@ -1,4 +1,5 @@
 import json
+import pytest
 from pathlib import Path
 
 from run_agent import build_summary_path, run_agent_from_args
@@ -70,4 +71,65 @@ def test_run_agent_from_args_respects_max_steps_limit():
     assert output["stop_reason_code"] == "max_steps"
     assert output["answer"] is None
 
-    
+def test_run_agent_from_args_accepts_explicit_demo_llm():
+    output = run_agent_from_args([
+        "--task",
+        "Review the sample project.",
+        "--llm",
+        "demo",
+        "--max-steps",
+        "20",
+    ])
+
+    assert output["status"] == "completed"
+    assert output["answer"] == "Review complete. Report written to report.md."    
+
+def test_main_prints_json_error_and_exits(monkeypatch, capsys):
+    import run_agent
+
+    def fake_run_agent_from_args():
+        raise ValueError("Something went wrong.")
+
+    monkeypatch.setattr(
+        run_agent,
+        "run_agent_from_args",
+        fake_run_agent_from_args,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_agent.main()
+
+    assert exc_info.value.code == 1
+
+    captured = capsys.readouterr()
+
+    assert json.loads(captured.out) == {
+        "status": "error",
+        "error": "Something went wrong.",
+    }
+
+def test_main_prints_json_interrupted_output_and_exits(monkeypatch, capsys):
+    import run_agent
+
+    def fake_run_agent_from_args():
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(
+        run_agent,
+        "run_agent_from_args",
+        fake_run_agent_from_args,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_agent.main()
+
+    assert exc_info.value.code == 130
+
+    captured = capsys.readouterr()
+
+    assert json.loads(captured.out) == {
+        "status": "interrupted",
+        "error": "Interrupted by user.",
+    }
+
+            

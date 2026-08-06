@@ -1,5 +1,9 @@
 import argparse
-
+from openai_client_factory import DEFAULT_OPENAI_MODEL
+from openai_llm_adapter import (
+    DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
+    DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS,
+)
 from agent_config import AgentConfig
 
 
@@ -40,6 +44,33 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=int,
         default=AgentConfig().max_invalid_llm_outputs,
         help="Maximum invalid LLM outputs before stopping.",
+    )
+
+    parser.add_argument(
+        "--llm",
+        choices=["demo", "openai"],
+        default="demo",
+        help="LLM backend to use.",
+    )
+
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_OPENAI_MODEL,
+        help="Model name for OpenAI LLM backend.",
+    )    
+
+    parser.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
+        help="Maximum output tokens for OpenAI LLM responses.",
+    )
+
+    parser.add_argument(
+        "--request-timeout-seconds",
+        type=float,
+        default=DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS,
+        help="OpenAI request timeout in seconds.",
     )
 
     return parser
