@@ -3,14 +3,17 @@ import pytest
 from agent_config import AgentConfig
 from cli_config import build_agent_config_from_args, build_arg_parser
 from openai_client_factory import DEFAULT_OPENAI_MODEL
+from cli_defaults import OPENAI_CLI_DEFAULT_MAX_STEPS
 
 
-def test_cli_parser_requires_task():
+def test_cli_parser_accepts_empty_args_for_later_task_validation():
     parser = build_arg_parser()
 
-    with pytest.raises(SystemExit):
-        parser.parse_args([])
+    args = parser.parse_args([])
 
+    assert args.task is None
+    assert args.preset is None
+    assert args.path is None
 
 def test_cli_parser_accepts_task_with_default_config_values():
     parser = build_arg_parser()
@@ -160,3 +163,77 @@ def test_cli_parser_accepts_request_timeout_seconds():
     ])
 
     assert args.request_timeout_seconds == 5.0            
+
+def test_cli_parser_accepts_code_review_preset_and_path():
+    parser = build_arg_parser()
+
+    args = parser.parse_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+    ])
+
+    assert args.preset == "code-review"
+    assert args.path == "./sample_project"
+    assert args.max_findings == 3
+
+
+def test_cli_parser_accepts_custom_max_findings():
+    parser = build_arg_parser()
+
+    args = parser.parse_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+        "--max-findings",
+        "5",
+    ])
+
+    assert args.max_findings == 5
+
+
+def test_cli_parser_rejects_unknown_preset():
+    parser = build_arg_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args([
+            "--preset",
+            "unknown",
+            "--path",
+            "./sample_project",
+        ])    
+
+def test_build_agent_config_uses_openai_max_steps_default():
+    parser = build_arg_parser()
+
+    args = parser.parse_args([
+        "--task",
+        "Review the sample project.",
+        "--llm",
+        "openai",
+    ])
+
+    config = build_agent_config_from_args(args)
+
+    assert config.max_steps == OPENAI_CLI_DEFAULT_MAX_STEPS
+
+
+def test_build_agent_config_explicit_max_steps_overrides_openai_default():
+    parser = build_arg_parser()
+
+    args = parser.parse_args([
+        "--task",
+        "Review the sample project.",
+        "--llm",
+        "openai",
+        "--max-steps",
+        "30",
+    ])
+
+    config = build_agent_config_from_args(args)
+
+    assert config.max_steps == 30
+
+            
