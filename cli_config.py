@@ -6,6 +6,7 @@ from openai_llm_adapter import (
 )
 from agent_config import AgentConfig
 from task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS, SUPPORTED_TASK_PRESETS
+from cli_defaults import resolve_cli_max_steps
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -42,7 +43,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-steps",
         type=int,
-        default=AgentConfig().max_steps,
+        default=None,
         help="Maximum number of agent loop steps.",
     )
 
@@ -83,15 +84,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-output-tokens",
         type=int,
-        default=DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
-        help="Maximum output tokens for OpenAI LLM responses.",
+        default=None,
+        help="Maximum output tokens for OpenAI LLM responses. If omitted, uses OpenAI CLI default.",
     )
 
     parser.add_argument(
         "--request-timeout-seconds",
         type=float,
-        default=DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS,
-        help="OpenAI request timeout in seconds.",
+        default=None,
+        help="OpenAI request timeout in seconds. If omitted, uses OpenAI CLI default.",
     )
 
     return parser
@@ -99,7 +100,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 def build_agent_config_from_args(args: argparse.Namespace) -> AgentConfig:
     return AgentConfig(
-        max_steps=args.max_steps,
+        max_steps=resolve_cli_max_steps(
+            llm=getattr(args, "llm", "demo"),
+            max_steps=args.max_steps,
+        ),
         max_rejected_final_answers=args.max_rejected_final_answers,
         max_rejected_tool_calls=args.max_rejected_tool_calls,
         max_invalid_llm_outputs=args.max_invalid_llm_outputs,

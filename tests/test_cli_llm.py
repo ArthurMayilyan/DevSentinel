@@ -5,6 +5,10 @@ import pytest
 from cli_llm import build_llm_from_args
 from demo_llm import DemoCodeReviewLLM
 from openai_llm_adapter import OpenAILLMAdapter
+from cli_defaults import (
+    OPENAI_CLI_DEFAULT_MAX_OUTPUT_TOKENS,
+    OPENAI_CLI_DEFAULT_REQUEST_TIMEOUT_SECONDS,
+)
 
 
 class FakeOpenAIClient:
@@ -76,3 +80,17 @@ def test_build_llm_from_args_passes_request_timeout_to_openai_adapter():
     )
 
     assert llm.request_timeout_seconds == 5.0    
+
+def test_build_llm_from_args_uses_openai_cli_defaults():
+    args = Namespace(
+        llm="openai",
+        model="gpt-5.6-luna",
+    )
+
+    llm = build_llm_from_args(
+        args,
+        openai_client_class=FakeOpenAIClient,
+    )
+
+    assert llm.max_output_tokens == OPENAI_CLI_DEFAULT_MAX_OUTPUT_TOKENS
+    assert llm.request_timeout_seconds == OPENAI_CLI_DEFAULT_REQUEST_TIMEOUT_SECONDS    
