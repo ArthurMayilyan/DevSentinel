@@ -237,4 +237,29 @@ def test_build_agent_config_explicit_max_steps_overrides_openai_default():
 
     assert config.max_steps == 30
 
-            
+def test_cli_parser_accepts_print_task_flag():
+    parser = build_arg_parser()
+
+    args = parser.parse_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+        "--print-task",
+    ])
+
+    assert args.print_task is True
+
+def test_cli_parser_print_task_defaults_to_false():
+    parser = build_arg_parser()
+
+    args = parser.parse_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+    ])
+
+    assert args.print_task is False
+
+                    

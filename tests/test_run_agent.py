@@ -153,3 +153,33 @@ def test_run_agent_from_args_rejects_missing_task_and_preset():
     with pytest.raises(ValueError):
         run_agent_from_args([])
 
+def test_run_agent_from_args_prints_task_from_preset_without_running_agent():
+    output = run_agent_from_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+        "--print-task",
+    ])
+
+    assert output["status"] == "task_preview"
+    assert "Review ./sample_project only." in output["task"]
+    assert "Start with list_files path ./sample_project." in output["task"]
+    assert "Add up to 5 distinct findings." in output["task"]
+    assert "Do not merge unrelated issues into one finding." in output["task"]
+    assert "trace_path" not in output
+    assert "summary_path" not in output
+
+def test_run_agent_from_args_prints_explicit_task_without_running_agent():
+    output = run_agent_from_args([
+        "--task",
+        "Review manually.",
+        "--print-task",
+    ])
+
+    assert output == {
+        "status": "task_preview",
+        "task": "Review manually.",
+    }
+
+        

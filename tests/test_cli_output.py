@@ -5,8 +5,7 @@ from agent_stop_reasons import (
     STOP_CODE_MAX_STEPS,
     STOP_MAX_STEPS,
 )
-from cli_output import format_cli_output
-
+from cli_output import format_cli_output, format_task_preview_output
 
 def test_format_cli_output_for_completed_result():
     result = AgentRunResult.completed("Done.")
@@ -64,3 +63,13 @@ def test_format_cli_output_rejects_non_result_input():
             result="not a result",
             trace_path="traces/trace_1.json",
         )
+
+def test_format_task_preview_output():
+    output = format_task_preview_output(
+        task="Review ./sample_project only.",
+    )
+
+    assert output == {
+        "status": "task_preview",
+        "task": "Review ./sample_project only.",
+    }        

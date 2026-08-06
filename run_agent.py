@@ -3,7 +3,7 @@ from pathlib import Path
 
 from agent import Agent
 from cli_config import build_agent_config_from_args, build_arg_parser
-from cli_output import format_cli_output
+from cli_output import format_cli_output, format_task_preview_output
 from trace import TraceRecorder
 from cli_llm import build_llm_from_args
 from cli_task import build_task_from_args
@@ -20,7 +20,11 @@ def run_agent_from_args(
 ) -> dict:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+
     task = build_task_from_args(args)
+
+    if args.print_task:
+        return format_task_preview_output(task=task)
 
     config = build_agent_config_from_args(args)
     trace_recorder = TraceRecorder()
