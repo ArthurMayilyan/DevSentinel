@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -49,3 +50,27 @@ def test_agent_config_takes_precedence_over_max_steps_argument():
 
     assert agent.config is config
     assert agent.max_steps == 5
+
+def test_agent_accepts_run_metadata():
+    run_metadata = {
+        "llm": "demo",
+        "preset": "code-review",
+        "path": "./sample_project",
+    }
+
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+        run_metadata=run_metadata,
+    )
+
+    assert agent.run_metadata is run_metadata
+
+
+def test_agent_rejects_non_dict_run_metadata():
+    with pytest.raises(ValueError):
+        Agent(
+            llm=DummyLLM(),
+            trace_recorder=TraceRecorder(),
+            run_metadata="not metadata",
+        )    

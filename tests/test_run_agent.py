@@ -182,4 +182,48 @@ def test_run_agent_from_args_prints_explicit_task_without_running_agent():
         "task": "Review manually.",
     }
 
-        
+def test_run_agent_from_args_includes_run_metadata_for_preset():
+    output = run_agent_from_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+        "--llm",
+        "demo",
+        "--max-steps",
+        "20",
+    ])
+
+    assert output["status"] == "completed"
+    assert output["run"]["llm"] == "demo"
+    assert output["run"]["model"] is None
+    assert output["run"]["preset"] == "code-review"
+    assert output["run"]["path"] == "./sample_project"
+    assert output["run"]["max_findings"] == 5
+    assert output["run"]["max_steps"] == 20
+    assert "Review ./sample_project only." in output["run"]["task"]
+    assert "trace_path" in output
+    assert "summary_path" in output
+
+def test_run_agent_from_args_persists_run_metadata_in_summary():
+    output = run_agent_from_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+        "--llm",
+        "demo",
+        "--max-steps",
+        "20",
+    ])
+
+    summary_path = Path(output["summary_path"])
+    summary_data = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    assert summary_data["metadata"]["llm"] == "demo"
+    assert summary_data["metadata"]["preset"] == "code-review"
+    assert summary_data["metadata"]["path"] == "./sample_project"
+    assert summary_data["metadata"]["max_findings"] == 5
+    assert summary_data["metadata"]["max_steps"] == 20
+    assert "Review ./sample_project only." in summary_data["metadata"]["task"]
+                

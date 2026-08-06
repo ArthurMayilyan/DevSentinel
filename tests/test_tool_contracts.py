@@ -1,3 +1,5 @@
+import pytest
+
 from tool_contracts import (
     TOOL_ARGUMENT_CONTRACTS,
     validate_tool_arguments,
@@ -210,3 +212,43 @@ def test_format_argument_contract_for_prompt_uses_contract_object():
 
     assert "category" in text
     assert "SECURITY" in text    
+
+def test_search_knowledge_contract_accepts_query_only():
+    validate_tool_arguments(
+        tool_name="search_knowledge",
+        arguments={
+            "query": "token validation policy",
+        },
+    )
+
+
+def test_search_knowledge_contract_rejects_missing_query():
+    errors = validate_tool_arguments(
+        tool_name="search_knowledge",
+        arguments={},
+    )
+
+    assert errors
+
+
+def test_search_knowledge_contract_rejects_empty_query():
+    errors = validate_tool_arguments(
+        tool_name="search_knowledge",
+        arguments={
+            "query": "",
+        },
+    )
+
+    assert errors
+
+
+def test_search_knowledge_contract_rejects_top_k_for_now():
+    errors = validate_tool_arguments(
+        tool_name="search_knowledge",
+        arguments={
+            "query": "token validation policy",
+            "top_k": 5,
+        },
+    )
+
+    assert errors

@@ -48,6 +48,7 @@ def test_run_summary_can_be_serialized_to_dict():
         "final_state": {
             "report_written": True,
         },
+        "metadata": None,
     }
 
 
@@ -63,6 +64,7 @@ def test_run_summary_can_be_restored_from_dict():
         "final_state": {
             "report_written": False,
         },
+        "metadata": None,
     })
 
     assert summary.result == AgentRunResult.stopped_with_code(STOP_CODE_MAX_STEPS)
@@ -154,4 +156,38 @@ def test_build_agent_run_summary_rejects_non_list_trace_steps():
             trace_steps="not a list",
         )
 
-        
+
+def test_build_agent_run_summary_includes_metadata():
+    result = AgentRunResult.completed("Done.")
+
+    summary = build_agent_run_summary(
+        result=result,
+        trace_steps=[
+            {
+                "step": 1,
+                "state_after": {
+                    "report_written": True,
+                },
+            }
+        ],
+        metadata={
+            "llm": "openai",
+            "preset": "code-review",
+            "path": "./sample_project",
+        },
+    )
+
+    assert summary.to_dict()["metadata"] == {
+        "llm": "openai",
+        "preset": "code-review",
+        "path": "./sample_project",
+    }        
+
+def test_agent_run_summary_rejects_non_dict_metadata():
+    with pytest.raises(ValueError):
+        AgentRunSummary(
+            result=AgentRunResult.completed("Done."),
+            steps_count=0,
+            final_state={},
+            metadata="not metadata",
+        )    

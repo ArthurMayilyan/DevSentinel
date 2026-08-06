@@ -62,6 +62,7 @@ def test_trace_recorder_writes_run_summary_file():
             "report_written": True,
             "report_path": "report.md",
         },
+        "metadata": None,
     }
 
 

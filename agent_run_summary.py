@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Any, cast
+from dataclasses import dataclass, field
+from typing import Any
 
 from agent_run_result import AgentRunResult
 
@@ -9,56 +9,60 @@ class AgentRunSummary:
     result: AgentRunResult
     steps_count: int
     final_state: dict[str, Any]
+    metadata: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.result, AgentRunResult):
-            raise ValueError("AgentRunSummary requires an AgentRunResult.")
+            raise ValueError("result must be an AgentRunResult.")
 
-        if not isinstance(self.steps_count, int) or self.steps_count < 0:
-            raise ValueError("AgentRunSummary steps_count must be a non-negative integer.")
+        if type(self.steps_count) is not int:
+            raise ValueError("steps_count must be an integer.")
+
+        if self.steps_count < 0:
+            raise ValueError("steps_count must be greater than or equal to 0.")
 
         if not isinstance(self.final_state, dict):
-            raise ValueError("AgentRunSummary final_state must be a dict.")
+            raise ValueError("final_state must be a dictionary.")
+
+        if self.metadata is not None and not isinstance(self.metadata, dict):
+            raise ValueError("metadata must be a dictionary or None.")
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "result": self.result.to_dict(),
             "steps_count": self.steps_count,
             "final_state": self.final_state,
+            "metadata": self.metadata,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AgentRunSummary":
         if not isinstance(data, dict):
-            raise ValueError("AgentRunSummary.from_dict requires a dict.")
+            raise ValueError("summary data must be a dictionary.")
 
-        expected_keys = {"result", "steps_count", "final_state"}
-        actual_keys = set(data.keys())
+        expected_keys = {
+            "result",
+            "steps_count",
+            "final_state",
+            "metadata",
+        }
 
-        extra_keys = actual_keys - expected_keys
-        missing_keys = expected_keys - actual_keys
-
-        if extra_keys:
-            raise ValueError(
-                f"AgentRunSummary.from_dict received unexpected fields: {sorted(extra_keys)}"
-            )
-
-        if missing_keys:
-            raise ValueError(
-                f"AgentRunSummary.from_dict missing required fields: {sorted(missing_keys)}"
-            )
+        if set(data) != expected_keys:
+            raise ValueError("summary data has unexpected keys.")
 
         return cls(
             result=AgentRunResult.from_dict(data["result"]),
-            steps_count=cast(int, data["steps_count"]),
-            final_state=cast(dict[str, Any], data["final_state"]),
+            steps_count=data["steps_count"],
+            final_state=data["final_state"],
+            metadata=data["metadata"],
         )
-
+    
 
 def build_agent_run_summary(
     *,
     result: AgentRunResult,
     trace_steps: list[dict[str, Any]],
+    metadata: dict[str, Any] | None = None,
 ) -> AgentRunSummary:
     if not isinstance(trace_steps, list):
         raise ValueError("trace_steps must be a list.")
@@ -80,5 +84,6 @@ def build_agent_run_summary(
         result=result,
         steps_count=len(trace_steps),
         final_state=final_state,
+        metadata=metadata,
     )
 

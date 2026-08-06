@@ -14,6 +14,7 @@ from agent_stop_reasons import (
 )
 from agent_run_result import AgentRunResult
 from agent_run_summary import build_agent_run_summary
+from typing import Any
 
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
@@ -33,6 +34,7 @@ class Agent:
         tool_registry: ToolRegistry | None = None,
         prompt_builder: PromptBuilder | None = None,
         config: AgentConfig | None = None,
+        run_metadata: dict[str, Any] | None = None,
     ):
         self.llm = llm
         self.trace_recorder = trace_recorder
@@ -41,6 +43,11 @@ class Agent:
         self.prompt_builder = prompt_builder or PromptBuilder(
             examples=CODE_REVIEW_JSON_EXAMPLES,
         )
+
+        if run_metadata is not None and not isinstance(run_metadata, dict):
+            raise ValueError("run_metadata must be a dictionary or None.")
+
+        self.run_metadata = run_metadata
 
         self._tools = {
             "list_files": list_files,
@@ -625,6 +632,7 @@ class Agent:
         summary = build_agent_run_summary(
             result=result,
             trace_steps=trace_steps,
+            metadata=self.run_metadata,
         )
 
         self.trace_recorder.write_summary(summary)
