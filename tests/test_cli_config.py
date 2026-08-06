@@ -4,6 +4,7 @@ from agent_config import AgentConfig
 from cli_config import build_agent_config_from_args, build_arg_parser
 from openai_client_factory import DEFAULT_OPENAI_MODEL
 from cli_defaults import OPENAI_CLI_DEFAULT_MAX_STEPS
+from task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS
 
 
 def test_cli_parser_accepts_empty_args_for_later_task_validation():
@@ -176,7 +177,7 @@ def test_cli_parser_accepts_code_review_preset_and_path():
 
     assert args.preset == "code-review"
     assert args.path == "./sample_project"
-    assert args.max_findings == 3
+    assert args.max_findings == DEFAULT_CODE_REVIEW_MAX_FINDINGS
 
 
 def test_cli_parser_accepts_custom_max_findings():
