@@ -132,4 +132,24 @@ def test_main_prints_json_interrupted_output_and_exits(monkeypatch, capsys):
         "error": "Interrupted by user.",
     }
 
-            
+def test_run_agent_from_args_accepts_code_review_preset():
+    output = run_agent_from_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+        "--llm",
+        "demo",
+        "--max-steps",
+        "20",
+    ])
+
+    assert output["status"] == "completed"
+    assert output["answer"] == "Review complete. Report written to report.md."
+    assert output["trace_path"].startswith("traces")
+    assert output["summary_path"].startswith("run_summaries")
+
+def test_run_agent_from_args_rejects_missing_task_and_preset():
+    with pytest.raises(ValueError):
+        run_agent_from_args([])
+

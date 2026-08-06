@@ -5,6 +5,7 @@ from openai_llm_adapter import (
     DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS,
 )
 from agent_config import AgentConfig
+from task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS, SUPPORTED_TASK_PRESETS
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -14,8 +15,28 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--task",
-        required=True,
+        required=False,
         help="Task instruction for the agent.",
+    )
+
+    parser.add_argument(
+        "--preset",
+        choices=sorted(SUPPORTED_TASK_PRESETS),
+        default=None,
+        help="Predefined task preset.",
+    )
+
+    parser.add_argument(
+        "--path",
+        default=None,
+        help="Path used by task preset.",
+    )
+
+    parser.add_argument(
+        "--max-findings",
+        type=int,
+        default=DEFAULT_CODE_REVIEW_MAX_FINDINGS,
+        help="Maximum number of findings for preset-based code review.",
     )
 
     parser.add_argument(

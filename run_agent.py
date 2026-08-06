@@ -6,6 +6,7 @@ from cli_config import build_agent_config_from_args, build_arg_parser
 from cli_output import format_cli_output
 from trace import TraceRecorder
 from cli_llm import build_llm_from_args
+from cli_task import build_task_from_args
 
 
 def build_summary_path(trace_recorder: TraceRecorder) -> Path:
@@ -19,6 +20,7 @@ def run_agent_from_args(
 ) -> dict:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+    task = build_task_from_args(args)
 
     config = build_agent_config_from_args(args)
     trace_recorder = TraceRecorder()
@@ -34,7 +36,7 @@ def run_agent_from_args(
         config=config,
     )
 
-    result = agent.run_with_result(args.task)
+    result = agent.run_with_result(task)
 
     return format_cli_output(
         result=result,
