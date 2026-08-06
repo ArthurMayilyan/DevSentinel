@@ -18,8 +18,10 @@ def test_build_code_review_task_contains_path_and_workflow():
     assert "Review ./sample_project only." in task
     assert "Start with list_files path ./sample_project." in task
     assert "Read all Python files." in task
+    assert f"Add up to {DEFAULT_CODE_REVIEW_MAX_FINDINGS} distinct findings." in task
+    assert "Do not merge unrelated issues into one finding." in task
     assert (
-        f"Add no more than {DEFAULT_CODE_REVIEW_MAX_FINDINGS} most important findings."
+        "Group issues only when they have the same root cause and the same recommended fix."
         in task
     )
     assert "Then call write_report." in task
@@ -33,7 +35,7 @@ def test_build_code_review_task_accepts_custom_max_findings():
         max_findings=5,
     )
 
-    assert "Add no more than 5 most important findings." in task
+    assert "Add up to 5 distinct findings." in task
 
 
 def test_build_task_from_preset_builds_code_review_task():
@@ -44,7 +46,7 @@ def test_build_task_from_preset_builds_code_review_task():
     )
 
     assert "Review ./sample_project only." in task
-    assert "Add no more than 2 most important findings." in task
+    assert "Add up to 2 distinct findings." in task
 
 
 def test_build_task_from_preset_rejects_unknown_preset():
@@ -80,4 +82,3 @@ def test_build_code_review_task_rejects_bool_max_findings():
             max_findings=True,
         )
 
-        

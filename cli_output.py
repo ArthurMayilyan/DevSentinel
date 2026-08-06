@@ -2,7 +2,14 @@ from pathlib import Path
 from typing import Any
 
 from agent_run_result import AgentRunResult
+from typing import Any
 
+
+def format_task_preview_output(*, task: str) -> dict[str, Any]:
+    return {
+        "status": "task_preview",
+        "task": task,
+    }
 
 def format_cli_output(
     *,

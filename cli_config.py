@@ -41,6 +41,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--print-task",
+        action="store_true",
+        help="Print the resolved task and exit without running the agent.",
+    )
+
+    parser.add_argument(
         "--max-steps",
         type=int,
         default=None,

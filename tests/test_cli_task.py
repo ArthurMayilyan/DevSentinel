@@ -28,8 +28,12 @@ def test_build_task_from_args_builds_task_from_code_review_preset():
 
     assert "Review ./sample_project only." in task
     assert "Start with list_files path ./sample_project." in task
-    assert "Add no more than 3 most important findings." in task
-
+    assert "Add up to 3 distinct findings." in task
+    assert "Do not merge unrelated issues into one finding." in task
+    assert (
+        "Group issues only when they have the same root cause and the same recommended fix."
+        in task
+    )
 
 def test_build_task_from_args_rejects_task_and_preset_together():
     args = Namespace(
@@ -77,6 +81,5 @@ def test_build_task_from_args_passes_custom_max_findings():
 
     task = build_task_from_args(args)
 
-    assert "Add no more than 5 most important findings." in task
+    assert "Add up to 5 distinct findings." in task
 
-    
