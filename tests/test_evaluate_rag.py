@@ -1,7 +1,11 @@
 import json
 import pytest
 
-from evaluate_rag import build_arg_parser, run_rag_eval_from_args
+from evaluate_rag import (
+    build_arg_parser,
+    format_rag_eval_summary,
+    run_rag_eval_from_args,
+)
 
 
 def test_evaluate_rag_parser_accepts_required_arguments():
@@ -264,4 +268,131 @@ def test_run_rag_eval_from_args_rejects_min_hit_rate_above_one(tmp_path):
             ]
         )
 
-                    
+def test_evaluate_rag_parser_accepts_summary_only():
+    parser = build_arg_parser()
+
+    args = parser.parse_args(
+        [
+            "--knowledge-path",
+            "./knowledge_base",
+            "--cases",
+            "./eval_cases/rag_eval_cases.json",
+            "--summary-only",
+        ]
+    )
+
+    assert args.summary_only is True
+
+def test_format_rag_eval_summary_formats_success_output():
+    output = {
+        "total_cases": 2,
+        "passed_cases": 2,
+        "failed_cases": 0,
+        "hit_rate": 1.0,
+        "results": [],
+        "min_hit_rate": 0.8,
+        "threshold_passed": True,
+    }
+
+    assert format_rag_eval_summary(output) == "\n".join(
+        [
+            "RAG retrieval evaluation",
+            "Total: 2",
+            "Passed: 2",
+            "Failed: 0",
+            "Hit rate: 1.00",
+            "Threshold: 0.80",
+            "Threshold passed: true",
+        ]
+    )
+
+def test_format_rag_eval_summary_includes_failed_cases():
+    output = {
+        "total_cases": 2,
+        "passed_cases": 1,
+        "failed_cases": 1,
+        "hit_rate": 0.5,
+        "results": [
+            {
+                "name": "token policy",
+                "query": "token expiration",
+                "passed": True,
+                "expected_source_contains": "security.md",
+                "expected_text_contains": "Tokens must be signed",
+                "retrieved_sources": ["knowledge_base\\security.md"],
+                "retrieved_texts": [
+                    "Tokens must be signed and must expire.",
+                ],
+            },
+            {
+                "name": "coding style",
+                "query": "small function",
+                "passed": False,
+                "expected_source_contains": "coding.md",
+                "expected_text_contains": "Functions should be small",
+                "retrieved_sources": ["knowledge_base\\_coding.md"],
+                "retrieved_texts": [
+                    "Functions should be small and readable.",
+                ],
+            },
+        ],
+        "min_hit_rate": 0.8,
+        "threshold_passed": False,
+    }
+
+    assert format_rag_eval_summary(output) == "\n".join(
+        [
+            "RAG retrieval evaluation",
+            "Total: 2",
+            "Passed: 1",
+            "Failed: 1",
+            "Hit rate: 0.50",
+            "Threshold: 0.80",
+            "Threshold passed: false",
+            "",
+            "Failed cases:",
+            "- coding style",
+            "  query: small function",
+            "  expected source: coding.md",
+            "  retrieved sources:",
+            "    - knowledge_base\\_coding.md",
+        ]
+    )
+
+def test_format_rag_eval_summary_shows_none_when_no_sources_retrieved():
+    output = {
+        "total_cases": 1,
+        "passed_cases": 0,
+        "failed_cases": 1,
+        "hit_rate": 0.0,
+        "results": [
+            {
+                "name": "missing policy",
+                "query": "unknown policy",
+                "passed": False,
+                "expected_source_contains": "policy.md",
+                "expected_text_contains": "Policy text",
+                "retrieved_sources": [],
+                "retrieved_texts": [],
+            },
+        ],
+    }
+
+    assert format_rag_eval_summary(output) == "\n".join(
+        [
+            "RAG retrieval evaluation",
+            "Total: 1",
+            "Passed: 0",
+            "Failed: 1",
+            "Hit rate: 0.00",
+            "",
+            "Failed cases:",
+            "- missing policy",
+            "  query: unknown policy",
+            "  expected source: policy.md",
+            "  retrieved sources:",
+            "    - <none>",
+        ]
+    )
+
+                                    

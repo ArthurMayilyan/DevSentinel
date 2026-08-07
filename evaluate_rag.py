@@ -8,6 +8,53 @@ from rag_eval_loader import load_rag_retrieval_eval_cases_from_json_file
 from rag_loader import load_rag_store_from_path
 
 
+def format_rag_eval_summary(
+    output: dict[str, Any],
+) -> str:
+    lines = [
+        "RAG retrieval evaluation",
+        f"Total: {output['total_cases']}",
+        f"Passed: {output['passed_cases']}",
+        f"Failed: {output['failed_cases']}",
+        f"Hit rate: {output['hit_rate']:.2f}",
+    ]
+
+    if "min_hit_rate" in output:
+        lines.append(
+            f"Threshold: {output['min_hit_rate']:.2f}"
+        )
+        lines.append(
+            f"Threshold passed: {str(output['threshold_passed']).lower()}"
+        )
+
+    failed_results = [
+        result
+        for result in output.get("results", [])
+        if result.get("passed") is False
+    ]
+
+    if failed_results:
+        lines.append("")
+        lines.append("Failed cases:")
+
+        for result in failed_results:
+            lines.append(f"- {result['name']}")
+            lines.append(f"  query: {result['query']}")
+            lines.append(
+                f"  expected source: {result['expected_source_contains']}"
+            )
+            lines.append("  retrieved sources:")
+
+            retrieved_sources = result.get("retrieved_sources", [])
+
+            if retrieved_sources:
+                for source in retrieved_sources:
+                    lines.append(f"    - {source}")
+            else:
+                lines.append("    - <none>")
+
+    return "\n".join(lines)
+
 def validate_min_hit_rate(
     min_hit_rate: float | None,
 ) -> None:
@@ -58,15 +105,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Optional minimum acceptable hit rate. Must be between 0.0 and 1.0.",
     )
 
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="Print a compact human-readable summary instead of full JSON.",
+    )    
+
     return parser
 
 
-def run_rag_eval_from_args(
-    raw_args: list[str] | None = None,
+def run_rag_eval(
+    args: argparse.Namespace,
 ) -> dict[str, Any]:
-    parser = build_arg_parser()
-    args = parser.parse_args(raw_args)
-
     validate_min_hit_rate(args.min_hit_rate)
 
     store = load_rag_store_from_path(
@@ -99,18 +149,35 @@ def run_rag_eval_from_args(
     return output
 
 
-def main() -> None:
-    output = run_rag_eval_from_args()
+def run_rag_eval_from_args(
+    raw_args: list[str] | None = None,
+) -> dict[str, Any]:
+    parser = build_arg_parser()
+    args = parser.parse_args(raw_args)
 
-    print(
-        json.dumps(
-            output,
-            indent=2,
+    return run_rag_eval(args)
+
+
+
+def main() -> None:
+    parser = build_arg_parser()
+    args = parser.parse_args()
+
+    output = run_rag_eval(args)
+
+    if args.summary_only:
+        print(format_rag_eval_summary(output))
+    else:
+        print(
+            json.dumps(
+                output,
+                indent=2,
+            )
         )
-    )
 
     if output.get("threshold_passed") is False:
         raise SystemExit(1)
 
+    
 if __name__ == "__main__":
     main()
