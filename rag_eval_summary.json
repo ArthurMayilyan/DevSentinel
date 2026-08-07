@@ -1,0 +1,36 @@
+{
+  "total_cases": 2,
+  "passed_cases": 2,
+  "failed_cases": 0,
+  "hit_rate": 1.0,
+  "results": [
+    {
+      "name": "token policy",
+      "query": "token expiration",
+      "passed": true,
+      "expected_source_contains": "security.md",
+      "expected_text_contains": "Tokens must be signed",
+      "retrieved_sources": [
+        "knowledge_base\\security.md"
+      ],
+      "retrieved_texts": [
+        "# Security Policy\n\nTokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production."
+      ]
+    },
+    {
+      "name": "coding style",
+      "query": "small function",
+      "passed": true,
+      "expected_source_contains": "coding.md",
+      "expected_text_contains": "Functions should be small",
+      "retrieved_sources": [
+        "knowledge_base\\coding.md"
+      ],
+      "retrieved_texts": [
+        "# Coding Guidelines\n\nFunctions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function."
+      ]
+    }
+  ],
+  "min_hit_rate": 0.8,
+  "threshold_passed": true
+}
