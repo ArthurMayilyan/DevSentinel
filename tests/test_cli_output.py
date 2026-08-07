@@ -73,3 +73,30 @@ def test_format_task_preview_output():
         "status": "task_preview",
         "task": "Review ./sample_project only.",
     }        
+
+def test_format_cli_output_includes_run_metadata_when_provided():
+    result = AgentRunResult.completed("Done.")
+
+    output = format_cli_output(
+        result=result,
+        trace_path="traces/trace.json",
+        summary_path="run_summaries/summary.json",
+        run_metadata={
+            "llm": "openai",
+            "preset": "code-review",
+            "task": "Review ./sample_project only.",
+        },
+    )
+
+    assert output["status"] == "completed"
+    assert output["answer"] == "Done."
+    assert output["trace_path"] == "traces/trace.json"
+    assert output["summary_path"] == "run_summaries/summary.json"
+    assert output["run"] == {
+        "llm": "openai",
+        "preset": "code-review",
+        "task": "Review ./sample_project only.",
+    }
+
+
+        

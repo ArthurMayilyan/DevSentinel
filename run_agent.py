@@ -7,6 +7,7 @@ from cli_output import format_cli_output, format_task_preview_output
 from trace import TraceRecorder
 from cli_llm import build_llm_from_args
 from cli_task import build_task_from_args
+from cli_run_metadata import build_run_metadata
 
 
 def build_summary_path(trace_recorder: TraceRecorder) -> Path:
@@ -27,8 +28,13 @@ def run_agent_from_args(
         return format_task_preview_output(task=task)
 
     config = build_agent_config_from_args(args)
-    trace_recorder = TraceRecorder()
+    run_metadata = build_run_metadata(
+        args=args,
+        task=task,
+        config=config,
+    )
 
+    trace_recorder = TraceRecorder()
     llm = build_llm_from_args(
         args,
         openai_client_class=openai_client_class,
@@ -38,6 +44,7 @@ def run_agent_from_args(
         llm=llm,
         trace_recorder=trace_recorder,
         config=config,
+        run_metadata=run_metadata,
     )
 
     result = agent.run_with_result(task)
@@ -46,6 +53,7 @@ def run_agent_from_args(
         result=result,
         trace_path=trace_recorder.trace_path,
         summary_path=build_summary_path(trace_recorder),
+        run_metadata=run_metadata,
     )
 
 

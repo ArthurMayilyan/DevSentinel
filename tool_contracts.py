@@ -28,6 +28,12 @@ TOOL_ARGUMENT_CONTRACTS = {
         non_empty_string_fields={"query", "path"},
         enum_fields={},
     ),
+    "search_knowledge": ToolArgumentContract(
+        allowed={"query"},
+        required={"query"},
+        non_empty_string_fields={"query"},
+        enum_fields={},
+    ),
     "add_finding": ToolArgumentContract(
         required={
             "file",

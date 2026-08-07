@@ -9,6 +9,8 @@ from tool_specs import TOOL_SPECS
 from tool_contracts import TOOL_ARGUMENT_CONTRACTS
 from trace import TraceRecorder
 from runtime_tool_registry import ToolRegistry
+from rag_store import InMemoryRagStore
+
 
 class DummyLLM:
     def complete(self, messages, state=None):
@@ -24,6 +26,18 @@ def make_agent() -> Agent:
         max_steps=1,
     )
 
+def make_rag_agent():
+    rag_store = InMemoryRagStore()
+    rag_store.add_document(
+        source="security.md",
+        text="Tokens must be signed and must expire.",
+    )
+
+    return Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+        rag_store=rag_store,
+    )
 
 def test_every_tool_spec_has_argument_contract():
     assert set(TOOL_SPECS.keys()) == set(TOOL_ARGUMENT_CONTRACTS.keys())
@@ -34,10 +48,12 @@ def test_every_tool_spec_key_matches_tool_name():
         assert tool_spec.name == tool_key
 
 
-def test_agent_registered_tools_match_tool_specs():
+def test_agent_registered_tools_match_executable_tool_specs():
     agent = make_agent()
 
-    assert set(agent._tools.keys()) == set(TOOL_SPECS.keys())
+    expected_tool_names = set(TOOL_SPECS.keys()) - {"search_knowledge"}
+
+    assert set(agent._tools.keys()) == expected_tool_names
 
 
 def test_all_agent_registered_tools_are_callable():
@@ -52,10 +68,12 @@ def test_agent_tool_registry_matches_agent_tools():
     assert set(agent.tool_registry.names()) == set(agent._tools.keys())
 
 
-def test_agent_tool_registry_matches_tool_specs():
+def test_agent_tool_registry_matches_executable_tool_specs():
     agent = make_agent()
 
-    assert set(agent.tool_registry.names()) == set(TOOL_SPECS.keys())
+    expected_tool_names = set(TOOL_SPECS.keys()) - {"search_knowledge"}
+
+    assert set(agent.tool_registry.names()) == expected_tool_names
 
 
 def test_agent_tool_registry_can_validate_read_file_arguments():
@@ -115,3 +133,25 @@ def test_agent_prompt_uses_injected_tool_registry():
     assert "Tool: write_report" not in text
     assert "Tool: add_finding" not in text
 
+def test_tool_specs_include_search_knowledge():
+    assert "search_knowledge" in TOOL_SPECS
+
+def test_search_knowledge_tool_spec_defines_expected_parameters():
+    spec = TOOL_SPECS["search_knowledge"]
+
+    assert spec.name == "search_knowledge"
+    assert "query" in spec.parameters
+    assert "top_k" not in spec.parameters
+
+
+def test_rag_agent_tool_registry_matches_tool_specs():
+    agent = make_rag_agent()
+
+    assert set(agent.tool_registry.names()) == set(TOOL_SPECS.keys())
+
+def test_rag_agent_registered_tools_match_tool_specs():
+    agent = make_rag_agent()
+
+    assert set(agent._tools.keys()) == set(TOOL_SPECS.keys())
+
+                

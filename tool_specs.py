@@ -90,5 +90,35 @@ TOOL_SPECS = {
         when_not_to_use="Do not use this before inspecting relevant files.",
         function=None,
     ),
-    
+
+
+    "search_knowledge": ToolSpec(
+        name="search_knowledge",
+        description=(
+            "Search the knowledge base for relevant external context, guidance, "
+            "policies, documentation, examples, or best practices."
+        ),
+        parameters={
+            "query": "Search query describing what information or guidance is needed.",
+        },
+        returns=(
+            "A list of relevant knowledge chunks. Each chunk includes source, "
+            "chunk_index, text, and relevance score."
+        ),
+        when_to_use=(
+            "Use this when the agent needs additional context beyond the inspected files, "
+            "for example internal policies, security guidelines, architecture notes, "
+            "coding standards, domain rules, examples, or previous decisions. "
+            "Use it before add_finding when external guidance can make the finding "
+            "or recommendation more accurate."
+        ),
+        when_not_to_use=(
+            "Do not use this to read project files; use read_file for exact file contents. "
+            "Do not use this to discover files; use list_files instead. "
+            "Do not use this for exact keyword search inside the project; use search_in_files instead. "
+            "Do not use this if the answer can be made reliably from already inspected files "
+            "and no external context is needed."
+        ),
+        function=None,
+    ),
 }
