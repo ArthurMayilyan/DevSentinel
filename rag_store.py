@@ -38,11 +38,52 @@ class RetrievedChunk:
         }
 
 
+def normalize_token(token: str) -> str:
+    if not isinstance(token, str):
+        raise ValueError("token must be a string.")
+
+    normalized = token.lower().strip()
+
+    if not normalized:
+        raise ValueError("token must be a non-empty string.")
+
+    if len(normalized) > 7 and normalized.endswith("ation"):
+        return normalized[:-5]
+
+    if len(normalized) > 6 and normalized.endswith("ating"):
+        return normalized[:-6]
+
+    if len(normalized) > 5 and normalized.endswith("ated"):
+        return normalized[:-4]
+
+    if len(normalized) > 5 and normalized.endswith("ate"):
+        return normalized[:-3]
+
+    if len(normalized) > 5 and normalized.endswith("ire"):
+        return normalized[:-1]
+
+    if len(normalized) > 4 and normalized.endswith("ies"):
+        return normalized[:-3] + "y"
+
+    if len(normalized) > 4 and normalized.endswith("es"):
+        return normalized[:-2]
+
+    if len(normalized) > 3 and normalized.endswith("s"):
+        return normalized[:-1]
+
+    return normalized
+
+
 def tokenize(text: str) -> set[str]:
     if not isinstance(text, str):
         raise ValueError("text must be a string.")
 
-    return set(re.findall(r"[a-zA-Z0-9_]+", text.lower()))
+    raw_tokens = re.findall(r"[a-zA-Z0-9_]+", text.lower())
+
+    return {
+        normalize_token(token)
+        for token in raw_tokens
+    }
 
 
 def chunk_text(

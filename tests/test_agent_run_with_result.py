@@ -12,7 +12,86 @@ from agent_stop_reasons import (
     STOP_MAX_STEPS,
 )
 from trace import TraceRecorder
+from rag_store import InMemoryRagStore
 
+
+class CallsSearchKnowledgeWithoutRagStoreLLM:
+    def complete(self, messages, state=None):
+        return {
+            "type": "tool_call",
+            "tool": "search_knowledge",
+            "arguments": {
+                "query": "token validation security requirements",
+            },
+        }
+
+class RagAwareReviewLLM:
+    def complete(self, messages, state=None):
+        if "search_knowledge" not in state.tools_used:
+            return {
+                "type": "tool_call",
+                "tool": "search_knowledge",
+                "arguments": {
+                    "query": "signed tokens",
+                },
+            }
+
+        if not state.discovered_files:
+            return {
+                "type": "tool_call",
+                "tool": "list_files",
+                "arguments": {
+                    "path": "./sample_project",
+                },
+            }
+
+        python_files = sorted(
+            file_path
+            for file_path in state.discovered_files
+            if file_path.endswith(".py")
+        )
+
+        for file_path in python_files:
+            if file_path not in state.inspected_files:
+                return {
+                    "type": "tool_call",
+                    "tool": "read_file",
+                    "arguments": {
+                        "path": file_path,
+                    },
+                }
+
+        if not state.findings:
+            return {
+                "type": "tool_call",
+                "tool": "add_finding",
+                "arguments": {
+                    "file": "sample_project\\auth.py",
+                    "severity": "HIGH",
+                    "category": "SECURITY",
+                    "issue": "Token validation policy is not enforced.",
+                    "evidence": (
+                        "The knowledge base says tokens must be signed and expire; "
+                        "the inspected code accepts weak token validation."
+                    ),
+                    "recommendation": (
+                        "Validate token signature and expiration according to "
+                        "security policy."
+                    ),
+                },
+            }
+
+        if not state.report_written:
+            return {
+                "type": "tool_call",
+                "tool": "write_report",
+                "arguments": {},
+            }
+
+        return {
+            "type": "final_answer",
+            "answer": "Review complete. Report written to report.md.",
+        }
 
 class AlwaysInvalidLLMOutput:
     def complete(self, messages, state=None):
@@ -252,3 +331,66 @@ def test_run_with_result_writes_summary_for_stopped_result():
     assert summary_data["result"]["stop_reason_code"] == STOP_CODE_INVALID_LLM_OUTPUTS
     assert summary_data["steps_count"] == 2
     assert summary_data["final_state"]["invalid_llm_output_count"] == 2        
+
+def test_run_with_result_executes_search_knowledge_tool():
+    trace_recorder = TraceRecorder()
+
+    rag_store = InMemoryRagStore()
+    rag_store.add_document(
+        source="security_policy.md",
+        text="Tokens must be signed and must expire.",
+    )
+
+    agent = Agent(
+        llm=RagAwareReviewLLM(),
+        trace_recorder=trace_recorder,
+        config=AgentConfig(max_steps=20),
+        rag_store=rag_store,
+    )
+
+    result = agent.run_with_result(
+        "Review the sample project using available knowledge base guidance."
+    )
+
+    assert result.is_completed is True
+    assert result.answer == "Review complete. Report written to report.md."
+
+    trace_steps = trace_recorder.read_steps()
+
+    search_step = trace_steps[0]
+
+    assert search_step["llm_output"] == {
+        "type": "tool_call",
+        "tool": "search_knowledge",
+        "arguments": {
+            "query": "signed tokens",
+        },
+    }
+
+    assert search_step["tool_result"] == [
+        {
+            "source": "security_policy.md",
+            "chunk_index": 0,
+            "text": "Tokens must be signed and must expire.",
+            "score": 2,
+        }
+    ]
+
+    assert search_step["error"] is None
+    assert search_step["state_after"]["tools_used"] == ["search_knowledge"]    
+
+def test_run_with_result_rejects_search_knowledge_without_rag_store():
+    agent = Agent(
+        llm=CallsSearchKnowledgeWithoutRagStoreLLM(),
+        trace_recorder=TraceRecorder(),
+        config=AgentConfig(
+            max_steps=20,
+            max_rejected_tool_calls=2,
+        ),
+    )
+
+    result = agent.run_with_result(
+        "Review the sample project using available knowledge base guidance."
+    )
+
+    assert result.is_stopped is True    
