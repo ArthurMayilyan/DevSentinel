@@ -3,8 +3,10 @@ import pytest
 from rag_eval import (
     RagRetrievalEvalCase,
     RagRetrievalEvalResult,
+    RagRetrievedChunkEvalItem,
     evaluate_rag_retrieval,
     evaluate_rag_retrieval_case,
+    find_matched_rank,
     source_matches_expected_source,
 )
 from rag_store import InMemoryRagStore
@@ -44,6 +46,14 @@ def test_evaluate_rag_retrieval_case_passes_when_expected_chunk_is_found():
     assert result.retrieved_texts == [
         "Tokens must be signed and must expire."
     ]
+    assert len(result.retrieved_chunks) == 1
+    assert result.retrieved_chunks[0].rank == 1
+    assert result.retrieved_chunks[0].source == "knowledge/security.md"
+    assert result.retrieved_chunks[0].chunk_index == 0
+    assert result.retrieved_chunks[0].score == 2
+    assert result.retrieved_chunks[0].text == "Tokens must be signed and must expire."    
+    assert result.matched_rank == 1
+    assert result.reciprocal_rank == 1.0
 
 
 def test_evaluate_rag_retrieval_case_fails_when_expected_chunk_is_not_found():
@@ -67,6 +77,8 @@ def test_evaluate_rag_retrieval_case_fails_when_expected_chunk_is_not_found():
 
     assert result.passed is False
     assert result.retrieved_sources == []
+    assert result.matched_rank is None
+    assert result.reciprocal_rank == 0.0
 
 
 def test_rag_retrieval_eval_result_can_be_serialized_to_dict():
@@ -88,6 +100,9 @@ def test_rag_retrieval_eval_result_can_be_serialized_to_dict():
         "expected_text_contains": "Tokens must be signed",
         "retrieved_sources": ["knowledge/security.md"],
         "retrieved_texts": ["Tokens must be signed and must expire."],
+        "matched_rank": None,
+        "reciprocal_rank": 0.0,
+        "retrieved_chunks": [],
     }
 
 
@@ -125,9 +140,10 @@ def test_evaluate_rag_retrieval_returns_summary():
     assert summary.failed_cases == 0
     assert summary.hit_rate == 1.0
     assert [result.passed for result in summary.results] == [True, True]
+    assert summary.mean_reciprocal_rank == 1.0
 
 
-def test_evaluate_rag_retrieval_calculates_failed_cases_and_hit_rate():
+def test_evaluate_rag_retrieval_calculates_failed_cases_hit_rate_and_mrr():
     store = InMemoryRagStore()
     store.add_document(
         source="knowledge/security.md",
@@ -156,7 +172,8 @@ def test_evaluate_rag_retrieval_calculates_failed_cases_and_hit_rate():
     assert summary.passed_cases == 1
     assert summary.failed_cases == 1
     assert summary.hit_rate == 0.5
-
+    assert summary.mean_reciprocal_rank == 0.5
+    
 
 def test_evaluate_rag_retrieval_summary_can_be_serialized_to_dict():
     store = InMemoryRagStore()
@@ -182,6 +199,7 @@ def test_evaluate_rag_retrieval_summary_can_be_serialized_to_dict():
         "passed_cases": 1,
         "failed_cases": 0,
         "hit_rate": 1.0,
+        "mean_reciprocal_rank": 1.0,
         "results": [
             {
                 "name": "token policy",
@@ -192,6 +210,17 @@ def test_evaluate_rag_retrieval_summary_can_be_serialized_to_dict():
                 "retrieved_sources": ["knowledge/security.md"],
                 "retrieved_texts": [
                     "Tokens must be signed and must expire."
+                ],
+                "matched_rank": 1,
+                "reciprocal_rank": 1.0,
+                "retrieved_chunks": [
+                    {
+                        "rank": 1,
+                        "source": "knowledge/security.md",
+                        "chunk_index": 0,
+                        "score": 2,
+                        "text": "Tokens must be signed and must expire.",
+                    }
                 ],
             }
         ],
@@ -274,4 +303,107 @@ def test_evaluate_rag_retrieval_case_fails_for_similar_but_wrong_source_name():
     assert result.passed is False
     assert result.retrieved_sources == ["knowledge_base\\_coding.md"]
 
-        
+
+def test_rag_retrieved_chunk_eval_item_can_be_serialized_to_dict():
+    item = RagRetrievedChunkEvalItem(
+        rank=1,
+        source="knowledge/security.md",
+        chunk_index=0,
+        score=2,
+        text="Tokens must be signed and must expire.",
+    )
+
+    assert item.to_dict() == {
+        "rank": 1,
+        "source": "knowledge/security.md",
+        "chunk_index": 0,
+        "score": 2,
+        "text": "Tokens must be signed and must expire.",
+    }
+
+def test_rag_retrieved_chunk_eval_item_rejects_invalid_rank():
+    with pytest.raises(ValueError):
+        RagRetrievedChunkEvalItem(
+            rank=0,
+            source="knowledge/security.md",
+            chunk_index=0,
+            score=2,
+            text="Tokens must be signed and must expire.",
+        )
+
+
+def test_find_matched_rank_returns_rank_of_matching_chunk():
+    retrieved_chunks = [
+        RagRetrievedChunkEvalItem(
+            rank=1,
+            source="knowledge/noise.md",
+            chunk_index=0,
+            score=3,
+            text="Token expiration token expiration.",
+        ),
+        RagRetrievedChunkEvalItem(
+            rank=2,
+            source="knowledge/security.md",
+            chunk_index=0,
+            score=2,
+            text="Tokens must be signed and must expire.",
+        ),
+    ]
+
+    assert find_matched_rank(
+        retrieved_chunks=retrieved_chunks,
+        expected_source="security.md",
+        expected_text="Tokens must be signed",
+    ) == 2
+
+
+def test_find_matched_rank_returns_none_when_no_chunk_matches():
+    retrieved_chunks = [
+        RagRetrievedChunkEvalItem(
+            rank=1,
+            source="knowledge/noise.md",
+            chunk_index=0,
+            score=3,
+            text="Token expiration token expiration.",
+        ),
+    ]
+
+    assert find_matched_rank(
+        retrieved_chunks=retrieved_chunks,
+        expected_source="security.md",
+        expected_text="Tokens must be signed",
+    ) is None
+
+def test_evaluate_rag_retrieval_case_calculates_rank_two_reciprocal_rank():
+    store = InMemoryRagStore()
+    store.add_document(
+        source="knowledge/noise.md",
+        text="token expiration token expiration",
+    )
+    store.add_document(
+        source="knowledge/security.md",
+        text="Tokens must be signed and must expire.",
+    )
+
+    case = RagRetrievalEvalCase(
+        name="token policy",
+        query="token expiration",
+        expected_source_contains="security.md",
+        expected_text_contains="Tokens must be signed",
+    )
+
+    result = evaluate_rag_retrieval_case(
+        store=store,
+        case=case,
+        top_k=3,
+    )
+
+    assert result.passed is True
+    assert result.matched_rank == 2
+    assert result.reciprocal_rank == 0.5
+    assert result.retrieved_sources == [
+        "knowledge/noise.md",
+        "knowledge/security.md",
+    ]
+
+                           

@@ -1,7 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from rag_store import InMemoryRagStore
+
 
 
 def normalize_source_path(value: str) -> str:
@@ -25,6 +26,68 @@ def source_matches_expected_source(
     source_file_name = normalized_source.split("/")[-1]
 
     return source_file_name == normalized_expected
+
+
+
+@dataclass(frozen=True)
+class RagRetrievedChunkEvalItem:
+    rank: int
+    source: str
+    chunk_index: int
+    score: int | float
+    text: str
+
+    def __post_init__(self) -> None:
+        if type(self.rank) is not int:
+            raise ValueError("rank must be an integer.")
+
+        if self.rank <= 0:
+            raise ValueError("rank must be greater than 0.")
+
+        if not isinstance(self.source, str) or not self.source.strip():
+            raise ValueError("source must be a non-empty string.")
+
+        if type(self.chunk_index) is not int:
+            raise ValueError("chunk_index must be an integer.")
+
+        if self.chunk_index < 0:
+            raise ValueError("chunk_index must be greater than or equal to 0.")
+
+        if isinstance(self.score, bool) or not isinstance(self.score, int | float):
+            raise ValueError("score must be a number.")
+
+        if not isinstance(self.text, str) or not self.text.strip():
+            raise ValueError("text must be a non-empty string.")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "rank": self.rank,
+            "source": self.source,
+            "chunk_index": self.chunk_index,
+            "score": self.score,
+            "text": self.text,
+        }
+
+
+def find_matched_rank(
+    *,
+    retrieved_chunks: list[RagRetrievedChunkEvalItem],
+    expected_source: str,
+    expected_text: str,
+) -> int | None:
+    normalized_expected_text = expected_text.lower()
+
+    for chunk in retrieved_chunks:
+        if (
+            source_matches_expected_source(
+                source=chunk.source,
+                expected_source=expected_source,
+            )
+            and normalized_expected_text in chunk.text.lower()
+        ):
+            return chunk.rank
+
+    return None
 
 
 @dataclass(frozen=True)
@@ -61,6 +124,9 @@ class RagRetrievalEvalResult:
     expected_text_contains: str
     retrieved_sources: list[str]
     retrieved_texts: list[str]
+    matched_rank: int | None = None
+    reciprocal_rank: float = 0.0
+    retrieved_chunks: list[RagRetrievedChunkEvalItem] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -71,6 +137,12 @@ class RagRetrievalEvalResult:
             "expected_text_contains": self.expected_text_contains,
             "retrieved_sources": self.retrieved_sources,
             "retrieved_texts": self.retrieved_texts,
+            "matched_rank": self.matched_rank,
+            "reciprocal_rank": self.reciprocal_rank,
+            "retrieved_chunks": [
+                chunk.to_dict()
+                for chunk in self.retrieved_chunks
+            ],
         }
 
 
@@ -80,6 +152,7 @@ class RagRetrievalEvalSummary:
     passed_cases: int
     failed_cases: int
     hit_rate: float
+    mean_reciprocal_rank: float
     results: list[RagRetrievalEvalResult]
 
     def to_dict(self) -> dict[str, Any]:
@@ -88,6 +161,7 @@ class RagRetrievalEvalSummary:
             "passed_cases": self.passed_cases,
             "failed_cases": self.failed_cases,
             "hit_rate": self.hit_rate,
+            "mean_reciprocal_rank": self.mean_reciprocal_rank,
             "results": [
                 result.to_dict()
                 for result in self.results
@@ -112,16 +186,28 @@ def evaluate_rag_retrieval_case(
         top_k=top_k,
     )
 
-    expected_text = case.expected_text_contains.lower()
-
-    passed = any(
-        source_matches_expected_source(
+    retrieved_items = [
+        RagRetrievedChunkEvalItem(
+            rank=index + 1,
             source=chunk.source,
-            expected_source=case.expected_source_contains,
+            chunk_index=chunk.chunk_index,
+            score=chunk.score,
+            text=chunk.text,
         )
-        and expected_text in chunk.text.lower()
-        for chunk in retrieved_chunks
+        for index, chunk in enumerate(retrieved_chunks)
+    ]
+
+    matched_rank = find_matched_rank(
+        retrieved_chunks=retrieved_items,
+        expected_source=case.expected_source_contains,
+        expected_text=case.expected_text_contains,
     )
+
+    reciprocal_rank = 0.0
+    if matched_rank is not None:
+        reciprocal_rank = 1.0 / matched_rank
+
+    passed = matched_rank is not None
 
     return RagRetrievalEvalResult(
         name=case.name,
@@ -130,13 +216,16 @@ def evaluate_rag_retrieval_case(
         expected_source_contains=case.expected_source_contains,
         expected_text_contains=case.expected_text_contains,
         retrieved_sources=[
-            chunk.source
-            for chunk in retrieved_chunks
+            item.source
+            for item in retrieved_items
         ],
         retrieved_texts=[
-            chunk.text
-            for chunk in retrieved_chunks
+            item.text
+            for item in retrieved_items
         ],
+        matched_rank=matched_rank,
+        reciprocal_rank=reciprocal_rank,
+        retrieved_chunks=retrieved_items,
     )
 
 
@@ -179,11 +268,16 @@ def evaluate_rag_retrieval(
     total_cases = len(results)
     failed_cases = total_cases - passed_cases
 
+    mean_reciprocal_rank = sum(
+        result.reciprocal_rank
+        for result in results
+    ) / total_cases
+
     return RagRetrievalEvalSummary(
         total_cases=total_cases,
         passed_cases=passed_cases,
         failed_cases=failed_cases,
         hit_rate=passed_cases / total_cases,
+        mean_reciprocal_rank=mean_reciprocal_rank,
         results=results,
     )
-

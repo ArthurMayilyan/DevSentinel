@@ -84,7 +84,19 @@ def test_run_rag_eval_from_args_returns_summary(tmp_path):
     assert output["passed_cases"] == 1
     assert output["failed_cases"] == 0
     assert output["hit_rate"] == 1.0
+    assert output["mean_reciprocal_rank"] == 1.0
     assert output["results"][0]["passed"] is True
+    assert output["results"][0]["matched_rank"] == 1
+    assert output["results"][0]["reciprocal_rank"] == 1.0
+    assert output["results"][0]["retrieved_chunks"] == [
+        {
+            "rank": 1,
+            "source": str(security),
+            "chunk_index": 0,
+            "score": 2,
+            "text": "Tokens must be signed and must expire.",
+        }
+    ]    
 
 
 def test_run_rag_eval_from_args_writes_output_file(tmp_path):
