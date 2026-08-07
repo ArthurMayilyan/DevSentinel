@@ -3,6 +3,8 @@ import pytest
 from tool_contracts import TOOL_ARGUMENT_CONTRACTS
 from runtime_tool_registry import ToolRegistry
 from tool_specs import TOOL_SPECS
+from tool_registry import ToolSpec
+
 
 def dummy_read_file(path: str) -> str:
     return f"read: {path}"
@@ -158,3 +160,43 @@ def test_registry_prompt_format_does_not_include_unregistered_tools():
     assert "Tool: read_file" in text
     assert "Tool: write_report" not in text
     assert "Tool: add_finding" not in text    
+
+def test_tool_registry_returns_registered_specs_sorted_by_name():
+    registry = ToolRegistry()
+
+    registry.register(
+        name="b_tool",
+        function=lambda: "b",
+        spec=ToolSpec(
+            name="b_tool",
+            description="B tool.",
+            parameters={},
+            returns="B.",
+            when_to_use="Use for B.",
+            when_not_to_use="Do not use for not B.",
+            function=None,
+        ),
+        contract=TOOL_ARGUMENT_CONTRACTS["write_report"],
+    )
+
+    registry.register(
+        name="a_tool",
+        function=lambda: "a",
+        spec=ToolSpec(
+            name="a_tool",
+            description="A tool.",
+            parameters={},
+            returns="A.",
+            when_to_use="Use for A.",
+            when_not_to_use="Do not use for not A.",
+            function=None,
+        ),
+        contract=TOOL_ARGUMENT_CONTRACTS["write_report"],
+    )
+
+    assert [spec.name for spec in registry.specs()] == [
+        "a_tool",
+        "b_tool",
+    ]
+
+        

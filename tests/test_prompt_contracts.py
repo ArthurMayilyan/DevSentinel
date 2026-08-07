@@ -6,6 +6,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from agent import Agent
 from trace import TraceRecorder
+from rag_store import InMemoryRagStore
 
 
 class DummyLLM:
@@ -68,3 +69,62 @@ def test_tools_description_does_not_include_legacy_parameters_line():
 
     assert "Parameters:" not in text
     assert "Argument contract:" in text    
+
+def test_agent_prompt_does_not_include_search_knowledge_without_rag_store():
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+    )
+
+    prompt = agent.build_system_prompt()
+
+    assert "search_knowledge" not in prompt
+
+
+def test_agent_prompt_includes_search_knowledge_with_rag_store():
+    rag_store = InMemoryRagStore()
+    rag_store.add_document(
+        source="security.md",
+        text="Tokens must be signed and must expire.",
+    )
+
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+        rag_store=rag_store,
+    )
+
+    prompt = agent.build_system_prompt()
+
+    assert "search_knowledge" in prompt
+    assert "Search the knowledge base" in prompt
+
+
+def test_agent_prompt_does_not_include_search_knowledge_without_rag_store():
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+    )
+
+    prompt = agent.build_system_prompt()
+
+    assert "search_knowledge" not in prompt
+
+
+def test_agent_prompt_includes_search_knowledge_with_rag_store():
+    rag_store = InMemoryRagStore()
+    rag_store.add_document(
+        source="security.md",
+        text="Tokens must be signed and must expire.",
+    )
+
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+        rag_store=rag_store,
+    )
+
+    prompt = agent.build_system_prompt()
+
+    assert "search_knowledge" in prompt
+    assert "Search the knowledge base" in prompt        

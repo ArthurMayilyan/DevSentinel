@@ -8,6 +8,7 @@ from trace import TraceRecorder
 from cli_llm import build_llm_from_args
 from cli_task import build_task_from_args
 from cli_run_metadata import build_run_metadata
+from rag_loader import load_rag_store_from_path
 
 
 def build_summary_path(trace_recorder: TraceRecorder) -> Path:
@@ -34,6 +35,13 @@ def run_agent_from_args(
         config=config,
     )
 
+    rag_store = None
+
+    if args.knowledge_path:
+        rag_store = load_rag_store_from_path(
+            path=args.knowledge_path,
+        )
+
     trace_recorder = TraceRecorder()
     llm = build_llm_from_args(
         args,
@@ -42,9 +50,10 @@ def run_agent_from_args(
 
     agent = Agent(
         llm=llm,
-        trace_recorder=trace_recorder,
         config=config,
+        trace_recorder=trace_recorder,
         run_metadata=run_metadata,
+        rag_store=rag_store,
     )
 
     result = agent.run_with_result(task)
