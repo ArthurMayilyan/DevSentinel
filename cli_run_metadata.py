@@ -19,6 +19,7 @@ def build_run_metadata(
         "model": args.model if args.llm == "openai" else None,
         "preset": args.preset,
         "path": args.path,
+        "knowledge_path": getattr(args, "knowledge_path", None),
         "max_findings": args.max_findings if args.preset else None,
         "max_steps": config.max_steps,
         "max_rejected_final_answers": config.max_rejected_final_answers,

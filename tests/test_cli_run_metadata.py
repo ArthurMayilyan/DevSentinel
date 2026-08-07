@@ -14,6 +14,7 @@ def test_build_run_metadata_for_demo_task():
         model="gpt-5.6-luna",
         preset=None,
         path=None,
+        knowledge_path=None,
         max_findings=5,
         max_output_tokens=None,
         request_timeout_seconds=None,
@@ -43,6 +44,7 @@ def test_build_run_metadata_for_openai_preset_uses_resolved_defaults():
         model="gpt-5.6-luna",
         preset="code-review",
         path="./sample_project",
+        knowledge_path=None,
         max_findings=5,
         max_output_tokens=None,
         request_timeout_seconds=None,
@@ -59,6 +61,7 @@ def test_build_run_metadata_for_openai_preset_uses_resolved_defaults():
     assert metadata["model"] == "gpt-5.6-luna"
     assert metadata["preset"] == "code-review"
     assert metadata["path"] == "./sample_project"
+    assert metadata["knowledge_path"] is None
     assert metadata["max_findings"] == 5
     assert metadata["max_steps"] == 15
     assert metadata["max_output_tokens"] == OPENAI_CLI_DEFAULT_MAX_OUTPUT_TOKENS
@@ -75,6 +78,7 @@ def test_build_run_metadata_for_openai_uses_explicit_limits():
         model="gpt-5.6-luna",
         preset="code-review",
         path="./sample_project",
+        knowledge_path=None,
         max_findings=3,
         max_output_tokens=500,
         request_timeout_seconds=20.0,
@@ -92,4 +96,25 @@ def test_build_run_metadata_for_openai_uses_explicit_limits():
     assert metadata["max_output_tokens"] == 500
     assert metadata["request_timeout_seconds"] == 20.0
 
-    
+def test_build_run_metadata_includes_knowledge_path():
+    args = Namespace(
+        llm="demo",
+        model="gpt-5.6-luna",
+        preset="code-review",
+        path="./sample_project",
+        knowledge_path="./knowledge_base",
+        max_findings=5,
+        max_output_tokens=None,
+        request_timeout_seconds=None,
+    )
+    config = AgentConfig(max_steps=20)
+
+    metadata = build_run_metadata(
+        args=args,
+        task="Review ./sample_project only.",
+        config=config,
+    )
+
+    assert metadata["knowledge_path"] == "./knowledge_base"
+
+        

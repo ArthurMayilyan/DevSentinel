@@ -262,4 +262,30 @@ def test_cli_parser_print_task_defaults_to_false():
 
     assert args.print_task is False
 
-                    
+def test_cli_parser_accepts_knowledge_path():
+    parser = build_arg_parser()
+
+    args = parser.parse_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+        "--knowledge-path",
+        "./knowledge_base",
+    ])
+
+    assert args.knowledge_path == "./knowledge_base"
+
+def test_cli_parser_knowledge_path_defaults_to_none():
+    parser = build_arg_parser()
+
+    args = parser.parse_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+    ])
+
+    assert args.knowledge_path is None
+
+                            

@@ -34,6 +34,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--knowledge-path",
+        default=None,
+        help="Optional path to a knowledge base file or directory used for RAG.",
+    )    
+
+    parser.add_argument(
         "--max-findings",
         type=int,
         default=DEFAULT_CODE_REVIEW_MAX_FINDINGS,

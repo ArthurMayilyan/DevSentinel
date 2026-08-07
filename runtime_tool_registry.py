@@ -53,6 +53,12 @@ class ToolRegistry:
     def names(self) -> list[str]:
         return sorted(self._tools.keys())
 
+    def specs(self) -> list[Any]:
+        return [
+            self._tools[name].spec
+            for name in sorted(self._tools)
+        ]
+
     def registered_tools(self) -> list[RegisteredTool]:
         return [
             self._tools[name]

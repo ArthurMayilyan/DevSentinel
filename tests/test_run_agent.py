@@ -226,4 +226,31 @@ def test_run_agent_from_args_persists_run_metadata_in_summary():
     assert summary_data["metadata"]["max_findings"] == 5
     assert summary_data["metadata"]["max_steps"] == 20
     assert "Review ./sample_project only." in summary_data["metadata"]["task"]
-                
+
+def test_run_agent_from_args_accepts_knowledge_path(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base"
+    knowledge_path.mkdir()
+
+    policy = knowledge_path / "security.md"
+    policy.write_text(
+        "Tokens must be signed and must expire.",
+        encoding="utf-8",
+    )
+
+    output = run_agent_from_args([
+        "--preset",
+        "code-review",
+        "--path",
+        "./sample_project",
+        "--knowledge-path",
+        str(knowledge_path),
+        "--llm",
+        "demo",
+        "--max-steps",
+        "20",
+    ])
+
+    assert output["status"] == "completed"
+    assert output["run"]["knowledge_path"] == str(knowledge_path)
+
+                    
