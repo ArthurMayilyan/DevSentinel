@@ -1,0 +1,14 @@
+[
+  {
+    "name": "token policy",
+    "query": "token expiration",
+    "expected_source_contains": "security.md",
+    "expected_text_contains": "Tokens must be signed"
+  },
+  {
+    "name": "coding style",
+    "query": "small function",
+    "expected_source_contains": "coding.md",
+    "expected_text_contains": "Functions should be small"
+  }
+]
