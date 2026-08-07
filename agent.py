@@ -2,7 +2,10 @@ from tools import list_files, read_file, search_in_files, write_report
 from tool_specs import IssueCategory, IssueSeverity
 from agent_state import AgentState
 from runtime_tool_registry import ToolRegistry
-from default_tool_registry import build_default_tool_registry
+from default_tool_registry import (
+    build_default_tool_registry,
+    build_runtime_tool_functions,
+)
 from prompt_builder import PromptBuilder
 from prompt_examples import CODE_REVIEW_JSON_EXAMPLES
 from agent_config import AgentConfig
@@ -15,6 +18,7 @@ from agent_stop_reasons import (
 from agent_run_result import AgentRunResult
 from agent_run_summary import build_agent_run_summary
 from typing import Any
+from rag_store import InMemoryRagStore
 
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
@@ -35,6 +39,7 @@ class Agent:
         prompt_builder: PromptBuilder | None = None,
         config: AgentConfig | None = None,
         run_metadata: dict[str, Any] | None = None,
+        rag_store: InMemoryRagStore | None = None,
     ):
         self.llm = llm
         self.trace_recorder = trace_recorder
@@ -49,7 +54,7 @@ class Agent:
 
         self.run_metadata = run_metadata
 
-        self._tools = {
+        base_tool_functions = {
             "list_files": list_files,
             "read_file": read_file,
             "search_in_files": search_in_files,
@@ -57,9 +62,19 @@ class Agent:
             "add_finding": self.add_finding,
         }
 
-        self.tool_registry = tool_registry or build_default_tool_registry(
-            tool_functions=self._tools,
-        )
+        if tool_registry is None:
+            self._tools = build_runtime_tool_functions(
+                tool_functions=base_tool_functions,
+                rag_store=rag_store,
+            )
+
+            self.tool_registry = build_default_tool_registry(
+                tool_functions=self._tools,
+            )
+        else:
+            self._tools = base_tool_functions
+            self.tool_registry = tool_registry
+
     
     def run_with_result(self, task: str) -> AgentRunResult:
         state = AgentState()

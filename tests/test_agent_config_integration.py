@@ -8,6 +8,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from agent import Agent
 from agent_config import AgentConfig
 from trace import TraceRecorder
+from rag_store import InMemoryRagStore
 
 
 class DummyLLM:
@@ -74,3 +75,28 @@ def test_agent_rejects_non_dict_run_metadata():
             trace_recorder=TraceRecorder(),
             run_metadata="not metadata",
         )    
+
+def test_agent_registers_search_knowledge_when_rag_store_is_provided():
+    rag_store = InMemoryRagStore()
+    rag_store.add_document(
+        source="security.md",
+        text="Tokens must be signed and must expire.",
+    )
+
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+        rag_store=rag_store,
+    )
+
+    assert "search_knowledge" in agent.tool_registry.names()
+
+def test_agent_does_not_register_search_knowledge_without_rag_store():
+    agent = Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+    )
+
+    assert "search_knowledge" not in agent.tool_registry.names()
+
+                

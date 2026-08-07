@@ -9,6 +9,8 @@ from tool_specs import TOOL_SPECS
 from tool_contracts import TOOL_ARGUMENT_CONTRACTS
 from trace import TraceRecorder
 from runtime_tool_registry import ToolRegistry
+from rag_store import InMemoryRagStore
+
 
 class DummyLLM:
     def complete(self, messages, state=None):
@@ -24,6 +26,18 @@ def make_agent() -> Agent:
         max_steps=1,
     )
 
+def make_rag_agent():
+    rag_store = InMemoryRagStore()
+    rag_store.add_document(
+        source="security.md",
+        text="Tokens must be signed and must expire.",
+    )
+
+    return Agent(
+        llm=DummyLLM(),
+        trace_recorder=TraceRecorder(),
+        rag_store=rag_store,
+    )
 
 def test_every_tool_spec_has_argument_contract():
     assert set(TOOL_SPECS.keys()) == set(TOOL_ARGUMENT_CONTRACTS.keys())
@@ -129,4 +143,15 @@ def test_search_knowledge_tool_spec_defines_expected_parameters():
     assert "query" in spec.parameters
     assert "top_k" not in spec.parameters
 
-        
+
+def test_rag_agent_tool_registry_matches_tool_specs():
+    agent = make_rag_agent()
+
+    assert set(agent.tool_registry.names()) == set(TOOL_SPECS.keys())
+
+def test_rag_agent_registered_tools_match_tool_specs():
+    agent = make_rag_agent()
+
+    assert set(agent._tools.keys()) == set(TOOL_SPECS.keys())
+
+                
