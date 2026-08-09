@@ -152,6 +152,7 @@ class RagRetrievalEvalSummary:
     passed_cases: int
     failed_cases: int
     hit_rate: float
+    top_1_accuracy: float
     mean_reciprocal_rank: float
     results: list[RagRetrievalEvalResult]
 
@@ -161,13 +162,13 @@ class RagRetrievalEvalSummary:
             "passed_cases": self.passed_cases,
             "failed_cases": self.failed_cases,
             "hit_rate": self.hit_rate,
+            "top_1_accuracy": self.top_1_accuracy,
             "mean_reciprocal_rank": self.mean_reciprocal_rank,
             "results": [
                 result.to_dict()
                 for result in self.results
             ],
         }
-
 
 def evaluate_rag_retrieval_case(
     *,
@@ -268,6 +269,14 @@ def evaluate_rag_retrieval(
     total_cases = len(results)
     failed_cases = total_cases - passed_cases
 
+    top_1_matches = sum(
+        1
+        for result in results
+        if result.matched_rank == 1
+    )
+
+    top_1_accuracy = top_1_matches / total_cases
+
     mean_reciprocal_rank = sum(
         result.reciprocal_rank
         for result in results
@@ -278,6 +287,7 @@ def evaluate_rag_retrieval(
         passed_cases=passed_cases,
         failed_cases=failed_cases,
         hit_rate=passed_cases / total_cases,
+        top_1_accuracy=top_1_accuracy,
         mean_reciprocal_rank=mean_reciprocal_rank,
         results=results,
     )

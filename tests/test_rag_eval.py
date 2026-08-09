@@ -138,10 +138,10 @@ def test_evaluate_rag_retrieval_returns_summary():
     assert summary.total_cases == 2
     assert summary.passed_cases == 2
     assert summary.failed_cases == 0
-    assert summary.hit_rate == 1.0
     assert [result.passed for result in summary.results] == [True, True]
+    assert summary.hit_rate == 1.0
+    assert summary.top_1_accuracy == 1.0
     assert summary.mean_reciprocal_rank == 1.0
-
 
 def test_evaluate_rag_retrieval_calculates_failed_cases_hit_rate_and_mrr():
     store = InMemoryRagStore()
@@ -172,6 +172,7 @@ def test_evaluate_rag_retrieval_calculates_failed_cases_hit_rate_and_mrr():
     assert summary.passed_cases == 1
     assert summary.failed_cases == 1
     assert summary.hit_rate == 0.5
+    assert summary.top_1_accuracy == 0.5
     assert summary.mean_reciprocal_rank == 0.5
     
 
@@ -199,6 +200,7 @@ def test_evaluate_rag_retrieval_summary_can_be_serialized_to_dict():
         "passed_cases": 1,
         "failed_cases": 0,
         "hit_rate": 1.0,
+        "top_1_accuracy": 1.0,
         "mean_reciprocal_rank": 1.0,
         "results": [
             {
@@ -406,4 +408,37 @@ def test_evaluate_rag_retrieval_case_calculates_rank_two_reciprocal_rank():
         "knowledge/security.md",
     ]
 
-                           
+
+def test_evaluate_rag_retrieval_calculates_top_1_accuracy_separately_from_hit_rate():
+    store = InMemoryRagStore()
+    store.add_document(
+        source="knowledge/noise.md",
+        text="token expiration token expiration",
+    )
+    store.add_document(
+        source="knowledge/security.md",
+        text="Tokens must be signed and must expire.",
+    )
+
+    summary = evaluate_rag_retrieval(
+        store=store,
+        cases=[
+            RagRetrievalEvalCase(
+                name="token policy",
+                query="token expiration",
+                expected_source_contains="security.md",
+                expected_text_contains="Tokens must be signed",
+            ),
+        ],
+        top_k=3,
+    )
+
+    assert summary.total_cases == 1
+    assert summary.passed_cases == 1
+    assert summary.failed_cases == 0
+    assert summary.hit_rate == 1.0
+    assert summary.top_1_accuracy == 0.0
+    assert summary.mean_reciprocal_rank == 0.5
+    assert summary.results[0].matched_rank == 2
+
+                               
