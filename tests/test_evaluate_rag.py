@@ -7,7 +7,10 @@ from evaluate_rag import (
     format_rag_eval_summary,
     run_rag_eval_from_args,
 )
-from rag_retrievers import BinaryOverlapRagRetriever
+from rag_retrievers import (
+    BinaryOverlapRagRetriever,
+    TermFrequencyRagRetriever,
+)
 from rag_store import InMemoryRagStore
 
 
@@ -979,4 +982,84 @@ def test_format_rag_eval_summary_includes_retrieval_strategy():
         ]
     )
 
-            
+def test_evaluate_rag_parser_accepts_term_frequency_retrieval_strategy():
+    parser = build_arg_parser()
+
+    args = parser.parse_args(
+        [
+            "--knowledge-path",
+            "./knowledge_base",
+            "--cases",
+            "./eval_cases/rag_eval_cases.json",
+            "--retrieval-strategy",
+            "term-frequency",
+        ]
+    )
+
+    assert args.retrieval_strategy == "term-frequency"
+
+def test_build_rag_search_engine_returns_term_frequency_retriever():
+    store = InMemoryRagStore()
+
+    search_engine = build_rag_search_engine(
+        store=store,
+        retrieval_strategy="term-frequency",
+    )
+
+    assert isinstance(search_engine, TermFrequencyRagRetriever)
+    assert search_engine.store is store
+
+def test_run_rag_eval_from_args_uses_term_frequency_strategy(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base"
+    knowledge_path.mkdir()
+
+    repeated = knowledge_path / "repeated.md"
+    repeated.write_text(
+        "token token token token",
+        encoding="utf-8",
+    )
+
+    complete = knowledge_path / "complete.md"
+    complete.write_text(
+        "token expiration",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "rag_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "complete token expiration",
+                    "query": "token expiration",
+                    "expected_source_contains": "complete.md",
+                    "expected_text_contains": "token expiration",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    output = run_rag_eval_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--retrieval-strategy",
+            "term-frequency",
+        ]
+    )
+
+    assert output["retrieval_strategy"] == "term-frequency"
+    assert output["passed_cases"] == 1
+    assert output["hit_rate"] == 1.0
+    assert output["top_1_accuracy"] == 0.0
+    assert output["mean_reciprocal_rank"] == 0.5
+    assert output["results"][0]["matched_rank"] == 2
+    assert output["results"][0]["retrieved_sources"] == [
+        str(repeated),
+        str(complete),
+    ]
+
+                        
