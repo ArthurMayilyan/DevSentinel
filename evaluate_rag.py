@@ -6,6 +6,31 @@ from typing import Any
 from rag_eval import evaluate_rag_retrieval
 from rag_eval_loader import load_rag_retrieval_eval_cases_from_json_file
 from rag_loader import load_rag_store_from_path
+from rag_retrievers import BinaryOverlapRagRetriever
+
+RETRIEVAL_STRATEGY_DEFAULT = "default"
+RETRIEVAL_STRATEGY_BINARY_OVERLAP = "binary-overlap"
+
+SUPPORTED_RETRIEVAL_STRATEGIES = {
+    RETRIEVAL_STRATEGY_DEFAULT,
+    RETRIEVAL_STRATEGY_BINARY_OVERLAP,
+}
+
+
+def build_rag_search_engine(
+    *,
+    store,
+    retrieval_strategy: str,
+):
+    if retrieval_strategy == RETRIEVAL_STRATEGY_DEFAULT:
+        return store
+
+    if retrieval_strategy == RETRIEVAL_STRATEGY_BINARY_OVERLAP:
+        return BinaryOverlapRagRetriever(
+            store=store,
+        )
+
+    raise ValueError(f"Unsupported retrieval strategy: {retrieval_strategy}")
 
 def validate_min_top_1_accuracy(
     min_top_1_accuracy: float | None,
@@ -20,13 +45,23 @@ def format_rag_eval_summary(
 ) -> str:
     lines = [
         "RAG retrieval evaluation",
-        f"Total: {output['total_cases']}",
-        f"Passed: {output['passed_cases']}",
-        f"Failed: {output['failed_cases']}",
-        f"Hit rate: {output['hit_rate']:.2f}",
-        f"Top-1 accuracy: {output['top_1_accuracy']:.2f}",
-        f"MRR: {output['mean_reciprocal_rank']:.2f}",
     ]
+
+    if "retrieval_strategy" in output:
+        lines.append(
+            f"Strategy: {output['retrieval_strategy']}"
+        )
+
+    lines.extend(
+        [
+            f"Total: {output['total_cases']}",
+            f"Passed: {output['passed_cases']}",
+            f"Failed: {output['failed_cases']}",
+            f"Hit rate: {output['hit_rate']:.2f}",
+            f"Top-1 accuracy: {output['top_1_accuracy']:.2f}",
+            f"MRR: {output['mean_reciprocal_rank']:.2f}",
+        ]
+    )
 
     if "min_hit_rate" in output:
         lines.append(
@@ -176,6 +211,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Print a compact human-readable summary instead of full JSON.",
     )    
 
+    parser.add_argument(
+        "--retrieval-strategy",
+        choices=sorted(SUPPORTED_RETRIEVAL_STRATEGIES),
+        default=RETRIEVAL_STRATEGY_DEFAULT,
+        help="Retrieval strategy to use for evaluation.",
+    )    
+
     return parser
 
 
@@ -190,17 +232,23 @@ def run_rag_eval(
         path=args.knowledge_path,
     )
 
+    search_engine = build_rag_search_engine(
+        store=store,
+        retrieval_strategy=args.retrieval_strategy,
+    )    
+
     cases = load_rag_retrieval_eval_cases_from_json_file(
         path=args.cases,
     )
 
     summary = evaluate_rag_retrieval(
-        store=store,
+        store=search_engine,
         cases=cases,
         top_k=args.top_k,
     )
 
     output = summary.to_dict()
+    output["retrieval_strategy"] = args.retrieval_strategy
 
     if args.min_hit_rate is not None:
         output["min_hit_rate"] = args.min_hit_rate

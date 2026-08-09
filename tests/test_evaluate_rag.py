@@ -3,9 +3,12 @@ import pytest
 
 from evaluate_rag import (
     build_arg_parser,
+    build_rag_search_engine,
     format_rag_eval_summary,
     run_rag_eval_from_args,
 )
+from rag_retrievers import BinaryOverlapRagRetriever
+from rag_store import InMemoryRagStore
 
 
 def test_format_rag_eval_summary_includes_mrr_threshold():
@@ -57,6 +60,7 @@ def test_evaluate_rag_parser_accepts_required_arguments():
     assert args.min_top_1_accuracy is None
     assert args.min_mrr is None
     assert args.summary_only is False
+    assert args.retrieval_strategy == "default"
 
 
 def test_evaluate_rag_parser_accepts_top_k_and_output():
@@ -130,7 +134,8 @@ def test_run_rag_eval_from_args_returns_summary(tmp_path):
             "score": 2,
             "text": "Tokens must be signed and must expire.",
         }
-    ]    
+    ]
+    assert output["retrieval_strategy"] == "default"    
 
 
 def test_run_rag_eval_from_args_writes_output_file(tmp_path):
@@ -860,4 +865,118 @@ def test_format_rag_eval_summary_includes_top_1_accuracy_threshold():
         ]
     )
 
-                                                                                       
+def test_evaluate_rag_parser_accepts_retrieval_strategy():
+    parser = build_arg_parser()
+
+    args = parser.parse_args(
+        [
+            "--knowledge-path",
+            "./knowledge_base",
+            "--cases",
+            "./eval_cases/rag_eval_cases.json",
+            "--retrieval-strategy",
+            "binary-overlap",
+        ]
+    )
+
+    assert args.retrieval_strategy == "binary-overlap"
+
+def test_build_rag_search_engine_returns_store_for_default_strategy():
+    store = InMemoryRagStore()
+
+    search_engine = build_rag_search_engine(
+        store=store,
+        retrieval_strategy="default",
+    )
+
+    assert search_engine is store
+
+
+def test_build_rag_search_engine_returns_binary_overlap_retriever():
+    store = InMemoryRagStore()
+
+    search_engine = build_rag_search_engine(
+        store=store,
+        retrieval_strategy="binary-overlap",
+    )
+
+    assert isinstance(search_engine, BinaryOverlapRagRetriever)
+    assert search_engine.store is store
+
+def test_run_rag_eval_from_args_uses_binary_overlap_strategy(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base"
+    knowledge_path.mkdir()
+
+    repeated = knowledge_path / "repeated.md"
+    repeated.write_text(
+        "token token token token",
+        encoding="utf-8",
+    )
+
+    complete = knowledge_path / "complete.md"
+    complete.write_text(
+        "token expiration",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "rag_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "complete token expiration",
+                    "query": "token expiration",
+                    "expected_source_contains": "complete.md",
+                    "expected_text_contains": "token expiration",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    output = run_rag_eval_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--retrieval-strategy",
+            "binary-overlap",
+        ]
+    )
+
+    assert output["retrieval_strategy"] == "binary-overlap"
+    assert output["passed_cases"] == 1
+    assert output["top_1_accuracy"] == 1.0
+    assert output["mean_reciprocal_rank"] == 1.0
+    assert output["results"][0]["retrieved_sources"] == [
+        str(complete),
+        str(repeated),
+    ]
+
+def test_format_rag_eval_summary_includes_retrieval_strategy():
+    output = {
+        "retrieval_strategy": "binary-overlap",
+        "total_cases": 1,
+        "passed_cases": 1,
+        "failed_cases": 0,
+        "hit_rate": 1.0,
+        "top_1_accuracy": 1.0,
+        "mean_reciprocal_rank": 1.0,
+        "results": [],
+    }
+
+    assert format_rag_eval_summary(output) == "\n".join(
+        [
+            "RAG retrieval evaluation",
+            "Strategy: binary-overlap",
+            "Total: 1",
+            "Passed: 1",
+            "Failed: 0",
+            "Hit rate: 1.00",
+            "Top-1 accuracy: 1.00",
+            "MRR: 1.00",
+        ]
+    )
+
+            
