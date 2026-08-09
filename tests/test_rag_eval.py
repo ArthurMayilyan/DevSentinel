@@ -441,4 +441,18 @@ def test_evaluate_rag_retrieval_calculates_top_1_accuracy_separately_from_hit_ra
     assert summary.mean_reciprocal_rank == 0.5
     assert summary.results[0].matched_rank == 2
 
-                               
+
+def test_evaluate_rag_retrieval_case_rejects_store_without_search_method():
+    case = RagRetrievalEvalCase(
+        name="token policy",
+        query="token expiration",
+        expected_source_contains="security.md",
+        expected_text_contains="Tokens must be signed",
+    )
+
+    with pytest.raises(ValueError):
+        evaluate_rag_retrieval_case(
+            store=object(),
+            case=case,
+        )
+                                       

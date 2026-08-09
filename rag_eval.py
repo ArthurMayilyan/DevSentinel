@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from rag_store import InMemoryRagStore
-
+from rag_search_engine import RagSearchEngine, validate_rag_search_engine
 
 
 def normalize_source_path(value: str) -> str:
@@ -172,12 +172,11 @@ class RagRetrievalEvalSummary:
 
 def evaluate_rag_retrieval_case(
     *,
-    store: InMemoryRagStore,
+    store: RagSearchEngine,
     case: RagRetrievalEvalCase,
     top_k: int = 3,
 ) -> RagRetrievalEvalResult:
-    if not isinstance(store, InMemoryRagStore):
-        raise ValueError("store must be an InMemoryRagStore.")
+    validate_rag_search_engine(store)
 
     if not isinstance(case, RagRetrievalEvalCase):
         raise ValueError("case must be a RagRetrievalEvalCase.")
@@ -232,12 +231,11 @@ def evaluate_rag_retrieval_case(
 
 def evaluate_rag_retrieval(
     *,
-    store: InMemoryRagStore,
+    store: RagSearchEngine,
     cases: list[RagRetrievalEvalCase],
     top_k: int = 3,
 ) -> RagRetrievalEvalSummary:
-    if not isinstance(store, InMemoryRagStore):
-        raise ValueError("store must be an InMemoryRagStore.")
+    validate_rag_search_engine(store)
 
     if not isinstance(cases, list):
         raise ValueError("cases must be a list.")
