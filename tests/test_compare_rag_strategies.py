@@ -4,6 +4,7 @@ import json
 from compare_rag_strategies import (
     build_arg_parser,
     build_improvement_gate_result,
+    build_quality_gate_result,
     build_regression_gate_result,
     build_strategy_diagnostics,
     compare_strategy_result_against_baseline,
@@ -12,6 +13,7 @@ from compare_rag_strategies import (
     run_strategy_comparison_from_args,
     select_best_strategy_result,
     should_fail_due_to_improvement_gate,
+    should_fail_due_to_quality_gate,
     should_fail_due_to_regression_gate,
     validate_regression_gate_args,
 )
@@ -1031,6 +1033,14 @@ def test_run_strategy_comparison_from_args_adds_passing_regression_gate(tmp_path
         "passed": True,
     }
 
+    assert output["quality_gate"] == {
+        "enabled_gates": [
+            "regression",
+        ],
+        "failed_gates": [],
+        "passed": True,
+    }    
+
 def test_run_strategy_comparison_from_args_rejects_regression_gate_without_baseline(tmp_path):
     knowledge_path = tmp_path / "knowledge_base"
     knowledge_path.mkdir()
@@ -1277,6 +1287,16 @@ def test_run_strategy_comparison_from_args_adds_failing_regression_gate(tmp_path
         output=output,
         fail_on_regression_gate=True,
     ) is True
+
+    assert output["quality_gate"] == {
+        "enabled_gates": [
+            "regression",
+        ],
+        "failed_gates": [
+            "regression",
+        ],
+        "passed": False,
+    }    
 
 def test_compare_rag_strategies_parser_accepts_min_improved_cases():
     parser = build_arg_parser()
@@ -1530,6 +1550,14 @@ def test_run_strategy_comparison_from_args_adds_passing_improvement_gate(tmp_pat
         fail_on_improvement_gate=True,
     ) is False
 
+    assert output["quality_gate"] == {
+        "enabled_gates": [
+            "improvement",
+        ],
+        "failed_gates": [],
+        "passed": True,
+    }    
+
 
 def test_run_strategy_comparison_from_args_adds_failing_improvement_gate(tmp_path):
     knowledge_path = tmp_path / "knowledge_base_noisy"
@@ -1607,6 +1635,16 @@ def test_run_strategy_comparison_from_args_adds_failing_improvement_gate(tmp_pat
         fail_on_improvement_gate=True,
     ) is True
 
+    assert output["quality_gate"] == {
+        "enabled_gates": [
+            "improvement",
+        ],
+        "failed_gates": [
+            "improvement",
+        ],
+        "passed": False,
+    }    
+
 
 def test_format_strategy_comparison_summary_includes_improvement_gate():
     output = {
@@ -1678,4 +1716,309 @@ def test_format_strategy_comparison_summary_includes_improvement_gate():
         ]
     )
 
-    
+def test_build_quality_gate_result_returns_none_when_no_gates_enabled():
+    assert build_quality_gate_result(
+        output={},
+    ) is None
+
+def test_build_quality_gate_result_passes_when_regression_gate_passed():
+    quality_gate = build_quality_gate_result(
+        output={
+            "regression_gate": {
+                "passed": True,
+            },
+        },
+    )
+
+    assert quality_gate == {
+        "enabled_gates": ["regression"],
+        "failed_gates": [],
+        "passed": True,
+    }
+
+def test_build_quality_gate_result_fails_when_improvement_gate_failed():
+    quality_gate = build_quality_gate_result(
+        output={
+            "improvement_gate": {
+                "passed": False,
+            },
+        },
+    )
+
+    assert quality_gate == {
+        "enabled_gates": ["improvement"],
+        "failed_gates": ["improvement"],
+        "passed": False,
+    }        
+
+def test_build_quality_gate_result_fails_when_any_gate_failed():
+    quality_gate = build_quality_gate_result(
+        output={
+            "regression_gate": {
+                "passed": True,
+            },
+            "improvement_gate": {
+                "passed": False,
+            },
+        },
+    )
+
+    assert quality_gate == {
+        "enabled_gates": [
+            "regression",
+            "improvement",
+        ],
+        "failed_gates": [
+            "improvement",
+        ],
+        "passed": False,
+    }
+
+def test_build_quality_gate_result_passes_when_all_enabled_gates_passed():
+    quality_gate = build_quality_gate_result(
+        output={
+            "regression_gate": {
+                "passed": True,
+            },
+            "improvement_gate": {
+                "passed": True,
+            },
+        },
+    )
+
+    assert quality_gate == {
+        "enabled_gates": [
+            "regression",
+            "improvement",
+        ],
+        "failed_gates": [],
+        "passed": True,
+    }
+
+def test_should_fail_due_to_quality_gate_returns_false_when_no_fail_flags_enabled():
+    output = {
+        "quality_gate": {
+            "passed": False,
+        },
+    }
+
+    assert should_fail_due_to_quality_gate(
+        output=output,
+        fail_on_regression_gate=False,
+        fail_on_improvement_gate=False,
+    ) is False        
+
+def test_should_fail_due_to_quality_gate_returns_false_when_quality_gate_passed():
+    output = {
+        "quality_gate": {
+            "passed": True,
+        },
+    }
+
+    assert should_fail_due_to_quality_gate(
+        output=output,
+        fail_on_regression_gate=True,
+        fail_on_improvement_gate=False,
+    ) is False
+
+
+def test_should_fail_due_to_quality_gate_returns_true_when_quality_gate_failed():
+    output = {
+        "quality_gate": {
+            "passed": False,
+        },
+    }
+
+    assert should_fail_due_to_quality_gate(
+        output=output,
+        fail_on_regression_gate=False,
+        fail_on_improvement_gate=True,
+    ) is True    
+
+def test_should_fail_due_to_quality_gate_rejects_missing_quality_gate_when_fail_flag_enabled():
+    with pytest.raises(ValueError):
+        should_fail_due_to_quality_gate(
+            output={},
+            fail_on_regression_gate=True,
+            fail_on_improvement_gate=False,
+        )
+
+def test_run_strategy_comparison_from_args_adds_combined_quality_gate(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base_noisy"
+    knowledge_path.mkdir()
+
+    token_noise = knowledge_path / "noise_tokens.md"
+    token_noise.write_text(
+        "token token token token token token token token",
+        encoding="utf-8",
+    )
+
+    security = knowledge_path / "security.md"
+    security.write_text(
+        "Token expiration policy: tokens must be signed and must expire.",
+        encoding="utf-8",
+    )
+
+    function_noise = knowledge_path / "noise_functions.md"
+    function_noise.write_text(
+        "function function function function function function",
+        encoding="utf-8",
+    )
+
+    coding = knowledge_path / "coding.md"
+    coding.write_text(
+        "Small function guidelines: functions should be small and readable.",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "noisy_rag_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "token expiration policy",
+                    "query": "token expiration",
+                    "expected_source_contains": "security.md",
+                    "expected_text_contains": "Token expiration policy",
+                },
+                {
+                    "name": "small function guideline",
+                    "query": "small function",
+                    "expected_source_contains": "coding.md",
+                    "expected_text_contains": "Small function guidelines",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    output = run_strategy_comparison_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--baseline-strategy",
+            "term-frequency",
+            "--strategies",
+            "binary-overlap",
+            "--max-regressed-cases",
+            "0",
+            "--min-improved-cases",
+            "1",
+        ]
+    )
+
+    assert output["regression_gate"] == {
+        "max_regressed_cases": 0,
+        "total_regressed_cases": 0,
+        "passed": True,
+    }
+
+    assert output["improvement_gate"] == {
+        "min_improved_cases": 1,
+        "total_improved_cases": 2,
+        "passed": True,
+    }
+
+    assert output["quality_gate"] == {
+        "enabled_gates": [
+            "regression",
+            "improvement",
+        ],
+        "failed_gates": [],
+        "passed": True,
+    }
+
+
+def test_format_strategy_comparison_summary_includes_passing_quality_gate():
+    output = {
+        "best_strategy": "binary-overlap",
+        "best_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "results": [
+            {
+                "retrieval_strategy": "binary-overlap",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 1.0,
+                "mean_reciprocal_rank": 1.0,
+            },
+        ],
+        "regression_gate": {
+            "max_regressed_cases": 0,
+            "total_regressed_cases": 0,
+            "passed": True,
+        },
+        "quality_gate": {
+            "enabled_gates": [
+                "regression",
+            ],
+            "failed_gates": [],
+            "passed": True,
+        },
+    }
+
+    assert format_strategy_comparison_summary(output) == "\n".join(
+        [
+            "RAG strategy comparison",
+            "strategy          hit_rate  top_1  mrr",
+            "binary-overlap    1.00      1.00   1.00",
+            "",
+            "Best strategy: binary-overlap (mrr=1.00, top_1=1.00, hit_rate=1.00)",
+            "",
+            "Regression gate: max_regressed_cases=0, total_regressed_cases=0, passed=true",
+            "",
+            "Quality gate: passed=true",
+        ]
+    )
+
+def test_format_strategy_comparison_summary_includes_failed_quality_gate():
+    output = {
+        "best_strategy": "binary-overlap",
+        "best_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "results": [
+            {
+                "retrieval_strategy": "binary-overlap",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 1.0,
+                "mean_reciprocal_rank": 1.0,
+            },
+        ],
+        "improvement_gate": {
+            "min_improved_cases": 1,
+            "total_improved_cases": 0,
+            "passed": False,
+        },
+        "quality_gate": {
+            "enabled_gates": [
+                "improvement",
+            ],
+            "failed_gates": [
+                "improvement",
+            ],
+            "passed": False,
+        },
+    }
+
+    assert format_strategy_comparison_summary(output) == "\n".join(
+        [
+            "RAG strategy comparison",
+            "strategy          hit_rate  top_1  mrr",
+            "binary-overlap    1.00      1.00   1.00",
+            "",
+            "Best strategy: binary-overlap (mrr=1.00, top_1=1.00, hit_rate=1.00)",
+            "",
+            "Improvement gate: min_improved_cases=1, total_improved_cases=0, passed=false",
+            "",
+            "Quality gate: passed=false, failed_gates=improvement",
+        ]
+    )
+
+                        

@@ -261,6 +261,37 @@ def build_improvement_gate_result(
     }
 
 
+def build_quality_gate_result(
+    *,
+    output: dict[str, Any],
+) -> dict[str, Any] | None:
+    failed_gates = []
+    enabled_gates = []
+
+    regression_gate = output.get("regression_gate")
+    if regression_gate is not None:
+        enabled_gates.append("regression")
+
+        if not regression_gate["passed"]:
+            failed_gates.append("regression")
+
+    improvement_gate = output.get("improvement_gate")
+    if improvement_gate is not None:
+        enabled_gates.append("improvement")
+
+        if not improvement_gate["passed"]:
+            failed_gates.append("improvement")
+
+    if not enabled_gates:
+        return None
+
+    return {
+        "enabled_gates": enabled_gates,
+        "failed_gates": failed_gates,
+        "passed": len(failed_gates) == 0,
+    }
+
+
 def should_fail_due_to_regression_gate(
     *,
     output: dict[str, Any],
@@ -295,6 +326,30 @@ def should_fail_due_to_improvement_gate(
         )
 
     return not improvement_gate["passed"]
+
+
+def should_fail_due_to_quality_gate(
+    *,
+    output: dict[str, Any],
+    fail_on_regression_gate: bool,
+    fail_on_improvement_gate: bool,
+) -> bool:
+    should_enforce_quality_gate = (
+        fail_on_regression_gate
+        or fail_on_improvement_gate
+    )
+
+    if not should_enforce_quality_gate:
+        return False
+
+    quality_gate = output.get("quality_gate")
+
+    if quality_gate is None:
+        raise ValueError(
+            "fail-on gate flags require quality_gate in output."
+        )
+
+    return not quality_gate["passed"]
 
 
 def evaluate_strategy(
@@ -486,7 +541,34 @@ def format_strategy_comparison_summary(
                     f"passed={str(gate['passed']).lower()}"
                 ),
             ]
-        )        
+        )   
+
+    if "quality_gate" in output:
+        gate = output["quality_gate"]
+
+        if gate["failed_gates"]:
+            failed_gates = ",".join(gate["failed_gates"])
+
+            lines.extend(
+                [
+                    "",
+                    (
+                        "Quality gate: "
+                        f"passed={str(gate['passed']).lower()}, "
+                        f"failed_gates={failed_gates}"
+                    ),
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "",
+                    (
+                        "Quality gate: "
+                        f"passed={str(gate['passed']).lower()}"
+                    ),
+                ]
+            )             
 
     return "\n".join(lines)
 
@@ -647,6 +729,13 @@ def run_strategy_comparison(
                 min_improved_cases=args.min_improved_cases,
             )
 
+    quality_gate = build_quality_gate_result(
+        output=output,
+    )
+
+    if quality_gate is not None:
+        output["quality_gate"] = quality_gate            
+
     if args.output:
         output_path = Path(args.output)
         output_path.write_text(
@@ -682,14 +771,9 @@ def main() -> None:
             )
         )
 
-    if should_fail_due_to_regression_gate(
+    if should_fail_due_to_quality_gate(
         output=output,
         fail_on_regression_gate=args.fail_on_regression_gate,
-    ):
-        sys.exit(1)
-
-    if should_fail_due_to_improvement_gate(
-        output=output,
         fail_on_improvement_gate=args.fail_on_improvement_gate,
     ):
         sys.exit(1)
