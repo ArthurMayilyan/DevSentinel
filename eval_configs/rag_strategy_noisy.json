@@ -1,0 +1,17 @@
+{
+  "knowledge_path": "./knowledge_base_noisy",
+  "cases": "./eval_cases/noisy_rag_eval_cases.json",
+  "strategies": [
+    "binary-overlap",
+    "hybrid-lexical"
+  ],
+  "baseline_strategy": "term-frequency",
+  "top_k": 3,
+  "max_regressed_cases": 0,
+  "min_improved_cases": 1,
+  "fail_on_regression_gate": true,
+  "fail_on_improvement_gate": true,
+  "summary_only": true,
+  "output": "./rag_strategy_comparison.json",
+  "report_output": "./rag_strategy_report.md"
+}

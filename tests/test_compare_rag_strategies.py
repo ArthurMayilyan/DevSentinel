@@ -1,5 +1,6 @@
 import pytest
 import json
+import argparse
 
 from compare_rag_strategies import (
     build_arg_parser,
@@ -20,6 +21,18 @@ from compare_rag_strategies import (
     should_fail_due_to_quality_gate,
     should_fail_due_to_regression_gate,
     validate_regression_gate_args,
+    build_input_fingerprints,
+    build_run_metadata,
+    calculate_file_sha256,
+    collect_path_fingerprints,
+    apply_config_to_args,
+    apply_default_args,
+    build_arg_parser,
+    build_input_fingerprints,
+    build_run_metadata,
+    load_json_config,
+    resolve_comparison_args,
+    validate_comparison_args,    
 )
 
 
@@ -35,18 +48,23 @@ def test_compare_rag_strategies_parser_accepts_required_arguments():
         ]
     )
 
+    assert args.config is None
     assert args.knowledge_path == "./knowledge_base"
     assert args.cases == "./eval_cases/rag_eval_cases.json"
-    assert args.strategies == ["default"]
-    assert args.top_k == 3
+
+    # Parser no longer applies these defaults.
+    # Defaults are applied by resolve_comparison_args().
+    assert args.strategies is None
+    assert args.top_k is None
+
+    assert args.baseline_strategy is None
     assert args.summary_only is False
     assert args.output is None
-    assert args.baseline_strategy is None
+    assert args.report_output is None
     assert args.max_regressed_cases is None
     assert args.fail_on_regression_gate is False
     assert args.min_improved_cases is None
     assert args.fail_on_improvement_gate is False
-    assert args.report_output is None
 
 
 def test_compare_rag_strategies_parser_accepts_multiple_strategies():
@@ -2836,6 +2854,686 @@ def test_run_strategy_comparison_from_args_writes_markdown_report_file(tmp_path)
     assert "| binary-overlap | 1.00 | 1.00 | 1.00 |" in report
     assert "Best accepted strategy: **binary-overlap**" in report
     assert "Passed: **true**" in report
+    assert "## Run metadata" in report
+    assert "## Input fingerprints" in report
+    assert "security.md" in report
+    assert "noisy_rag_eval_cases.json" in report
+    assert "SHA256" in report    
 
 
-                    
+def test_calculate_file_sha256_returns_stable_hash(tmp_path):
+    file_path = tmp_path / "sample.txt"
+    file_path.write_text(
+        "hello",
+        encoding="utf-8",
+    )
+
+    assert (
+        calculate_file_sha256(file_path)
+        == "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e730"
+        "43362938b9824"
+    )
+
+
+def test_collect_path_fingerprints_collects_directory_files_sorted(tmp_path):
+    knowledge_path = tmp_path / "knowledge"
+    knowledge_path.mkdir()
+
+    second = knowledge_path / "b.md"
+    second.write_text("second", encoding="utf-8")
+
+    first = knowledge_path / "a.md"
+    first.write_text("first", encoding="utf-8")
+
+    fingerprints = collect_path_fingerprints(
+        str(knowledge_path),
+    )
+
+    assert [
+        fingerprint["relative_path"]
+        for fingerprint in fingerprints
+    ] == [
+        "a.md",
+        "b.md",
+    ]
+
+    assert [
+        fingerprint["size_bytes"]
+        for fingerprint in fingerprints
+    ] == [
+        len("first"),
+        len("second"),
+    ]
+
+    assert all(
+        len(fingerprint["sha256"]) == 64
+        for fingerprint in fingerprints
+    )
+
+
+def test_collect_path_fingerprints_collects_single_file(tmp_path):
+    cases_path = tmp_path / "cases.json"
+    cases_path.write_text("[]", encoding="utf-8")
+
+    fingerprints = collect_path_fingerprints(
+        str(cases_path),
+    )
+
+    assert len(fingerprints) == 1
+    assert fingerprints[0]["relative_path"] == "cases.json"
+    assert fingerprints[0]["size_bytes"] == 2
+    assert len(fingerprints[0]["sha256"]) == 64
+
+
+def test_build_run_metadata_includes_eval_configuration():
+    args = resolve_comparison_args(
+        [
+            "--knowledge-path",
+            "./knowledge_base_noisy",
+            "--cases",
+            "./eval_cases/noisy_rag_eval_cases.json",
+            "--baseline-strategy",
+            "term-frequency",
+            "--strategies",
+            "binary-overlap",
+            "--max-regressed-cases",
+            "0",
+            "--min-improved-cases",
+            "1",
+            "--fail-on-regression-gate",
+            "--fail-on-improvement-gate",
+        ]
+    )
+
+    metadata = build_run_metadata(
+        args=args,
+    )
+
+    assert isinstance(metadata["created_at_utc"], str)
+    assert metadata["knowledge_path"] == "./knowledge_base_noisy"
+    assert metadata["cases"] == "./eval_cases/noisy_rag_eval_cases.json"
+    assert metadata["top_k"] == 3
+    assert metadata["strategies"] == ["binary-overlap"]
+    assert metadata["baseline_strategy"] == "term-frequency"
+    assert metadata["max_regressed_cases"] == 0
+    assert metadata["min_improved_cases"] == 1
+    assert metadata["fail_on_regression_gate"] is True
+    assert metadata["fail_on_improvement_gate"] is True
+
+
+def test_build_input_fingerprints_includes_knowledge_and_case_files(tmp_path):
+    knowledge_path = tmp_path / "knowledge"
+    knowledge_path.mkdir()
+
+    security = knowledge_path / "security.md"
+    security.write_text("security", encoding="utf-8")
+
+    cases_path = tmp_path / "cases.json"
+    cases_path.write_text("[]", encoding="utf-8")
+
+    fingerprints = build_input_fingerprints(
+        knowledge_path=str(knowledge_path),
+        cases_path=str(cases_path),
+    )
+
+    assert [
+        fingerprint["relative_path"]
+        for fingerprint in fingerprints["knowledge_files"]
+    ] == [
+        "security.md",
+    ]
+
+    assert [
+        fingerprint["relative_path"]
+        for fingerprint in fingerprints["case_files"]
+    ] == [
+        "cases.json",
+    ]
+
+
+def test_format_strategy_comparison_markdown_report_includes_run_metadata_and_fingerprints():
+    output = {
+        "run_metadata": {
+            "created_at_utc": "2026-08-10T12:00:00+00:00",
+            "knowledge_path": "./knowledge_base_noisy",
+            "cases": "./eval_cases/noisy_rag_eval_cases.json",
+            "top_k": 3,
+            "strategies": [
+                "term-frequency",
+                "binary-overlap",
+            ],
+            "baseline_strategy": "term-frequency",
+            "max_regressed_cases": 0,
+            "min_improved_cases": 1,
+            "fail_on_regression_gate": False,
+            "fail_on_improvement_gate": False,
+        },
+        "input_fingerprints": {
+            "knowledge_files": [
+                {
+                    "relative_path": "security.md",
+                    "size_bytes": 12,
+                    "sha256": "a" * 64,
+                }
+            ],
+            "case_files": [
+                {
+                    "relative_path": "noisy_rag_eval_cases.json",
+                    "size_bytes": 34,
+                    "sha256": "b" * 64,
+                }
+            ],
+        },
+        "best_strategy": "binary-overlap",
+        "best_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "results": [
+            {
+                "retrieval_strategy": "binary-overlap",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 1.0,
+                "mean_reciprocal_rank": 1.0,
+            },
+        ],
+    }
+
+    report = format_strategy_comparison_markdown_report(output)
+
+    assert "## Run metadata" in report
+    assert "Created at UTC: `2026-08-10T12:00:00+00:00`" in report
+    assert "Knowledge path: `./knowledge_base_noisy`" in report
+    assert "Strategies: `term-frequency,binary-overlap`" in report
+    assert "## Input fingerprints" in report
+    assert "| security.md | 12 | `" + ("a" * 64) + "` |" in report
+    assert "| noisy_rag_eval_cases.json | 34 | `" + ("b" * 64) + "` |" in report
+
+
+def test_resolve_comparison_args_applies_defaults_for_cli_args():
+    args = resolve_comparison_args(
+        [
+            "--knowledge-path",
+            "./knowledge_base",
+            "--cases",
+            "./eval_cases/rag_eval_cases.json",
+        ]
+    )
+
+    assert args.knowledge_path == "./knowledge_base"
+    assert args.cases == "./eval_cases/rag_eval_cases.json"
+    assert args.strategies == ["default"]
+    assert args.top_k == 3
+
+def test_apply_default_args_sets_default_strategy_and_top_k():
+    args = argparse.Namespace(
+        strategies=None,
+        top_k=None,
+    )
+
+    merged = apply_default_args(
+        args,
+    )
+
+    assert merged.strategies == ["default"]
+    assert merged.top_k == 3
+
+def test_apply_default_args_keeps_existing_strategy_and_top_k():
+    args = argparse.Namespace(
+        strategies=["binary-overlap"],
+        top_k=5,
+    )
+
+    merged = apply_default_args(
+        args,
+    )
+
+    assert merged.strategies == ["binary-overlap"]
+    assert merged.top_k == 5
+
+
+def test_run_strategy_comparison_from_args_applies_default_top_k(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base"
+    knowledge_path.mkdir()
+
+    security = knowledge_path / "security.md"
+    security.write_text(
+        "Token expiration policy: tokens must be signed and must expire.",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "rag_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "token expiration policy",
+                    "query": "token expiration",
+                    "expected_source_contains": "security.md",
+                    "expected_text_contains": "Token expiration policy",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    output = run_strategy_comparison_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+        ]
+    )
+
+    assert output["top_k"] == 3
+    assert output["strategies"] == ["default"]
+
+def test_compare_rag_strategies_parser_accepts_config():
+    parser = build_arg_parser()
+
+    args = parser.parse_args(
+        [
+            "--config",
+            "./eval_configs/rag_strategy_noisy.json",
+        ]
+    )
+
+    assert args.config == "./eval_configs/rag_strategy_noisy.json"
+    assert args.knowledge_path is None
+    assert args.cases is None                                                            
+
+
+def test_load_json_config_loads_config_object(tmp_path):
+    config_path = tmp_path / "rag_eval_config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "knowledge_path": "./knowledge_base_noisy",
+                "cases": "./eval_cases/noisy_rag_eval_cases.json",
+                "strategies": [
+                    "binary-overlap",
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert load_json_config(
+        str(config_path),
+    ) == {
+        "knowledge_path": "./knowledge_base_noisy",
+        "cases": "./eval_cases/noisy_rag_eval_cases.json",
+        "strategies": [
+            "binary-overlap",
+        ],
+    }
+
+def test_load_json_config_rejects_unknown_keys(tmp_path):
+    config_path = tmp_path / "rag_eval_config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "knowledge_path": "./knowledge_base_noisy",
+                "cases": "./eval_cases/noisy_rag_eval_cases.json",
+                "baseline_stategy": "term-frequency",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError):
+        load_json_config(
+            str(config_path),
+        )
+
+def test_apply_config_to_args_fills_missing_values_from_config():
+    args = argparse.Namespace(
+        config="./config.json",
+        knowledge_path=None,
+        cases=None,
+        strategies=None,
+        baseline_strategy=None,
+        top_k=None,
+        summary_only=False,
+        output=None,
+        report_output=None,
+        max_regressed_cases=None,
+        min_improved_cases=None,
+        fail_on_regression_gate=False,
+        fail_on_improvement_gate=False,
+    )
+
+    merged = apply_config_to_args(
+        args=args,
+        config={
+            "knowledge_path": "./knowledge_base_noisy",
+            "cases": "./eval_cases/noisy_rag_eval_cases.json",
+            "strategies": [
+                "binary-overlap",
+            ],
+            "baseline_strategy": "term-frequency",
+            "top_k": 5,
+            "summary_only": True,
+            "max_regressed_cases": 0,
+            "min_improved_cases": 1,
+            "fail_on_regression_gate": True,
+            "fail_on_improvement_gate": True,
+        },
+    )
+
+    assert merged.knowledge_path == "./knowledge_base_noisy"
+    assert merged.cases == "./eval_cases/noisy_rag_eval_cases.json"
+    assert merged.strategies == ["binary-overlap"]
+    assert merged.baseline_strategy == "term-frequency"
+    assert merged.top_k == 5
+    assert merged.summary_only is True
+    assert merged.max_regressed_cases == 0
+    assert merged.min_improved_cases == 1
+    assert merged.fail_on_regression_gate is True
+    assert merged.fail_on_improvement_gate is True
+
+
+def test_apply_config_to_args_keeps_cli_values_over_config_values():
+    args = argparse.Namespace(
+        config="./config.json",
+        knowledge_path="./cli_knowledge",
+        cases="./cli_cases.json",
+        strategies=[
+            "hybrid-lexical",
+        ],
+        baseline_strategy="binary-overlap",
+        top_k=10,
+        summary_only=True,
+        output="./cli.json",
+        report_output="./cli.md",
+        max_regressed_cases=1,
+        min_improved_cases=2,
+        fail_on_regression_gate=True,
+        fail_on_improvement_gate=True,
+    )
+
+    merged = apply_config_to_args(
+        args=args,
+        config={
+            "knowledge_path": "./config_knowledge",
+            "cases": "./config_cases.json",
+            "strategies": [
+                "binary-overlap",
+            ],
+            "baseline_strategy": "term-frequency",
+            "top_k": 3,
+            "summary_only": False,
+            "output": "./config.json",
+            "report_output": "./config.md",
+            "max_regressed_cases": 0,
+            "min_improved_cases": 1,
+            "fail_on_regression_gate": False,
+            "fail_on_improvement_gate": False,
+        },
+    )
+
+    assert merged.knowledge_path == "./cli_knowledge"
+    assert merged.cases == "./cli_cases.json"
+    assert merged.strategies == ["hybrid-lexical"]
+    assert merged.baseline_strategy == "binary-overlap"
+    assert merged.top_k == 10
+    assert merged.summary_only is True
+    assert merged.output == "./cli.json"
+    assert merged.report_output == "./cli.md"
+    assert merged.max_regressed_cases == 1
+    assert merged.min_improved_cases == 2
+    assert merged.fail_on_regression_gate is True
+    assert merged.fail_on_improvement_gate is True
+
+
+def test_validate_comparison_args_rejects_missing_knowledge_path():
+    args = argparse.Namespace(
+        knowledge_path=None,
+        cases="./cases.json",
+        top_k=3,
+        strategies=[
+            "default",
+        ],
+    )
+
+    with pytest.raises(ValueError):
+        validate_comparison_args(args)
+
+
+def test_validate_comparison_args_rejects_missing_cases():
+    args = argparse.Namespace(
+        knowledge_path="./knowledge",
+        cases=None,
+        top_k=3,
+        strategies=[
+            "default",
+        ],
+    )
+
+    with pytest.raises(ValueError):
+        validate_comparison_args(args)
+
+
+def test_validate_comparison_args_rejects_non_integer_top_k():
+    args = argparse.Namespace(
+        knowledge_path="./knowledge",
+        cases="./cases.json",
+        top_k=None,
+        strategies=[
+            "default",
+        ],
+    )
+
+    with pytest.raises(ValueError):
+        validate_comparison_args(args)
+
+
+def test_validate_comparison_args_rejects_non_positive_top_k():
+    args = argparse.Namespace(
+        knowledge_path="./knowledge",
+        cases="./cases.json",
+        top_k=0,
+        strategies=[
+            "default",
+        ],
+    )
+
+    with pytest.raises(ValueError):
+        validate_comparison_args(args)
+
+
+def test_validate_comparison_args_rejects_unsupported_strategy_from_config():
+    args = argparse.Namespace(
+        knowledge_path="./knowledge",
+        cases="./cases.json",
+        top_k=3,
+        strategies=[
+            "unknown-strategy",
+        ],
+    )
+
+    with pytest.raises(ValueError):
+        validate_comparison_args(args)
+
+
+def test_resolve_comparison_args_loads_config_file(tmp_path):
+    config_path = tmp_path / "rag_eval_config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "knowledge_path": "./knowledge_base_noisy",
+                "cases": "./eval_cases/noisy_rag_eval_cases.json",
+                "strategies": [
+                    "binary-overlap",
+                    "hybrid-lexical",
+                ],
+                "baseline_strategy": "term-frequency",
+                "top_k": 5,
+                "summary_only": True,
+                "max_regressed_cases": 0,
+                "min_improved_cases": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    args = resolve_comparison_args(
+        [
+            "--config",
+            str(config_path),
+        ]
+    )
+
+    assert args.knowledge_path == "./knowledge_base_noisy"
+    assert args.cases == "./eval_cases/noisy_rag_eval_cases.json"
+    assert args.strategies == [
+        "binary-overlap",
+        "hybrid-lexical",
+    ]
+    assert args.baseline_strategy == "term-frequency"
+    assert args.top_k == 5
+    assert args.summary_only is True
+    assert args.max_regressed_cases == 0
+    assert args.min_improved_cases == 1
+
+
+def test_resolve_comparison_args_allows_cli_to_override_config(tmp_path):
+    config_path = tmp_path / "rag_eval_config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "knowledge_path": "./config_knowledge",
+                "cases": "./config_cases.json",
+                "strategies": [
+                    "binary-overlap",
+                ],
+                "baseline_strategy": "term-frequency",
+                "top_k": 3,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    args = resolve_comparison_args(
+        [
+            "--config",
+            str(config_path),
+            "--knowledge-path",
+            "./cli_knowledge",
+            "--cases",
+            "./cli_cases.json",
+            "--strategies",
+            "hybrid-lexical",
+            "--top-k",
+            "7",
+        ]
+    )
+
+    assert args.knowledge_path == "./cli_knowledge"
+    assert args.cases == "./cli_cases.json"
+    assert args.strategies == [
+        "hybrid-lexical",
+    ]
+    assert args.top_k == 7
+
+
+def test_run_strategy_comparison_from_args_runs_from_config_file(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base_noisy"
+    knowledge_path.mkdir()
+
+    token_noise = knowledge_path / "noise_tokens.md"
+    token_noise.write_text(
+        "token token token token token token token token",
+        encoding="utf-8",
+    )
+
+    security = knowledge_path / "security.md"
+    security.write_text(
+        "Token expiration policy: tokens must be signed and must expire.",
+        encoding="utf-8",
+    )
+
+    function_noise = knowledge_path / "noise_functions.md"
+    function_noise.write_text(
+        "function function function function function function",
+        encoding="utf-8",
+    )
+
+    coding = knowledge_path / "coding.md"
+    coding.write_text(
+        "Small function guidelines: functions should be small and readable.",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "noisy_rag_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "token expiration policy",
+                    "query": "token expiration",
+                    "expected_source_contains": "security.md",
+                    "expected_text_contains": "Token expiration policy",
+                },
+                {
+                    "name": "small function guideline",
+                    "query": "small function",
+                    "expected_source_contains": "coding.md",
+                    "expected_text_contains": "Small function guidelines",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    report_output_path = tmp_path / "rag_strategy_report.md"
+
+    config_path = tmp_path / "rag_eval_config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "knowledge_path": str(knowledge_path),
+                "cases": str(cases_path),
+                "strategies": [
+                    "binary-overlap",
+                    "hybrid-lexical",
+                ],
+                "baseline_strategy": "term-frequency",
+                "top_k": 3,
+                "max_regressed_cases": 0,
+                "min_improved_cases": 1,
+                "summary_only": True,
+                "report_output": str(report_output_path),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    output = run_strategy_comparison_from_args(
+        [
+            "--config",
+            str(config_path),
+        ]
+    )
+
+    assert output["strategies"] == [
+        "term-frequency",
+        "binary-overlap",
+        "hybrid-lexical",
+    ]
+    assert output["top_k"] == 3
+    assert output["best_strategy"] == "binary-overlap"
+    assert output["quality_gate"] == {
+        "enabled_gates": [
+            "regression",
+            "improvement",
+        ],
+        "failed_gates": [],
+        "passed": True,
+    }
+
+    assert report_output_path.is_file()
+
+

@@ -1,6 +1,8 @@
-import sys
 import argparse
+import hashlib
 import json
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -14,20 +16,180 @@ from rag_eval_loader import load_rag_retrieval_eval_cases_from_json_file
 from rag_loader import load_rag_store_from_path
 
 
+CONFIG_ALLOWED_KEYS = {
+    "knowledge_path",
+    "cases",
+    "strategies",
+    "baseline_strategy",
+    "top_k",
+    "summary_only",
+    "output",
+    "report_output",
+    "max_regressed_cases",
+    "min_improved_cases",
+    "fail_on_regression_gate",
+    "fail_on_improvement_gate",
+}
+
+
+def load_json_config(
+    path: str,
+) -> dict[str, Any]:
+    config_path = Path(path)
+
+    if not config_path.is_file():
+        raise ValueError(f"config path must be a file: {path}")
+
+    config = json.loads(
+        config_path.read_text(
+            encoding="utf-8",
+        )
+    )
+
+    if not isinstance(config, dict):
+        raise ValueError("config file must contain a JSON object.")
+
+    unknown_keys = sorted(
+        set(config.keys()) - CONFIG_ALLOWED_KEYS
+    )
+
+    if unknown_keys:
+        raise ValueError(
+            "config contains unsupported keys: "
+            + ", ".join(unknown_keys)
+        )
+
+    return config
+
+
+def apply_config_to_args(
+    *,
+    args: argparse.Namespace,
+    config: dict[str, Any],
+) -> argparse.Namespace:
+    merged = argparse.Namespace(**vars(args))
+
+    for key, value in config.items():
+        current_value = getattr(
+            merged,
+            key,
+        )
+
+        if key in {
+            "summary_only",
+            "fail_on_regression_gate",
+            "fail_on_improvement_gate",
+        }:
+            if current_value is False:
+                setattr(
+                    merged,
+                    key,
+                    value,
+                )
+            continue
+
+        if current_value is None:
+            setattr(
+                merged,
+                key,
+                value,
+            )
+
+    return merged
+
+
+def apply_default_args(
+    args: argparse.Namespace,
+) -> argparse.Namespace:
+    merged = argparse.Namespace(**vars(args))
+
+    if merged.strategies is None:
+        merged.strategies = [
+            RETRIEVAL_STRATEGY_DEFAULT,
+        ]
+
+    if merged.top_k is None:
+        merged.top_k = 3
+
+    return merged
+
+
+def validate_comparison_args(
+    args: argparse.Namespace,
+) -> None:
+    if not args.knowledge_path:
+        raise ValueError("knowledge_path is required.")
+
+    if not args.cases:
+        raise ValueError("cases is required.")
+
+    if type(args.top_k) is not int:
+        raise ValueError("top_k must be an integer.")
+
+    if args.top_k <= 0:
+        raise ValueError("top_k must be greater than 0.")
+
+    if not isinstance(args.strategies, list) or not args.strategies:
+        raise ValueError("strategies must be a non-empty list.")
+
+    unsupported_strategies = sorted(
+        set(args.strategies) - SUPPORTED_RETRIEVAL_STRATEGIES
+    )
+
+    if unsupported_strategies:
+        raise ValueError(
+            "unsupported strategies: "
+            + ", ".join(unsupported_strategies)
+        )
+
+
+def resolve_comparison_args(
+    raw_args: list[str] | None = None,
+) -> argparse.Namespace:
+    parser = build_arg_parser()
+    args = parser.parse_args(raw_args)
+
+    if args.config is not None:
+        config = load_json_config(
+            args.config,
+        )
+
+        args = apply_config_to_args(
+            args=args,
+            config=config,
+        )
+
+    args = apply_default_args(
+        args,
+    )
+
+    validate_comparison_args(
+        args,
+    )
+
+    return args
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Compare RAG retrieval strategies against the same eval cases.",
     )
 
     parser.add_argument(
+        "--config",
+        default=None,
+        help="Optional JSON config file with comparison arguments.",
+    )
+
+    parser.add_argument(
         "--knowledge-path",
-        required=True,
+        default=None,
         help="Path to a knowledge base file or directory.",
     )
 
     parser.add_argument(
         "--cases",
-        required=True,
+        default=None,
         help="Path to a JSON file with RAG retrieval eval cases.",
     )
 
@@ -35,7 +197,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--strategies",
         nargs="+",
         choices=sorted(SUPPORTED_RETRIEVAL_STRATEGIES),
-        default=[RETRIEVAL_STRATEGY_DEFAULT],
+        default=None,
         help="Retrieval strategies to compare.",
     )
 
@@ -52,7 +214,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--top-k",
         type=int,
-        default=3,
+        default=None,
         help="Number of retrieved chunks to evaluate per query.",
     )
 
@@ -468,46 +630,6 @@ def select_best_strategy_result(
         ),
     )
 
-def run_strategy_comparison_from_args(
-    raw_args: list[str] | None = None,
-) -> dict[str, Any]:
-    parser = build_arg_parser()
-    args = parser.parse_args(raw_args)
-
-    store = load_rag_store_from_path(
-        path=args.knowledge_path,
-    )
-
-    cases = load_rag_retrieval_eval_cases_from_json_file(
-        path=args.cases,
-    )
-
-    strategy_results = [
-        evaluate_strategy(
-            store=store,
-            cases=cases,
-            strategy=strategy,
-            top_k=args.top_k,
-        )
-        for strategy in args.strategies
-    ]
-
-    output = {
-        "knowledge_path": args.knowledge_path,
-        "cases": args.cases,
-        "top_k": args.top_k,
-        "strategies": args.strategies,
-        "results": strategy_results,
-    }
-
-    if args.output:
-        output_path = Path(args.output)
-        output_path.write_text(
-            json.dumps(output, indent=2),
-            encoding="utf-8",
-        )
-
-    return output
 
 def format_matched_rank(
     value: Any,
@@ -716,12 +838,89 @@ def format_strategy_comparison_markdown_report(
 ) -> str:
     lines = [
         "# RAG Strategy Comparison Report",
-        "",
-        "## Summary",
-        "",
-        "| Strategy | Hit rate | Top-1 accuracy | MRR |",
-        "|---|---:|---:|---:|",
     ]
+
+    if "run_metadata" in output:
+        metadata = output["run_metadata"]
+
+        lines.extend(
+            [
+                "",
+                "## Run metadata",
+                "",
+                f"Created at UTC: `{metadata['created_at_utc']}`",
+                f"Knowledge path: `{metadata['knowledge_path']}`",
+                f"Cases path: `{metadata['cases']}`",
+                f"Top K: `{metadata['top_k']}`",
+                f"Strategies: `{','.join(metadata['strategies'])}`",
+            ]
+        )
+
+        if metadata["baseline_strategy"] is not None:
+            lines.append(
+                f"Baseline strategy: `{metadata['baseline_strategy']}`"
+            )
+
+        if metadata["max_regressed_cases"] is not None:
+            lines.append(
+                f"Max regressed cases: `{metadata['max_regressed_cases']}`"
+            )
+
+        if metadata["min_improved_cases"] is not None:
+            lines.append(
+                f"Min improved cases: `{metadata['min_improved_cases']}`"
+            )    
+
+    if "input_fingerprints" in output:
+        fingerprints = output["input_fingerprints"]
+
+        lines.extend(
+            [
+                "",
+                "## Input fingerprints",
+                "",
+                "### Knowledge files",
+                "",
+                "| Relative path | Size bytes | SHA256 |",
+                "|---|---:|---|",
+            ]
+        )
+
+        for fingerprint in fingerprints["knowledge_files"]:
+            lines.append(
+                "| "
+                f"{fingerprint['relative_path']} | "
+                f"{fingerprint['size_bytes']} | "
+                f"`{fingerprint['sha256']}` |"
+            )
+
+        lines.extend(
+            [
+                "",
+                "### Case files",
+                "",
+                "| Relative path | Size bytes | SHA256 |",
+                "|---|---:|---|",
+            ]
+        )
+
+        for fingerprint in fingerprints["case_files"]:
+            lines.append(
+                "| "
+                f"{fingerprint['relative_path']} | "
+                f"{fingerprint['size_bytes']} | "
+                f"`{fingerprint['sha256']}` |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Summary",
+            "",
+            "| Strategy | Hit rate | Top-1 accuracy | MRR |",
+            "|---|---:|---:|---:|",
+        ]
+    )
 
     for result in output["results"]:
         lines.append(
@@ -989,7 +1188,101 @@ def validate_regression_gate_args(
             raise ValueError(
                 "min_improved_cases must be greater than or equal to 0."
             )
-    
+
+def calculate_file_sha256(
+    path: Path,
+) -> str:
+    if not path.is_file():
+        raise ValueError(f"path must be a file: {path}")
+
+    hasher = hashlib.sha256()
+
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            hasher.update(chunk)
+
+    return hasher.hexdigest()
+
+
+def collect_file_fingerprint(
+    *,
+    path: Path,
+    root_path: Path,
+) -> dict[str, Any]:
+    if not path.is_file():
+        raise ValueError(f"path must be a file: {path}")
+
+    return {
+        "path": str(path),
+        "relative_path": str(path.relative_to(root_path)),
+        "size_bytes": path.stat().st_size,
+        "sha256": calculate_file_sha256(path),
+    }
+
+
+def collect_path_fingerprints(
+    path: str,
+) -> list[dict[str, Any]]:
+    input_path = Path(path)
+
+    if not input_path.exists():
+        raise ValueError(f"path does not exist: {path}")
+
+    if input_path.is_file():
+        return [
+            collect_file_fingerprint(
+                path=input_path,
+                root_path=input_path.parent,
+            )
+        ]
+
+    if input_path.is_dir():
+        files = [
+            file_path
+            for file_path in input_path.rglob("*")
+            if file_path.is_file()
+        ]
+
+        return [
+            collect_file_fingerprint(
+                path=file_path,
+                root_path=input_path,
+            )
+            for file_path in sorted(files)
+        ]
+
+    raise ValueError(f"path must be a file or directory: {path}")
+
+def build_run_metadata(
+    *,
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    return {
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "knowledge_path": args.knowledge_path,
+        "cases": args.cases,
+        "top_k": args.top_k,
+        "strategies": list(args.strategies),
+        "baseline_strategy": args.baseline_strategy,
+        "max_regressed_cases": args.max_regressed_cases,
+        "min_improved_cases": args.min_improved_cases,
+        "fail_on_regression_gate": args.fail_on_regression_gate,
+        "fail_on_improvement_gate": args.fail_on_improvement_gate,
+    }    
+
+def build_input_fingerprints(
+    *,
+    knowledge_path: str,
+    cases_path: str,
+) -> dict[str, Any]:
+    return {
+        "knowledge_files": collect_path_fingerprints(
+            knowledge_path,
+        ),
+        "case_files": collect_path_fingerprints(
+            cases_path,
+        ),
+    }
 
 def run_strategy_comparison(
     args: argparse.Namespace,
@@ -1000,6 +1293,15 @@ def run_strategy_comparison(
         fail_on_regression_gate=args.fail_on_regression_gate,
         min_improved_cases=args.min_improved_cases,
         fail_on_improvement_gate=args.fail_on_improvement_gate,
+    )
+
+    run_metadata = build_run_metadata(
+        args=args,
+    )
+
+    input_fingerprints = build_input_fingerprints(
+        knowledge_path=args.knowledge_path,
+        cases_path=args.cases,
     )
 
     store = load_rag_store_from_path(
@@ -1014,6 +1316,8 @@ def run_strategy_comparison(
         strategies=args.strategies,
         baseline_strategy=args.baseline_strategy,
     )
+
+    run_metadata["strategies"] = strategy_names
 
     strategy_results = [
         evaluate_strategy(
@@ -1030,6 +1334,8 @@ def run_strategy_comparison(
     )    
 
     output = {
+        "run_metadata": run_metadata,
+        "input_fingerprints": input_fingerprints,
         "knowledge_path": args.knowledge_path,
         "cases": args.cases,
         "top_k": args.top_k,
@@ -1116,20 +1422,26 @@ def run_strategy_comparison(
 def run_strategy_comparison_from_args(
     raw_args: list[str] | None = None,
 ) -> dict[str, Any]:
-    parser = build_arg_parser()
-    args = parser.parse_args(raw_args)
+    args = resolve_comparison_args(
+        raw_args,
+    )
 
-    return run_strategy_comparison(args)
+    return run_strategy_comparison(
+        args,
+    )
 
 
 def main() -> None:
-    parser = build_arg_parser()
-    args = parser.parse_args()
+    args = resolve_comparison_args()
 
-    output = run_strategy_comparison(args)
+    output = run_strategy_comparison(
+        args,
+    )
 
     if args.summary_only:
-        print(format_strategy_comparison_summary(output))
+        print(
+            format_strategy_comparison_summary(output)
+        )
     else:
         print(
             json.dumps(
