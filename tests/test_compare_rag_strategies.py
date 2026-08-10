@@ -3,6 +3,8 @@ import json
 
 from compare_rag_strategies import (
     build_arg_parser,
+    build_candidate_strategy_decision,
+    build_candidate_strategy_decisions,
     build_improvement_gate_result,
     build_quality_gate_result,
     build_regression_gate_result,
@@ -11,6 +13,7 @@ from compare_rag_strategies import (
     format_strategy_comparison_summary,
     normalize_strategy_list,
     run_strategy_comparison_from_args,
+    select_best_accepted_strategy_result,
     select_best_strategy_result,
     should_fail_due_to_improvement_gate,
     should_fail_due_to_quality_gate,
@@ -1298,6 +1301,24 @@ def test_run_strategy_comparison_from_args_adds_failing_regression_gate(tmp_path
         "passed": False,
     }    
 
+    assert output["candidate_decisions"] == [
+        {
+            "strategy": "term-frequency",
+            "baseline_strategy": "binary-overlap",
+            "improved_count": 0,
+            "regressed_count": 2,
+            "unchanged_count": 0,
+            "accepted": False,
+            "rejection_reasons": [
+                "too_many_regressions",
+            ],
+        }
+    ]
+
+    assert output["best_accepted_strategy"] is None
+    assert output["best_accepted_strategy_metrics"] is None    
+
+
 def test_compare_rag_strategies_parser_accepts_min_improved_cases():
     parser = build_arg_parser()
 
@@ -1645,6 +1666,23 @@ def test_run_strategy_comparison_from_args_adds_failing_improvement_gate(tmp_pat
         "passed": False,
     }    
 
+    assert output["candidate_decisions"] == [
+        {
+            "strategy": "hybrid-lexical",
+            "baseline_strategy": "binary-overlap",
+            "improved_count": 0,
+            "regressed_count": 0,
+            "unchanged_count": 2,
+            "accepted": False,
+            "rejection_reasons": [
+                "insufficient_improvements",
+            ],
+        }
+    ]
+
+    assert output["best_accepted_strategy"] is None
+    assert output["best_accepted_strategy_metrics"] is None    
+
 
 def test_format_strategy_comparison_summary_includes_improvement_gate():
     output = {
@@ -1930,6 +1968,25 @@ def test_run_strategy_comparison_from_args_adds_combined_quality_gate(tmp_path):
         "passed": True,
     }
 
+    assert output["candidate_decisions"] == [
+        {
+            "strategy": "binary-overlap",
+            "baseline_strategy": "term-frequency",
+            "improved_count": 2,
+            "regressed_count": 0,
+            "unchanged_count": 0,
+            "accepted": True,
+            "rejection_reasons": [],
+        }
+    ]
+
+    assert output["best_accepted_strategy"] == "binary-overlap"
+    assert output["best_accepted_strategy_metrics"] == {
+        "hit_rate": 1.0,
+        "top_1_accuracy": 1.0,
+        "mean_reciprocal_rank": 1.0,
+    }    
+
 
 def test_format_strategy_comparison_summary_includes_passing_quality_gate():
     output = {
@@ -2021,4 +2078,463 @@ def test_format_strategy_comparison_summary_includes_failed_quality_gate():
         ]
     )
 
-                        
+
+def test_build_candidate_strategy_decision_accepts_candidate_within_gates():
+    diagnostic = {
+        "baseline_strategy": "term-frequency",
+        "strategy": "binary-overlap",
+        "improved_count": 2,
+        "regressed_count": 0,
+        "unchanged_count": 0,
+    }
+
+    decision = build_candidate_strategy_decision(
+        diagnostic=diagnostic,
+        max_regressed_cases=0,
+        min_improved_cases=1,
+    )
+
+    assert decision == {
+        "strategy": "binary-overlap",
+        "baseline_strategy": "term-frequency",
+        "improved_count": 2,
+        "regressed_count": 0,
+        "unchanged_count": 0,
+        "accepted": True,
+        "rejection_reasons": [],
+    }
+
+def test_build_candidate_strategy_decision_rejects_candidate_with_too_many_regressions():
+    diagnostic = {
+        "baseline_strategy": "binary-overlap",
+        "strategy": "term-frequency",
+        "improved_count": 0,
+        "regressed_count": 2,
+        "unchanged_count": 0,
+    }
+
+    decision = build_candidate_strategy_decision(
+        diagnostic=diagnostic,
+        max_regressed_cases=0,
+        min_improved_cases=None,
+    )
+
+    assert decision["accepted"] is False
+    assert decision["rejection_reasons"] == [
+        "too_many_regressions",
+    ]
+
+def test_build_candidate_strategy_decision_rejects_candidate_with_insufficient_improvements():
+    diagnostic = {
+        "baseline_strategy": "binary-overlap",
+        "strategy": "hybrid-lexical",
+        "improved_count": 0,
+        "regressed_count": 0,
+        "unchanged_count": 2,
+    }
+
+    decision = build_candidate_strategy_decision(
+        diagnostic=diagnostic,
+        max_regressed_cases=None,
+        min_improved_cases=1,
+    )
+
+    assert decision["accepted"] is False
+    assert decision["rejection_reasons"] == [
+        "insufficient_improvements",
+    ]
+
+def test_build_candidate_strategy_decision_can_reject_for_multiple_reasons():
+    diagnostic = {
+        "baseline_strategy": "strong-baseline",
+        "strategy": "weak-candidate",
+        "improved_count": 0,
+        "regressed_count": 2,
+        "unchanged_count": 0,
+    }
+
+    decision = build_candidate_strategy_decision(
+        diagnostic=diagnostic,
+        max_regressed_cases=0,
+        min_improved_cases=1,
+    )
+
+    assert decision["accepted"] is False
+    assert decision["rejection_reasons"] == [
+        "too_many_regressions",
+        "insufficient_improvements",
+    ]
+
+def test_build_candidate_strategy_decisions_builds_one_decision_per_diagnostic():
+    diagnostics = [
+        {
+            "baseline_strategy": "term-frequency",
+            "strategy": "binary-overlap",
+            "improved_count": 2,
+            "regressed_count": 0,
+            "unchanged_count": 0,
+        },
+        {
+            "baseline_strategy": "term-frequency",
+            "strategy": "hybrid-lexical",
+            "improved_count": 2,
+            "regressed_count": 0,
+            "unchanged_count": 0,
+        },
+    ]
+
+    decisions = build_candidate_strategy_decisions(
+        strategy_diagnostics=diagnostics,
+        max_regressed_cases=0,
+        min_improved_cases=1,
+    )
+
+    assert [
+        decision["strategy"]
+        for decision in decisions
+    ] == [
+        "binary-overlap",
+        "hybrid-lexical",
+    ]
+
+    assert [
+        decision["accepted"]
+        for decision in decisions
+    ] == [
+        True,
+        True,
+    ]
+
+
+def test_select_best_accepted_strategy_result_selects_best_among_accepted_candidates():
+    strategy_results = [
+        {
+            "retrieval_strategy": "term-frequency",
+            "hit_rate": 1.0,
+            "top_1_accuracy": 0.0,
+            "mean_reciprocal_rank": 0.5,
+        },
+        {
+            "retrieval_strategy": "binary-overlap",
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        {
+            "retrieval_strategy": "hybrid-lexical",
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+    ]
+
+    candidate_decisions = [
+        {
+            "strategy": "binary-overlap",
+            "accepted": True,
+        },
+        {
+            "strategy": "hybrid-lexical",
+            "accepted": True,
+        },
+    ]
+
+    best_result = select_best_accepted_strategy_result(
+        strategy_results=strategy_results,
+        candidate_decisions=candidate_decisions,
+    )
+
+    assert best_result["retrieval_strategy"] == "binary-overlap"
+
+
+def test_select_best_accepted_strategy_result_skips_rejected_candidates():
+    strategy_results = [
+        {
+            "retrieval_strategy": "strong-but-rejected",
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        {
+            "retrieval_strategy": "weaker-but-accepted",
+            "hit_rate": 1.0,
+            "top_1_accuracy": 0.5,
+            "mean_reciprocal_rank": 0.75,
+        },
+    ]
+
+    candidate_decisions = [
+        {
+            "strategy": "strong-but-rejected",
+            "accepted": False,
+        },
+        {
+            "strategy": "weaker-but-accepted",
+            "accepted": True,
+        },
+    ]
+
+    best_result = select_best_accepted_strategy_result(
+        strategy_results=strategy_results,
+        candidate_decisions=candidate_decisions,
+    )
+
+    assert best_result["retrieval_strategy"] == "weaker-but-accepted"
+
+
+def test_select_best_accepted_strategy_result_returns_none_when_no_candidates_accepted():
+    strategy_results = [
+        {
+            "retrieval_strategy": "candidate-a",
+            "hit_rate": 1.0,
+            "top_1_accuracy": 0.5,
+            "mean_reciprocal_rank": 0.75,
+        },
+    ]
+
+    candidate_decisions = [
+        {
+            "strategy": "candidate-a",
+            "accepted": False,
+        },
+    ]
+
+    assert select_best_accepted_strategy_result(
+        strategy_results=strategy_results,
+        candidate_decisions=candidate_decisions,
+    ) is None
+
+
+def test_run_strategy_comparison_from_args_adds_candidate_decisions_for_multiple_candidates(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base_noisy"
+    knowledge_path.mkdir()
+
+    token_noise = knowledge_path / "noise_tokens.md"
+    token_noise.write_text(
+        "token token token token token token token token",
+        encoding="utf-8",
+    )
+
+    security = knowledge_path / "security.md"
+    security.write_text(
+        "Token expiration policy: tokens must be signed and must expire.",
+        encoding="utf-8",
+    )
+
+    function_noise = knowledge_path / "noise_functions.md"
+    function_noise.write_text(
+        "function function function function function function",
+        encoding="utf-8",
+    )
+
+    coding = knowledge_path / "coding.md"
+    coding.write_text(
+        "Small function guidelines: functions should be small and readable.",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "noisy_rag_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "token expiration policy",
+                    "query": "token expiration",
+                    "expected_source_contains": "security.md",
+                    "expected_text_contains": "Token expiration policy",
+                },
+                {
+                    "name": "small function guideline",
+                    "query": "small function",
+                    "expected_source_contains": "coding.md",
+                    "expected_text_contains": "Small function guidelines",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    output = run_strategy_comparison_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--baseline-strategy",
+            "term-frequency",
+            "--strategies",
+            "binary-overlap",
+            "hybrid-lexical",
+            "--max-regressed-cases",
+            "0",
+            "--min-improved-cases",
+            "1",
+        ]
+    )
+
+    assert [
+        decision["strategy"]
+        for decision in output["candidate_decisions"]
+    ] == [
+        "binary-overlap",
+        "hybrid-lexical",
+    ]
+
+    assert [
+        decision["accepted"]
+        for decision in output["candidate_decisions"]
+    ] == [
+        True,
+        True,
+    ]
+
+    assert output["best_accepted_strategy"] == "binary-overlap"
+
+def test_format_strategy_comparison_summary_includes_accepted_candidate_decisions():
+    output = {
+        "best_strategy": "binary-overlap",
+        "best_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "baseline_strategy": "term-frequency",
+        "results": [
+            {
+                "retrieval_strategy": "term-frequency",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 0.0,
+                "mean_reciprocal_rank": 0.5,
+            },
+            {
+                "retrieval_strategy": "binary-overlap",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 1.0,
+                "mean_reciprocal_rank": 1.0,
+            },
+        ],
+        "strategy_diagnostics": [
+            {
+                "baseline_strategy": "term-frequency",
+                "strategy": "binary-overlap",
+                "improved_count": 2,
+                "regressed_count": 0,
+                "unchanged_count": 0,
+                "improved_cases": [],
+                "regressed_cases": [],
+                "unchanged_cases": [],
+            }
+        ],
+        "candidate_decisions": [
+            {
+                "strategy": "binary-overlap",
+                "baseline_strategy": "term-frequency",
+                "improved_count": 2,
+                "regressed_count": 0,
+                "unchanged_count": 0,
+                "accepted": True,
+                "rejection_reasons": [],
+            }
+        ],
+        "best_accepted_strategy": "binary-overlap",
+        "best_accepted_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+    }
+
+    assert format_strategy_comparison_summary(output) == "\n".join(
+        [
+            "RAG strategy comparison",
+            "strategy          hit_rate  top_1  mrr",
+            "term-frequency    1.00      0.00   0.50",
+            "binary-overlap    1.00      1.00   1.00",
+            "",
+            "Best strategy: binary-overlap (mrr=1.00, top_1=1.00, hit_rate=1.00)",
+            "",
+            "Baseline strategy: term-frequency",
+            "Strategy diagnostics vs baseline:",
+            "binary-overlap: improved=2, regressed=0, unchanged=0",
+            "",
+            "Candidate decisions:",
+            "binary-overlap: accepted=true, improved=2, regressed=0",
+            "",
+            "Best accepted strategy: binary-overlap",
+        ]
+    )
+
+def test_format_strategy_comparison_summary_includes_rejected_candidate_decisions():
+    output = {
+        "best_strategy": "binary-overlap",
+        "best_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "baseline_strategy": "binary-overlap",
+        "results": [
+            {
+                "retrieval_strategy": "binary-overlap",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 1.0,
+                "mean_reciprocal_rank": 1.0,
+            },
+            {
+                "retrieval_strategy": "term-frequency",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 0.0,
+                "mean_reciprocal_rank": 0.5,
+            },
+        ],
+        "strategy_diagnostics": [
+            {
+                "baseline_strategy": "binary-overlap",
+                "strategy": "term-frequency",
+                "improved_count": 0,
+                "regressed_count": 2,
+                "unchanged_count": 0,
+                "improved_cases": [],
+                "regressed_cases": [],
+                "unchanged_cases": [],
+            }
+        ],
+        "candidate_decisions": [
+            {
+                "strategy": "term-frequency",
+                "baseline_strategy": "binary-overlap",
+                "improved_count": 0,
+                "regressed_count": 2,
+                "unchanged_count": 0,
+                "accepted": False,
+                "rejection_reasons": [
+                    "too_many_regressions",
+                    "insufficient_improvements",
+                ],
+            }
+        ],
+        "best_accepted_strategy": None,
+        "best_accepted_strategy_metrics": None,
+    }
+
+    assert format_strategy_comparison_summary(output) == "\n".join(
+        [
+            "RAG strategy comparison",
+            "strategy          hit_rate  top_1  mrr",
+            "binary-overlap    1.00      1.00   1.00",
+            "term-frequency    1.00      0.00   0.50",
+            "",
+            "Best strategy: binary-overlap (mrr=1.00, top_1=1.00, hit_rate=1.00)",
+            "",
+            "Baseline strategy: binary-overlap",
+            "Strategy diagnostics vs baseline:",
+            "term-frequency: improved=0, regressed=2, unchanged=0",
+            "",
+            "Candidate decisions:",
+            "term-frequency: accepted=false, improved=0, regressed=2, reasons=too_many_regressions,insufficient_improvements",
+            "",
+            "Best accepted strategy: <none>",
+        ]
+    )
+
+

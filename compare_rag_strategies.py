@@ -223,6 +223,78 @@ def build_strategy_diagnostics(
     return diagnostics
 
 
+def build_candidate_strategy_decision(
+    *,
+    diagnostic: dict[str, Any],
+    max_regressed_cases: int | None,
+    min_improved_cases: int | None,
+) -> dict[str, Any]:
+    rejection_reasons = []
+
+    if (
+        max_regressed_cases is not None
+        and diagnostic["regressed_count"] > max_regressed_cases
+    ):
+        rejection_reasons.append("too_many_regressions")
+
+    if (
+        min_improved_cases is not None
+        and diagnostic["improved_count"] < min_improved_cases
+    ):
+        rejection_reasons.append("insufficient_improvements")
+
+    return {
+        "strategy": diagnostic["strategy"],
+        "baseline_strategy": diagnostic["baseline_strategy"],
+        "improved_count": diagnostic["improved_count"],
+        "regressed_count": diagnostic["regressed_count"],
+        "unchanged_count": diagnostic["unchanged_count"],
+        "accepted": len(rejection_reasons) == 0,
+        "rejection_reasons": rejection_reasons,
+    }
+
+
+def build_candidate_strategy_decisions(
+    *,
+    strategy_diagnostics: list[dict[str, Any]],
+    max_regressed_cases: int | None,
+    min_improved_cases: int | None,
+) -> list[dict[str, Any]]:
+    return [
+        build_candidate_strategy_decision(
+            diagnostic=diagnostic,
+            max_regressed_cases=max_regressed_cases,
+            min_improved_cases=min_improved_cases,
+        )
+        for diagnostic in strategy_diagnostics
+    ]
+
+
+def select_best_accepted_strategy_result(
+    *,
+    strategy_results: list[dict[str, Any]],
+    candidate_decisions: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    accepted_strategies = {
+        decision["strategy"]
+        for decision in candidate_decisions
+        if decision["accepted"]
+    }
+
+    accepted_results = [
+        result
+        for result in strategy_results
+        if result["retrieval_strategy"] in accepted_strategies
+    ]
+
+    if not accepted_results:
+        return None
+
+    return select_best_strategy_result(
+        accepted_results,
+    )
+
+
 def build_regression_gate_result(
     *,
     strategy_diagnostics: list[dict[str, Any]],
@@ -513,6 +585,43 @@ def format_strategy_comparison_summary(
                         f"-> {format_matched_rank(case_delta['candidate_matched_rank'])}"
                     )
 
+    if "candidate_decisions" in output:
+        lines.extend(
+            [
+                "",
+                "Candidate decisions:",
+            ]
+        )
+
+        for decision in output["candidate_decisions"]:
+            line = (
+                f"{decision['strategy']}: "
+                f"accepted={str(decision['accepted']).lower()}, "
+                f"improved={decision['improved_count']}, "
+                f"regressed={decision['regressed_count']}"
+            )
+
+            if decision["rejection_reasons"]:
+                line += (
+                    ", reasons="
+                    + ",".join(decision["rejection_reasons"])
+                )
+
+            lines.append(line)
+
+        best_accepted_strategy = output.get("best_accepted_strategy")
+
+        lines.extend(
+            [
+                "",
+                (
+                    "Best accepted strategy: "
+                    f"{best_accepted_strategy if best_accepted_strategy is not None else '<none>'}"
+                ),
+            ]
+        )
+
+
     if "regression_gate" in output:
         gate = output["regression_gate"]
 
@@ -717,6 +826,32 @@ def run_strategy_comparison(
             baseline_strategy=args.baseline_strategy,
         )
 
+        output["candidate_decisions"] = build_candidate_strategy_decisions(
+            strategy_diagnostics=output["strategy_diagnostics"],
+            max_regressed_cases=args.max_regressed_cases,
+            min_improved_cases=args.min_improved_cases,
+        )
+
+        best_accepted_result = select_best_accepted_strategy_result(
+            strategy_results=strategy_results,
+            candidate_decisions=output["candidate_decisions"],
+        )
+
+        if best_accepted_result is None:
+            output["best_accepted_strategy"] = None
+            output["best_accepted_strategy_metrics"] = None
+        else:
+            output["best_accepted_strategy"] = best_accepted_result[
+                "retrieval_strategy"
+            ]
+            output["best_accepted_strategy_metrics"] = {
+                "hit_rate": best_accepted_result["hit_rate"],
+                "top_1_accuracy": best_accepted_result["top_1_accuracy"],
+                "mean_reciprocal_rank": best_accepted_result[
+                    "mean_reciprocal_rank"
+                ],
+            }
+
         if args.max_regressed_cases is not None:
             output["regression_gate"] = build_regression_gate_result(
                 strategy_diagnostics=output["strategy_diagnostics"],
@@ -728,6 +863,7 @@ def run_strategy_comparison(
                 strategy_diagnostics=output["strategy_diagnostics"],
                 min_improved_cases=args.min_improved_cases,
             )
+
 
     quality_gate = build_quality_gate_result(
         output=output,
