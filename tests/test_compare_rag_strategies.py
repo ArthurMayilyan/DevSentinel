@@ -3,7 +3,10 @@ import json
 
 from compare_rag_strategies import (
     build_arg_parser,
+    build_strategy_diagnostics,
+    compare_strategy_result_against_baseline,
     format_strategy_comparison_summary,
+    normalize_strategy_list,
     run_strategy_comparison_from_args,
     select_best_strategy_result,
 )
@@ -26,6 +29,7 @@ def test_compare_rag_strategies_parser_accepts_required_arguments():
     assert args.top_k == 3
     assert args.summary_only is False
     assert args.output is None
+    assert args.baseline_strategy is None
 
 
 def test_compare_rag_strategies_parser_accepts_multiple_strategies():
@@ -461,3 +465,393 @@ def test_select_best_strategy_result_keeps_first_strategy_when_metrics_tie():
 def test_select_best_strategy_result_rejects_empty_results():
     with pytest.raises(ValueError):
         select_best_strategy_result([])        
+
+def test_compare_rag_strategies_parser_accepts_baseline_strategy():
+    parser = build_arg_parser()
+
+    args = parser.parse_args(
+        [
+            "--knowledge-path",
+            "./knowledge_base",
+            "--cases",
+            "./eval_cases/rag_eval_cases.json",
+            "--baseline-strategy",
+            "term-frequency",
+        ]
+    )
+
+    assert args.baseline_strategy == "term-frequency"
+
+def test_normalize_strategy_list_returns_original_strategies_without_baseline():
+    assert normalize_strategy_list(
+        strategies=[
+            "binary-overlap",
+            "hybrid-lexical",
+        ],
+        baseline_strategy=None,
+    ) == [
+        "binary-overlap",
+        "hybrid-lexical",
+    ]
+
+
+def test_normalize_strategy_list_adds_baseline_first_when_missing():
+    assert normalize_strategy_list(
+        strategies=[
+            "binary-overlap",
+            "hybrid-lexical",
+        ],
+        baseline_strategy="term-frequency",
+    ) == [
+        "term-frequency",
+        "binary-overlap",
+        "hybrid-lexical",
+    ]
+
+
+def test_normalize_strategy_list_does_not_duplicate_baseline():
+    assert normalize_strategy_list(
+        strategies=[
+            "term-frequency",
+            "binary-overlap",
+        ],
+        baseline_strategy="term-frequency",
+    ) == [
+        "term-frequency",
+        "binary-overlap",
+    ]
+
+def test_compare_strategy_result_against_baseline_detects_improved_case():
+    baseline_result = {
+        "retrieval_strategy": "term-frequency",
+        "results": [
+            {
+                "name": "token expiration policy",
+                "query": "token expiration",
+                "matched_rank": 2,
+                "reciprocal_rank": 0.5,
+            }
+        ],
+    }
+
+    candidate_result = {
+        "retrieval_strategy": "binary-overlap",
+        "results": [
+            {
+                "name": "token expiration policy",
+                "query": "token expiration",
+                "matched_rank": 1,
+                "reciprocal_rank": 1.0,
+            }
+        ],
+    }
+
+    diagnostic = compare_strategy_result_against_baseline(
+        baseline_result=baseline_result,
+        candidate_result=candidate_result,
+    )
+
+    assert diagnostic["baseline_strategy"] == "term-frequency"
+    assert diagnostic["strategy"] == "binary-overlap"
+    assert diagnostic["improved_count"] == 1
+    assert diagnostic["regressed_count"] == 0
+    assert diagnostic["unchanged_count"] == 0
+    assert diagnostic["improved_cases"] == [
+        {
+            "name": "token expiration policy",
+            "query": "token expiration",
+            "baseline_matched_rank": 2,
+            "candidate_matched_rank": 1,
+            "baseline_reciprocal_rank": 0.5,
+            "candidate_reciprocal_rank": 1.0,
+        }
+    ]
+
+def test_compare_strategy_result_against_baseline_detects_regressed_case():
+    baseline_result = {
+        "retrieval_strategy": "binary-overlap",
+        "results": [
+            {
+                "name": "token expiration policy",
+                "query": "token expiration",
+                "matched_rank": 1,
+                "reciprocal_rank": 1.0,
+            }
+        ],
+    }
+
+    candidate_result = {
+        "retrieval_strategy": "term-frequency",
+        "results": [
+            {
+                "name": "token expiration policy",
+                "query": "token expiration",
+                "matched_rank": 2,
+                "reciprocal_rank": 0.5,
+            }
+        ],
+    }
+
+    diagnostic = compare_strategy_result_against_baseline(
+        baseline_result=baseline_result,
+        candidate_result=candidate_result,
+    )
+
+    assert diagnostic["improved_count"] == 0
+    assert diagnostic["regressed_count"] == 1
+    assert diagnostic["unchanged_count"] == 0
+    assert diagnostic["regressed_cases"][0]["name"] == "token expiration policy"
+
+def test_compare_strategy_result_against_baseline_detects_unchanged_case():
+    baseline_result = {
+        "retrieval_strategy": "binary-overlap",
+        "results": [
+            {
+                "name": "token expiration policy",
+                "query": "token expiration",
+                "matched_rank": 1,
+                "reciprocal_rank": 1.0,
+            }
+        ],
+    }
+
+    candidate_result = {
+        "retrieval_strategy": "hybrid-lexical",
+        "results": [
+            {
+                "name": "token expiration policy",
+                "query": "token expiration",
+                "matched_rank": 1,
+                "reciprocal_rank": 1.0,
+            }
+        ],
+    }
+
+    diagnostic = compare_strategy_result_against_baseline(
+        baseline_result=baseline_result,
+        candidate_result=candidate_result,
+    )
+
+    assert diagnostic["improved_count"] == 0
+    assert diagnostic["regressed_count"] == 0
+    assert diagnostic["unchanged_count"] == 1
+    assert diagnostic["unchanged_cases"][0]["name"] == "token expiration policy"
+
+
+def test_build_strategy_diagnostics_compares_all_candidates_to_baseline():
+    strategy_results = [
+        {
+            "retrieval_strategy": "term-frequency",
+            "results": [
+                {
+                    "name": "token expiration policy",
+                    "query": "token expiration",
+                    "matched_rank": 2,
+                    "reciprocal_rank": 0.5,
+                }
+            ],
+        },
+        {
+            "retrieval_strategy": "binary-overlap",
+            "results": [
+                {
+                    "name": "token expiration policy",
+                    "query": "token expiration",
+                    "matched_rank": 1,
+                    "reciprocal_rank": 1.0,
+                }
+            ],
+        },
+        {
+            "retrieval_strategy": "hybrid-lexical",
+            "results": [
+                {
+                    "name": "token expiration policy",
+                    "query": "token expiration",
+                    "matched_rank": 1,
+                    "reciprocal_rank": 1.0,
+                }
+            ],
+        },
+    ]
+
+    diagnostics = build_strategy_diagnostics(
+        strategy_results=strategy_results,
+        baseline_strategy="term-frequency",
+    )
+
+    assert [
+        diagnostic["strategy"]
+        for diagnostic in diagnostics
+    ] == [
+        "binary-overlap",
+        "hybrid-lexical",
+    ]
+
+    assert [
+        diagnostic["improved_count"]
+        for diagnostic in diagnostics
+    ] == [
+        1,
+        1,
+    ]
+
+def test_run_strategy_comparison_from_args_adds_baseline_diagnostics(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base_noisy"
+    knowledge_path.mkdir()
+
+    token_noise = knowledge_path / "noise_tokens.md"
+    token_noise.write_text(
+        "token token token token token token token token",
+        encoding="utf-8",
+    )
+
+    security = knowledge_path / "security.md"
+    security.write_text(
+        "Token expiration policy: tokens must be signed and must expire.",
+        encoding="utf-8",
+    )
+
+    function_noise = knowledge_path / "noise_functions.md"
+    function_noise.write_text(
+        "function function function function function function",
+        encoding="utf-8",
+    )
+
+    coding = knowledge_path / "coding.md"
+    coding.write_text(
+        "Small function guidelines: functions should be small and readable.",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "noisy_rag_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "token expiration policy",
+                    "query": "token expiration",
+                    "expected_source_contains": "security.md",
+                    "expected_text_contains": "Token expiration policy",
+                },
+                {
+                    "name": "small function guideline",
+                    "query": "small function",
+                    "expected_source_contains": "coding.md",
+                    "expected_text_contains": "Small function guidelines",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    output = run_strategy_comparison_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--baseline-strategy",
+            "term-frequency",
+            "--strategies",
+            "binary-overlap",
+            "hybrid-lexical",
+        ]
+    )
+
+    assert output["strategies"] == [
+        "term-frequency",
+        "binary-overlap",
+        "hybrid-lexical",
+    ]
+    assert output["baseline_strategy"] == "term-frequency"
+    assert output["best_strategy"] == "binary-overlap"
+
+    assert [
+        diagnostic["strategy"]
+        for diagnostic in output["strategy_diagnostics"]
+    ] == [
+        "binary-overlap",
+        "hybrid-lexical",
+    ]
+
+    assert [
+        diagnostic["improved_count"]
+        for diagnostic in output["strategy_diagnostics"]
+    ] == [
+        2,
+        2,
+    ]
+
+    assert [
+        diagnostic["regressed_count"]
+        for diagnostic in output["strategy_diagnostics"]
+    ] == [
+        0,
+        0,
+    ]
+
+def test_format_strategy_comparison_summary_includes_baseline_diagnostics():
+    output = {
+        "best_strategy": "binary-overlap",
+        "best_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "baseline_strategy": "term-frequency",
+        "results": [
+            {
+                "retrieval_strategy": "term-frequency",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 0.0,
+                "mean_reciprocal_rank": 0.5,
+            },
+            {
+                "retrieval_strategy": "binary-overlap",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 1.0,
+                "mean_reciprocal_rank": 1.0,
+            },
+        ],
+        "strategy_diagnostics": [
+            {
+                "baseline_strategy": "term-frequency",
+                "strategy": "binary-overlap",
+                "improved_count": 1,
+                "regressed_count": 0,
+                "unchanged_count": 0,
+                "improved_cases": [
+                    {
+                        "name": "token expiration policy",
+                        "query": "token expiration",
+                        "baseline_matched_rank": 2,
+                        "candidate_matched_rank": 1,
+                        "baseline_reciprocal_rank": 0.5,
+                        "candidate_reciprocal_rank": 1.0,
+                    }
+                ],
+                "regressed_cases": [],
+                "unchanged_cases": [],
+            }
+        ],
+    }
+
+    assert format_strategy_comparison_summary(output) == "\n".join(
+        [
+            "RAG strategy comparison",
+            "strategy          hit_rate  top_1  mrr",
+            "term-frequency    1.00      0.00   0.50",
+            "binary-overlap    1.00      1.00   1.00",
+            "",
+            "Best strategy: binary-overlap (mrr=1.00, top_1=1.00, hit_rate=1.00)",
+            "",
+            "Baseline strategy: term-frequency",
+            "Strategy diagnostics vs baseline:",
+            "binary-overlap: improved=1, regressed=0, unchanged=0",
+            "  improved:",
+            "    - token expiration policy: rank 2 -> 1",
+        ]
+    )
+
+                        

@@ -39,6 +39,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--baseline-strategy",
+        choices=sorted(SUPPORTED_RETRIEVAL_STRATEGIES),
+        default=None,
+        help=(
+            "Optional baseline strategy for per-case diagnostics. "
+            "If omitted, no baseline diagnostics are produced."
+        ),
+    )
+
+    parser.add_argument(
         "--top-k",
         type=int,
         default=3,
@@ -59,6 +69,119 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     return parser
 
+def get_case_reciprocal_rank(
+    case_result: dict[str, Any],
+) -> float:
+    reciprocal_rank = case_result.get("reciprocal_rank")
+
+    if reciprocal_rank is None:
+        return 0.0
+
+    return float(reciprocal_rank)
+
+def build_case_rank_delta(
+    *,
+    baseline_case: dict[str, Any],
+    candidate_case: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "name": candidate_case["name"],
+        "query": candidate_case["query"],
+        "baseline_matched_rank": baseline_case.get("matched_rank"),
+        "candidate_matched_rank": candidate_case.get("matched_rank"),
+        "baseline_reciprocal_rank": get_case_reciprocal_rank(baseline_case),
+        "candidate_reciprocal_rank": get_case_reciprocal_rank(candidate_case),
+    }
+
+def compare_strategy_result_against_baseline(
+    *,
+    baseline_result: dict[str, Any],
+    candidate_result: dict[str, Any],
+) -> dict[str, Any]:
+    baseline_cases = index_strategy_cases_by_name(
+        baseline_result,
+    )
+    candidate_cases = index_strategy_cases_by_name(
+        candidate_result,
+    )
+
+    improved_cases = []
+    regressed_cases = []
+    unchanged_cases = []
+
+    for case_name, baseline_case in baseline_cases.items():
+        if case_name not in candidate_cases:
+            raise ValueError(
+                f"Candidate strategy is missing case result: {case_name}"
+            )
+
+        candidate_case = candidate_cases[case_name]
+
+        baseline_rr = get_case_reciprocal_rank(
+            baseline_case,
+        )
+        candidate_rr = get_case_reciprocal_rank(
+            candidate_case,
+        )
+
+        case_delta = build_case_rank_delta(
+            baseline_case=baseline_case,
+            candidate_case=candidate_case,
+        )
+
+        if candidate_rr > baseline_rr:
+            improved_cases.append(case_delta)
+        elif candidate_rr < baseline_rr:
+            regressed_cases.append(case_delta)
+        else:
+            unchanged_cases.append(case_delta)
+
+    return {
+        "baseline_strategy": baseline_result["retrieval_strategy"],
+        "strategy": candidate_result["retrieval_strategy"],
+        "improved_count": len(improved_cases),
+        "regressed_count": len(regressed_cases),
+        "unchanged_count": len(unchanged_cases),
+        "improved_cases": improved_cases,
+        "regressed_cases": regressed_cases,
+        "unchanged_cases": unchanged_cases,
+    }
+
+def find_strategy_result(
+    *,
+    strategy_results: list[dict[str, Any]],
+    strategy: str,
+) -> dict[str, Any]:
+    for strategy_result in strategy_results:
+        if strategy_result["retrieval_strategy"] == strategy:
+            return strategy_result
+
+    raise ValueError(f"Strategy result not found: {strategy}")
+
+def build_strategy_diagnostics(
+    *,
+    strategy_results: list[dict[str, Any]],
+    baseline_strategy: str,
+) -> list[dict[str, Any]]:
+    baseline_result = find_strategy_result(
+        strategy_results=strategy_results,
+        strategy=baseline_strategy,
+    )
+
+    diagnostics = []
+
+    for candidate_result in strategy_results:
+        if candidate_result["retrieval_strategy"] == baseline_strategy:
+            continue
+
+        diagnostics.append(
+            compare_strategy_result_against_baseline(
+                baseline_result=baseline_result,
+                candidate_result=candidate_result,
+            )
+        )
+
+    return diagnostics
 
 def evaluate_strategy(
     *,
@@ -139,6 +262,14 @@ def run_strategy_comparison_from_args(
 
     return output
 
+def format_matched_rank(
+    value: Any,
+) -> str:
+    if value is None:
+        return "<missing>"
+
+    return str(value)
+
 
 def format_strategy_comparison_summary(
     output: dict[str, Any],
@@ -176,7 +307,76 @@ def format_strategy_comparison_summary(
             ]
         )
 
+    if "strategy_diagnostics" in output:
+        lines.extend(
+            [
+                "",
+                f"Baseline strategy: {output['baseline_strategy']}",
+                "Strategy diagnostics vs baseline:",
+            ]
+        )
+
+        for diagnostic in output["strategy_diagnostics"]:
+            lines.append(
+                f"{diagnostic['strategy']}: "
+                f"improved={diagnostic['improved_count']}, "
+                f"regressed={diagnostic['regressed_count']}, "
+                f"unchanged={diagnostic['unchanged_count']}"
+            )
+
+            if diagnostic["improved_cases"]:
+                lines.append("  improved:")
+
+                for case_delta in diagnostic["improved_cases"]:
+                    lines.append(
+                        f"    - {case_delta['name']}: "
+                        f"rank {format_matched_rank(case_delta['baseline_matched_rank'])} "
+                        f"-> {format_matched_rank(case_delta['candidate_matched_rank'])}"
+                    )
+
+            if diagnostic["regressed_cases"]:
+                lines.append("  regressed:")
+
+                for case_delta in diagnostic["regressed_cases"]:
+                    lines.append(
+                        f"    - {case_delta['name']}: "
+                        f"rank {format_matched_rank(case_delta['baseline_matched_rank'])} "
+                        f"-> {format_matched_rank(case_delta['candidate_matched_rank'])}"
+                    )
+
     return "\n".join(lines)
+
+
+def normalize_strategy_list(
+    *,
+    strategies: list[str],
+    baseline_strategy: str | None,
+) -> list[str]:
+    normalized_strategies = []
+
+    if baseline_strategy is not None:
+        normalized_strategies.append(baseline_strategy)
+
+    for strategy in strategies:
+        if strategy not in normalized_strategies:
+            normalized_strategies.append(strategy)
+
+    return normalized_strategies
+
+def index_strategy_cases_by_name(
+    strategy_result: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    cases_by_name = {}
+
+    for case_result in strategy_result["results"]:
+        case_name = case_result["name"]
+
+        if case_name in cases_by_name:
+            raise ValueError(f"Duplicate case name: {case_name}")
+
+        cases_by_name[case_name] = case_result
+
+    return cases_by_name
 
 
 def run_strategy_comparison(
@@ -190,6 +390,11 @@ def run_strategy_comparison(
         path=args.cases,
     )
 
+    strategy_names = normalize_strategy_list(
+        strategies=args.strategies,
+        baseline_strategy=args.baseline_strategy,
+    )
+
     strategy_results = [
         evaluate_strategy(
             store=store,
@@ -197,7 +402,7 @@ def run_strategy_comparison(
             strategy=strategy,
             top_k=args.top_k,
         )
-        for strategy in args.strategies
+        for strategy in strategy_names
     ]
 
     best_result = select_best_strategy_result(
@@ -208,7 +413,7 @@ def run_strategy_comparison(
         "knowledge_path": args.knowledge_path,
         "cases": args.cases,
         "top_k": args.top_k,
-        "strategies": args.strategies,
+        "strategies": strategy_names,
         "best_strategy": best_result["retrieval_strategy"],
         "best_strategy_metrics": {
             "hit_rate": best_result["hit_rate"],
@@ -217,6 +422,13 @@ def run_strategy_comparison(
         },
         "results": strategy_results,
     }
+
+    if args.baseline_strategy is not None:
+        output["baseline_strategy"] = args.baseline_strategy
+        output["strategy_diagnostics"] = build_strategy_diagnostics(
+            strategy_results=strategy_results,
+            baseline_strategy=args.baseline_strategy,
+        )
 
     if args.output:
         output_path = Path(args.output)
