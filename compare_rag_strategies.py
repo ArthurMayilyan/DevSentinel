@@ -1,3 +1,4 @@
+import sys
 import argparse
 import json
 from pathlib import Path
@@ -65,6 +66,44 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--output",
         default=None,
         help="Optional path where comparison JSON should be written.",
+    )
+
+    parser.add_argument(
+        "--max-regressed-cases",
+        type=int,
+        default=None,
+        help=(
+            "Optional maximum allowed number of regressed cases across all "
+            "baseline diagnostics. Requires --baseline-strategy."
+        ),
+    )    
+
+    parser.add_argument(
+        "--fail-on-regression-gate",
+        action="store_true",
+        help=(
+            "Exit with code 1 when the regression gate fails. "
+            "Requires --max-regressed-cases."
+        ),
+    )
+
+    parser.add_argument(
+        "--min-improved-cases",
+        type=int,
+        default=None,
+        help=(
+            "Optional minimum required number of improved cases across all "
+            "baseline diagnostics. Requires --baseline-strategy."
+        ),
+    )
+
+    parser.add_argument(
+        "--fail-on-improvement-gate",
+        action="store_true",
+        help=(
+            "Exit with code 1 when the improvement gate fails. "
+            "Requires --min-improved-cases."
+        ),
     )
 
     return parser
@@ -182,6 +221,81 @@ def build_strategy_diagnostics(
         )
 
     return diagnostics
+
+
+def build_regression_gate_result(
+    *,
+    strategy_diagnostics: list[dict[str, Any]],
+    max_regressed_cases: int,
+) -> dict[str, Any]:
+    total_regressed_cases = sum(
+        diagnostic["regressed_count"]
+        for diagnostic in strategy_diagnostics
+    )
+
+    passed = total_regressed_cases <= max_regressed_cases
+
+    return {
+        "max_regressed_cases": max_regressed_cases,
+        "total_regressed_cases": total_regressed_cases,
+        "passed": passed,
+    }
+
+
+def build_improvement_gate_result(
+    *,
+    strategy_diagnostics: list[dict[str, Any]],
+    min_improved_cases: int,
+) -> dict[str, Any]:
+    total_improved_cases = sum(
+        diagnostic["improved_count"]
+        for diagnostic in strategy_diagnostics
+    )
+
+    passed = total_improved_cases >= min_improved_cases
+
+    return {
+        "min_improved_cases": min_improved_cases,
+        "total_improved_cases": total_improved_cases,
+        "passed": passed,
+    }
+
+
+def should_fail_due_to_regression_gate(
+    *,
+    output: dict[str, Any],
+    fail_on_regression_gate: bool,
+) -> bool:
+    if not fail_on_regression_gate:
+        return False
+
+    regression_gate = output.get("regression_gate")
+
+    if regression_gate is None:
+        raise ValueError(
+            "fail_on_regression_gate requires regression_gate in output."
+        )
+
+    return not regression_gate["passed"]
+
+
+def should_fail_due_to_improvement_gate(
+    *,
+    output: dict[str, Any],
+    fail_on_improvement_gate: bool,
+) -> bool:
+    if not fail_on_improvement_gate:
+        return False
+
+    improvement_gate = output.get("improvement_gate")
+
+    if improvement_gate is None:
+        raise ValueError(
+            "fail_on_improvement_gate requires improvement_gate in output."
+        )
+
+    return not improvement_gate["passed"]
+
 
 def evaluate_strategy(
     *,
@@ -344,6 +458,36 @@ def format_strategy_comparison_summary(
                         f"-> {format_matched_rank(case_delta['candidate_matched_rank'])}"
                     )
 
+    if "regression_gate" in output:
+        gate = output["regression_gate"]
+
+        lines.extend(
+            [
+                "",
+                (
+                    "Regression gate: "
+                    f"max_regressed_cases={gate['max_regressed_cases']}, "
+                    f"total_regressed_cases={gate['total_regressed_cases']}, "
+                    f"passed={str(gate['passed']).lower()}"
+                ),
+            ]
+        )
+
+    if "improvement_gate" in output:
+        gate = output["improvement_gate"]
+
+        lines.extend(
+            [
+                "",
+                (
+                    "Improvement gate: "
+                    f"min_improved_cases={gate['min_improved_cases']}, "
+                    f"total_improved_cases={gate['total_improved_cases']}, "
+                    f"passed={str(gate['passed']).lower()}"
+                ),
+            ]
+        )        
+
     return "\n".join(lines)
 
 
@@ -379,9 +523,70 @@ def index_strategy_cases_by_name(
     return cases_by_name
 
 
+def validate_regression_gate_args(
+    *,
+    baseline_strategy: str | None,
+    max_regressed_cases: int | None,
+    fail_on_regression_gate: bool = False,
+    min_improved_cases: int | None = None,
+    fail_on_improvement_gate: bool = False,
+) -> None:
+    if not isinstance(fail_on_regression_gate, bool):
+        raise ValueError("fail_on_regression_gate must be a boolean.")
+
+    if not isinstance(fail_on_improvement_gate, bool):
+        raise ValueError("fail_on_improvement_gate must be a boolean.")
+
+    if fail_on_regression_gate and max_regressed_cases is None:
+        raise ValueError(
+            "fail_on_regression_gate requires max_regressed_cases."
+        )
+
+    if fail_on_improvement_gate and min_improved_cases is None:
+        raise ValueError(
+            "fail_on_improvement_gate requires min_improved_cases."
+        )
+
+    if max_regressed_cases is not None:
+        if baseline_strategy is None:
+            raise ValueError(
+                "max_regressed_cases requires baseline_strategy."
+            )
+
+        if type(max_regressed_cases) is not int:
+            raise ValueError("max_regressed_cases must be an integer.")
+
+        if max_regressed_cases < 0:
+            raise ValueError(
+                "max_regressed_cases must be greater than or equal to 0."
+            )
+
+    if min_improved_cases is not None:
+        if baseline_strategy is None:
+            raise ValueError(
+                "min_improved_cases requires baseline_strategy."
+            )
+
+        if type(min_improved_cases) is not int:
+            raise ValueError("min_improved_cases must be an integer.")
+
+        if min_improved_cases < 0:
+            raise ValueError(
+                "min_improved_cases must be greater than or equal to 0."
+            )
+    
+
 def run_strategy_comparison(
     args: argparse.Namespace,
 ) -> dict[str, Any]:
+    validate_regression_gate_args(
+        baseline_strategy=args.baseline_strategy,
+        max_regressed_cases=args.max_regressed_cases,
+        fail_on_regression_gate=args.fail_on_regression_gate,
+        min_improved_cases=args.min_improved_cases,
+        fail_on_improvement_gate=args.fail_on_improvement_gate,
+    )
+
     store = load_rag_store_from_path(
         path=args.knowledge_path,
     )
@@ -430,6 +635,18 @@ def run_strategy_comparison(
             baseline_strategy=args.baseline_strategy,
         )
 
+        if args.max_regressed_cases is not None:
+            output["regression_gate"] = build_regression_gate_result(
+                strategy_diagnostics=output["strategy_diagnostics"],
+                max_regressed_cases=args.max_regressed_cases,
+            )
+
+        if args.min_improved_cases is not None:
+            output["improvement_gate"] = build_improvement_gate_result(
+                strategy_diagnostics=output["strategy_diagnostics"],
+                min_improved_cases=args.min_improved_cases,
+            )
+
     if args.output:
         output_path = Path(args.output)
         output_path.write_text(
@@ -448,6 +665,7 @@ def run_strategy_comparison_from_args(
 
     return run_strategy_comparison(args)
 
+
 def main() -> None:
     parser = build_arg_parser()
     args = parser.parse_args()
@@ -463,6 +681,18 @@ def main() -> None:
                 indent=2,
             )
         )
+
+    if should_fail_due_to_regression_gate(
+        output=output,
+        fail_on_regression_gate=args.fail_on_regression_gate,
+    ):
+        sys.exit(1)
+
+    if should_fail_due_to_improvement_gate(
+        output=output,
+        fail_on_improvement_gate=args.fail_on_improvement_gate,
+    ):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
