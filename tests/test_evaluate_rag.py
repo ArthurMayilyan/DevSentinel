@@ -9,6 +9,7 @@ from evaluate_rag import (
 )
 from rag_retrievers import (
     BinaryOverlapRagRetriever,
+    HybridLexicalRagRetriever,
     TermFrequencyRagRetriever,
 )
 from rag_store import InMemoryRagStore
@@ -1062,4 +1063,85 @@ def test_run_rag_eval_from_args_uses_term_frequency_strategy(tmp_path):
         str(complete),
     ]
 
-                        
+
+def test_evaluate_rag_parser_accepts_hybrid_lexical_retrieval_strategy():
+    parser = build_arg_parser()
+
+    args = parser.parse_args(
+        [
+            "--knowledge-path",
+            "./knowledge_base",
+            "--cases",
+            "./eval_cases/rag_eval_cases.json",
+            "--retrieval-strategy",
+            "hybrid-lexical",
+        ]
+    )
+
+    assert args.retrieval_strategy == "hybrid-lexical"
+
+def test_build_rag_search_engine_returns_hybrid_lexical_retriever():
+    store = InMemoryRagStore()
+
+    search_engine = build_rag_search_engine(
+        store=store,
+        retrieval_strategy="hybrid-lexical",
+    )
+
+    assert isinstance(search_engine, HybridLexicalRagRetriever)
+    assert search_engine.store is store
+
+def test_run_rag_eval_from_args_uses_hybrid_lexical_strategy(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base"
+    knowledge_path.mkdir()
+
+    repeated = knowledge_path / "repeated.md"
+    repeated.write_text(
+        "token token token token",
+        encoding="utf-8",
+    )
+
+    complete = knowledge_path / "complete.md"
+    complete.write_text(
+        "token expiration",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "rag_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "complete token expiration",
+                    "query": "token expiration",
+                    "expected_source_contains": "complete.md",
+                    "expected_text_contains": "token expiration",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    output = run_rag_eval_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--retrieval-strategy",
+            "hybrid-lexical",
+        ]
+    )
+
+    assert output["retrieval_strategy"] == "hybrid-lexical"
+    assert output["passed_cases"] == 1
+    assert output["hit_rate"] == 1.0
+    assert output["top_1_accuracy"] == 1.0
+    assert output["mean_reciprocal_rank"] == 1.0
+    assert output["results"][0]["matched_rank"] == 1
+    assert output["results"][0]["retrieved_sources"] == [
+        str(complete),
+        str(repeated),
+    ]
+
+                                    
