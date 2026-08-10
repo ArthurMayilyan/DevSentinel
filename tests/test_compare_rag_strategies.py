@@ -10,6 +10,7 @@ from compare_rag_strategies import (
     build_regression_gate_result,
     build_strategy_diagnostics,
     compare_strategy_result_against_baseline,
+    format_strategy_comparison_markdown_report,
     format_strategy_comparison_summary,
     normalize_strategy_list,
     run_strategy_comparison_from_args,
@@ -45,6 +46,7 @@ def test_compare_rag_strategies_parser_accepts_required_arguments():
     assert args.fail_on_regression_gate is False
     assert args.min_improved_cases is None
     assert args.fail_on_improvement_gate is False
+    assert args.report_output is None
 
 
 def test_compare_rag_strategies_parser_accepts_multiple_strategies():
@@ -2538,3 +2540,302 @@ def test_format_strategy_comparison_summary_includes_rejected_candidate_decision
     )
 
 
+def test_compare_rag_strategies_parser_accepts_report_output():
+    parser = build_arg_parser()
+
+    args = parser.parse_args(
+        [
+            "--knowledge-path",
+            "./knowledge_base",
+            "--cases",
+            "./eval_cases/rag_eval_cases.json",
+            "--report-output",
+            "./rag_strategy_report.md",
+        ]
+    )
+
+    assert args.report_output == "./rag_strategy_report.md"
+
+def test_format_strategy_comparison_markdown_report_formats_minimal_report():
+    output = {
+        "best_strategy": "binary-overlap",
+        "best_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "results": [
+            {
+                "retrieval_strategy": "binary-overlap",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 1.0,
+                "mean_reciprocal_rank": 1.0,
+            },
+        ],
+    }
+
+    assert format_strategy_comparison_markdown_report(output) == "\n".join(
+        [
+            "# RAG Strategy Comparison Report",
+            "",
+            "## Summary",
+            "",
+            "| Strategy | Hit rate | Top-1 accuracy | MRR |",
+            "|---|---:|---:|---:|",
+            "| binary-overlap | 1.00 | 1.00 | 1.00 |",
+            "",
+            "Best strategy: **binary-overlap**",
+            "",
+            "Best strategy metrics: MRR=1.00, Top-1=1.00, Hit rate=1.00",
+            "",
+        ]
+    )
+
+def test_format_strategy_comparison_markdown_report_includes_diagnostics_decisions_and_gates():
+    output = {
+        "best_strategy": "binary-overlap",
+        "best_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "baseline_strategy": "term-frequency",
+        "results": [
+            {
+                "retrieval_strategy": "term-frequency",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 0.0,
+                "mean_reciprocal_rank": 0.5,
+            },
+            {
+                "retrieval_strategy": "binary-overlap",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 1.0,
+                "mean_reciprocal_rank": 1.0,
+            },
+        ],
+        "strategy_diagnostics": [
+            {
+                "baseline_strategy": "term-frequency",
+                "strategy": "binary-overlap",
+                "improved_count": 1,
+                "regressed_count": 0,
+                "unchanged_count": 0,
+                "improved_cases": [
+                    {
+                        "name": "token expiration policy",
+                        "query": "token expiration",
+                        "baseline_matched_rank": 2,
+                        "candidate_matched_rank": 1,
+                        "baseline_reciprocal_rank": 0.5,
+                        "candidate_reciprocal_rank": 1.0,
+                    }
+                ],
+                "regressed_cases": [],
+                "unchanged_cases": [],
+            }
+        ],
+        "candidate_decisions": [
+            {
+                "strategy": "binary-overlap",
+                "baseline_strategy": "term-frequency",
+                "improved_count": 1,
+                "regressed_count": 0,
+                "unchanged_count": 0,
+                "accepted": True,
+                "rejection_reasons": [],
+            }
+        ],
+        "best_accepted_strategy": "binary-overlap",
+        "best_accepted_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "regression_gate": {
+            "max_regressed_cases": 0,
+            "total_regressed_cases": 0,
+            "passed": True,
+        },
+        "improvement_gate": {
+            "min_improved_cases": 1,
+            "total_improved_cases": 1,
+            "passed": True,
+        },
+        "quality_gate": {
+            "enabled_gates": [
+                "regression",
+                "improvement",
+            ],
+            "failed_gates": [],
+            "passed": True,
+        },
+    }
+
+    assert format_strategy_comparison_markdown_report(output) == "\n".join(
+        [
+            "# RAG Strategy Comparison Report",
+            "",
+            "## Summary",
+            "",
+            "| Strategy | Hit rate | Top-1 accuracy | MRR |",
+            "|---|---:|---:|---:|",
+            "| term-frequency | 1.00 | 0.00 | 0.50 |",
+            "| binary-overlap | 1.00 | 1.00 | 1.00 |",
+            "",
+            "Best strategy: **binary-overlap**",
+            "",
+            "Best strategy metrics: MRR=1.00, Top-1=1.00, Hit rate=1.00",
+            "",
+            "## Baseline",
+            "",
+            "Baseline strategy: **term-frequency**",
+            "",
+            "## Strategy diagnostics vs baseline",
+            "",
+            "### binary-overlap",
+            "",
+            "Improved: **1**, regressed: **0**, unchanged: **0**",
+            "",
+            "Improved cases:",
+            "",
+            "- token expiration policy: rank 2 → 1",
+            "",
+            "## Candidate decisions",
+            "",
+            "| Candidate | Accepted | Improved | Regressed | Reasons |",
+            "|---|---:|---:|---:|---|",
+            "| binary-overlap | true | 1 | 0 |  |",
+            "",
+            "Best accepted strategy: **binary-overlap**",
+            "",
+            "## Regression gate",
+            "",
+            "Max regressed cases: **0**  Total regressed cases: **0**  Passed: **true**",
+            "",
+            "## Improvement gate",
+            "",
+            "Min improved cases: **1**  Total improved cases: **1**  Passed: **true**",
+            "",
+            "## Quality gate",
+            "",
+            "Passed: **true**",
+            "",
+        ]
+    )
+
+def test_format_strategy_comparison_markdown_report_includes_failed_quality_gate():
+    output = {
+        "best_strategy": "binary-overlap",
+        "best_strategy_metrics": {
+            "hit_rate": 1.0,
+            "top_1_accuracy": 1.0,
+            "mean_reciprocal_rank": 1.0,
+        },
+        "results": [
+            {
+                "retrieval_strategy": "binary-overlap",
+                "hit_rate": 1.0,
+                "top_1_accuracy": 1.0,
+                "mean_reciprocal_rank": 1.0,
+            },
+        ],
+        "quality_gate": {
+            "enabled_gates": [
+                "improvement",
+            ],
+            "failed_gates": [
+                "improvement",
+            ],
+            "passed": False,
+        },
+    }
+
+    assert format_strategy_comparison_markdown_report(output) == "\n".join(
+        [
+            "# RAG Strategy Comparison Report",
+            "",
+            "## Summary",
+            "",
+            "| Strategy | Hit rate | Top-1 accuracy | MRR |",
+            "|---|---:|---:|---:|",
+            "| binary-overlap | 1.00 | 1.00 | 1.00 |",
+            "",
+            "Best strategy: **binary-overlap**",
+            "",
+            "Best strategy metrics: MRR=1.00, Top-1=1.00, Hit rate=1.00",
+            "",
+            "## Quality gate",
+            "",
+            "Passed: **false**",
+            "Failed gates: **improvement**",
+            "",
+        ]
+    )
+
+
+
+def test_run_strategy_comparison_from_args_writes_markdown_report_file(tmp_path):
+    knowledge_path = tmp_path / "knowledge_base_noisy"
+    knowledge_path.mkdir()
+
+    token_noise = knowledge_path / "noise_tokens.md"
+    token_noise.write_text(
+        "token token token token token token token token",
+        encoding="utf-8",
+    )
+
+    security = knowledge_path / "security.md"
+    security.write_text(
+        "Token expiration policy: tokens must be signed and must expire.",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "noisy_rag_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "token expiration policy",
+                    "query": "token expiration",
+                    "expected_source_contains": "security.md",
+                    "expected_text_contains": "Token expiration policy",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    report_output_path = tmp_path / "rag_strategy_report.md"
+
+    run_strategy_comparison_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--baseline-strategy",
+            "term-frequency",
+            "--strategies",
+            "binary-overlap",
+            "--max-regressed-cases",
+            "0",
+            "--min-improved-cases",
+            "1",
+            "--report-output",
+            str(report_output_path),
+        ]
+    )
+
+    report = report_output_path.read_text(
+        encoding="utf-8",
+    )
+
+    assert report.startswith("# RAG Strategy Comparison Report")
+    assert "| term-frequency | 1.00 | 0.00 | 0.50 |" in report
+    assert "| binary-overlap | 1.00 | 1.00 | 1.00 |" in report
+    assert "Best accepted strategy: **binary-overlap**" in report
+    assert "Passed: **true**" in report
+
+
+                    

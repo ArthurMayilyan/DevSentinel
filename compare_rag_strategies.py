@@ -69,6 +69,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--report-output",
+        default=None,
+        help="Optional path where a Markdown comparison report should be written.",
+    )    
+
+    parser.add_argument(
         "--max-regressed-cases",
         type=int,
         default=None,
@@ -511,6 +517,29 @@ def format_matched_rank(
 
     return str(value)
 
+def format_markdown_bool(
+    value: bool,
+) -> str:
+    return str(value).lower()
+
+
+def format_markdown_optional_text(
+    value: Any,
+) -> str:
+    if value is None:
+        return "<none>"
+
+    if isinstance(value, list):
+        return ",".join(str(item) for item in value)
+
+    return str(value)
+
+
+def format_markdown_metric(
+    value: float,
+) -> str:
+    return f"{value:.2f}"
+
 
 def format_strategy_comparison_summary(
     output: dict[str, Any],
@@ -678,6 +707,201 @@ def format_strategy_comparison_summary(
                     ),
                 ]
             )             
+
+    return "\n".join(lines)
+
+
+def format_strategy_comparison_markdown_report(
+    output: dict[str, Any],
+) -> str:
+    lines = [
+        "# RAG Strategy Comparison Report",
+        "",
+        "## Summary",
+        "",
+        "| Strategy | Hit rate | Top-1 accuracy | MRR |",
+        "|---|---:|---:|---:|",
+    ]
+
+    for result in output["results"]:
+        lines.append(
+            "| "
+            f"{result['retrieval_strategy']} | "
+            f"{format_markdown_metric(result['hit_rate'])} | "
+            f"{format_markdown_metric(result['top_1_accuracy'])} | "
+            f"{format_markdown_metric(result['mean_reciprocal_rank'])} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            f"Best strategy: **{output['best_strategy']}**",
+        ]
+    )
+
+    if "best_strategy_metrics" in output:
+        metrics = output["best_strategy_metrics"]
+
+        lines.extend(
+            [
+                "",
+                (
+                    "Best strategy metrics: "
+                    f"MRR={format_markdown_metric(metrics['mean_reciprocal_rank'])}, "
+                    f"Top-1={format_markdown_metric(metrics['top_1_accuracy'])}, "
+                    f"Hit rate={format_markdown_metric(metrics['hit_rate'])}"
+                ),
+            ]
+        )
+
+    if "baseline_strategy" in output:
+        lines.extend(
+            [
+                "",
+                "## Baseline",
+                "",
+                f"Baseline strategy: **{output['baseline_strategy']}**",
+            ]
+        )
+
+    if "strategy_diagnostics" in output:
+        lines.extend(
+            [
+                "",
+                "## Strategy diagnostics vs baseline",
+            ]
+        )
+
+        for diagnostic in output["strategy_diagnostics"]:
+            lines.extend(
+                [
+                    "",
+                    f"### {diagnostic['strategy']}",
+                    "",
+                    (
+                        f"Improved: **{diagnostic['improved_count']}**, "
+                        f"regressed: **{diagnostic['regressed_count']}**, "
+                        f"unchanged: **{diagnostic['unchanged_count']}**"
+                    ),
+                ]
+            )
+
+            if diagnostic["improved_cases"]:
+                lines.extend(
+                    [
+                        "",
+                        "Improved cases:",
+                        "",
+                    ]
+                )
+
+                for case_delta in diagnostic["improved_cases"]:
+                    lines.append(
+                        "- "
+                        f"{case_delta['name']}: "
+                        f"rank {format_matched_rank(case_delta['baseline_matched_rank'])} "
+                        f"→ {format_matched_rank(case_delta['candidate_matched_rank'])}"
+                    )
+
+            if diagnostic["regressed_cases"]:
+                lines.extend(
+                    [
+                        "",
+                        "Regressed cases:",
+                        "",
+                    ]
+                )
+
+                for case_delta in diagnostic["regressed_cases"]:
+                    lines.append(
+                        "- "
+                        f"{case_delta['name']}: "
+                        f"rank {format_matched_rank(case_delta['baseline_matched_rank'])} "
+                        f"→ {format_matched_rank(case_delta['candidate_matched_rank'])}"
+                    )
+
+    if "candidate_decisions" in output:
+        lines.extend(
+            [
+                "",
+                "## Candidate decisions",
+                "",
+                "| Candidate | Accepted | Improved | Regressed | Reasons |",
+                "|---|---:|---:|---:|---|",
+            ]
+        )
+
+        for decision in output["candidate_decisions"]:
+            lines.append(
+                "| "
+                f"{decision['strategy']} | "
+                f"{format_markdown_bool(decision['accepted'])} | "
+                f"{decision['improved_count']} | "
+                f"{decision['regressed_count']} | "
+                f"{format_markdown_optional_text(decision['rejection_reasons'])} |"
+            )
+
+        lines.extend(
+            [
+                "",
+                (
+                    "Best accepted strategy: "
+                    f"**{format_markdown_optional_text(output['best_accepted_strategy'])}**"
+                ),
+            ]
+        )
+
+    if "regression_gate" in output:
+        gate = output["regression_gate"]
+
+        lines.extend(
+            [
+                "",
+                "## Regression gate",
+                "",
+                (
+                    f"Max regressed cases: **{gate['max_regressed_cases']}**  "
+                    f"Total regressed cases: **{gate['total_regressed_cases']}**  "
+                    f"Passed: **{format_markdown_bool(gate['passed'])}**"
+                ),
+            ]
+        )
+
+    if "improvement_gate" in output:
+        gate = output["improvement_gate"]
+
+        lines.extend(
+            [
+                "",
+                "## Improvement gate",
+                "",
+                (
+                    f"Min improved cases: **{gate['min_improved_cases']}**  "
+                    f"Total improved cases: **{gate['total_improved_cases']}**  "
+                    f"Passed: **{format_markdown_bool(gate['passed'])}**"
+                ),
+            ]
+        )
+
+    if "quality_gate" in output:
+        gate = output["quality_gate"]
+
+        lines.extend(
+            [
+                "",
+                "## Quality gate",
+                "",
+                f"Passed: **{format_markdown_bool(gate['passed'])}**",
+            ]
+        )
+
+        if gate["failed_gates"]:
+            lines.append(
+                "Failed gates: "
+                f"**{format_markdown_optional_text(gate['failed_gates'])}**"
+            )
+
+    lines.append("")
 
     return "\n".join(lines)
 
@@ -876,6 +1100,13 @@ def run_strategy_comparison(
         output_path = Path(args.output)
         output_path.write_text(
             json.dumps(output, indent=2),
+            encoding="utf-8",
+        )
+
+    if args.report_output:
+        report_output_path = Path(args.report_output)
+        report_output_path.write_text(
+            format_strategy_comparison_markdown_report(output),
             encoding="utf-8",
         )
 
