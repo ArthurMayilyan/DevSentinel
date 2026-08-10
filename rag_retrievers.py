@@ -77,6 +77,25 @@ def score_term_frequency_token_overlap(
         if token in query_tokens
     )
 
+
+def score_hybrid_lexical_overlap(
+    *,
+    query: str,
+    text: str,
+) -> int:
+    binary_overlap_score = score_binary_token_overlap(
+        query=query,
+        text=text,
+    )
+
+    term_frequency_score = score_term_frequency_token_overlap(
+        query=query,
+        text=text,
+    )
+
+    return binary_overlap_score * 100 + term_frequency_score
+
+
 @dataclass(frozen=True)
 class BinaryOverlapRagRetriever:
     store: InMemoryRagStore
@@ -168,3 +187,49 @@ class TermFrequencyRagRetriever:
                 chunk.chunk_index,
             ),
         )[:top_k] 
+
+@dataclass(frozen=True)
+class HybridLexicalRagRetriever:
+    store: InMemoryRagStore
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.store, InMemoryRagStore):
+            raise ValueError("store must be an InMemoryRagStore.")
+
+    def search(
+        self,
+        *,
+        query: str,
+        top_k: int = 3,
+    ) -> list[RetrievedChunk]:
+        validate_search_query(query)
+        validate_top_k(top_k)
+
+        scored_chunks = []
+
+        for chunk in self.store.chunks:
+            score = score_hybrid_lexical_overlap(
+                query=query,
+                text=chunk.text,
+            )
+
+            if score <= 0:
+                continue
+
+            scored_chunks.append(
+                RetrievedChunk(
+                    source=chunk.source,
+                    chunk_index=chunk.chunk_index,
+                    text=chunk.text,
+                    score=score,
+                )
+            )
+
+        return sorted(
+            scored_chunks,
+            key=lambda chunk: (
+                -chunk.score,
+                chunk.source,
+                chunk.chunk_index,
+            ),
+        )[:top_k]    

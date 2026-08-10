@@ -83,6 +83,20 @@ def evaluate_strategy(
 
     return output
 
+def select_best_strategy_result(
+    strategy_results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    if not strategy_results:
+        raise ValueError("strategy_results must not be empty.")
+
+    return max(
+        strategy_results,
+        key=lambda result: (
+            result["mean_reciprocal_rank"],
+            result["top_1_accuracy"],
+            result["hit_rate"],
+        ),
+    )
 
 def run_strategy_comparison_from_args(
     raw_args: list[str] | None = None,
@@ -147,6 +161,21 @@ def format_strategy_comparison_summary(
             f"{mean_reciprocal_rank:.2f}"
         )
 
+    if "best_strategy" in output:
+        metrics = output["best_strategy_metrics"]
+
+        lines.extend(
+            [
+                "",
+                (
+                    f"Best strategy: {output['best_strategy']} "
+                    f"(mrr={metrics['mean_reciprocal_rank']:.2f}, "
+                    f"top_1={metrics['top_1_accuracy']:.2f}, "
+                    f"hit_rate={metrics['hit_rate']:.2f})"
+                ),
+            ]
+        )
+
     return "\n".join(lines)
 
 
@@ -171,11 +200,21 @@ def run_strategy_comparison(
         for strategy in args.strategies
     ]
 
+    best_result = select_best_strategy_result(
+        strategy_results,
+    )    
+
     output = {
         "knowledge_path": args.knowledge_path,
         "cases": args.cases,
         "top_k": args.top_k,
         "strategies": args.strategies,
+        "best_strategy": best_result["retrieval_strategy"],
+        "best_strategy_metrics": {
+            "hit_rate": best_result["hit_rate"],
+            "top_1_accuracy": best_result["top_1_accuracy"],
+            "mean_reciprocal_rank": best_result["mean_reciprocal_rank"],
+        },
         "results": strategy_results,
     }
 

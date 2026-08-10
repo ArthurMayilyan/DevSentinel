@@ -8,17 +8,21 @@ from rag_eval_loader import load_rag_retrieval_eval_cases_from_json_file
 from rag_loader import load_rag_store_from_path
 from rag_retrievers import (
     BinaryOverlapRagRetriever,
+    HybridLexicalRagRetriever,
     TermFrequencyRagRetriever,
 )
+
 
 RETRIEVAL_STRATEGY_DEFAULT = "default"
 RETRIEVAL_STRATEGY_BINARY_OVERLAP = "binary-overlap"
 RETRIEVAL_STRATEGY_TERM_FREQUENCY = "term-frequency"
+RETRIEVAL_STRATEGY_HYBRID_LEXICAL = "hybrid-lexical"
 
 SUPPORTED_RETRIEVAL_STRATEGIES = {
     RETRIEVAL_STRATEGY_DEFAULT,
     RETRIEVAL_STRATEGY_BINARY_OVERLAP,
     RETRIEVAL_STRATEGY_TERM_FREQUENCY,
+    RETRIEVAL_STRATEGY_HYBRID_LEXICAL,
 }
 
 
@@ -38,7 +42,12 @@ def build_rag_search_engine(
     if retrieval_strategy == RETRIEVAL_STRATEGY_TERM_FREQUENCY:
         return TermFrequencyRagRetriever(
             store=store,
-        )    
+        )
+
+    if retrieval_strategy == RETRIEVAL_STRATEGY_HYBRID_LEXICAL:
+        return HybridLexicalRagRetriever(
+            store=store,
+        )
 
     raise ValueError(f"Unsupported retrieval strategy: {retrieval_strategy}")
 
