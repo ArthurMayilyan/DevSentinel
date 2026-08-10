@@ -1,6 +1,8 @@
-import sys
 import argparse
+import hashlib
 import json
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -14,20 +16,180 @@ from rag_eval_loader import load_rag_retrieval_eval_cases_from_json_file
 from rag_loader import load_rag_store_from_path
 
 
+CONFIG_ALLOWED_KEYS = {
+    "knowledge_path",
+    "cases",
+    "strategies",
+    "baseline_strategy",
+    "top_k",
+    "summary_only",
+    "output",
+    "report_output",
+    "max_regressed_cases",
+    "min_improved_cases",
+    "fail_on_regression_gate",
+    "fail_on_improvement_gate",
+}
+
+
+def load_json_config(
+    path: str,
+) -> dict[str, Any]:
+    config_path = Path(path)
+
+    if not config_path.is_file():
+        raise ValueError(f"config path must be a file: {path}")
+
+    config = json.loads(
+        config_path.read_text(
+            encoding="utf-8",
+        )
+    )
+
+    if not isinstance(config, dict):
+        raise ValueError("config file must contain a JSON object.")
+
+    unknown_keys = sorted(
+        set(config.keys()) - CONFIG_ALLOWED_KEYS
+    )
+
+    if unknown_keys:
+        raise ValueError(
+            "config contains unsupported keys: "
+            + ", ".join(unknown_keys)
+        )
+
+    return config
+
+
+def apply_config_to_args(
+    *,
+    args: argparse.Namespace,
+    config: dict[str, Any],
+) -> argparse.Namespace:
+    merged = argparse.Namespace(**vars(args))
+
+    for key, value in config.items():
+        current_value = getattr(
+            merged,
+            key,
+        )
+
+        if key in {
+            "summary_only",
+            "fail_on_regression_gate",
+            "fail_on_improvement_gate",
+        }:
+            if current_value is False:
+                setattr(
+                    merged,
+                    key,
+                    value,
+                )
+            continue
+
+        if current_value is None:
+            setattr(
+                merged,
+                key,
+                value,
+            )
+
+    return merged
+
+
+def apply_default_args(
+    args: argparse.Namespace,
+) -> argparse.Namespace:
+    merged = argparse.Namespace(**vars(args))
+
+    if merged.strategies is None:
+        merged.strategies = [
+            RETRIEVAL_STRATEGY_DEFAULT,
+        ]
+
+    if merged.top_k is None:
+        merged.top_k = 3
+
+    return merged
+
+
+def validate_comparison_args(
+    args: argparse.Namespace,
+) -> None:
+    if not args.knowledge_path:
+        raise ValueError("knowledge_path is required.")
+
+    if not args.cases:
+        raise ValueError("cases is required.")
+
+    if type(args.top_k) is not int:
+        raise ValueError("top_k must be an integer.")
+
+    if args.top_k <= 0:
+        raise ValueError("top_k must be greater than 0.")
+
+    if not isinstance(args.strategies, list) or not args.strategies:
+        raise ValueError("strategies must be a non-empty list.")
+
+    unsupported_strategies = sorted(
+        set(args.strategies) - SUPPORTED_RETRIEVAL_STRATEGIES
+    )
+
+    if unsupported_strategies:
+        raise ValueError(
+            "unsupported strategies: "
+            + ", ".join(unsupported_strategies)
+        )
+
+
+def resolve_comparison_args(
+    raw_args: list[str] | None = None,
+) -> argparse.Namespace:
+    parser = build_arg_parser()
+    args = parser.parse_args(raw_args)
+
+    if args.config is not None:
+        config = load_json_config(
+            args.config,
+        )
+
+        args = apply_config_to_args(
+            args=args,
+            config=config,
+        )
+
+    args = apply_default_args(
+        args,
+    )
+
+    validate_comparison_args(
+        args,
+    )
+
+    return args
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Compare RAG retrieval strategies against the same eval cases.",
     )
 
     parser.add_argument(
+        "--config",
+        default=None,
+        help="Optional JSON config file with comparison arguments.",
+    )
+
+    parser.add_argument(
         "--knowledge-path",
-        required=True,
+        default=None,
         help="Path to a knowledge base file or directory.",
     )
 
     parser.add_argument(
         "--cases",
-        required=True,
+        default=None,
         help="Path to a JSON file with RAG retrieval eval cases.",
     )
 
@@ -35,7 +197,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--strategies",
         nargs="+",
         choices=sorted(SUPPORTED_RETRIEVAL_STRATEGIES),
-        default=[RETRIEVAL_STRATEGY_DEFAULT],
+        default=None,
         help="Retrieval strategies to compare.",
     )
 
@@ -52,7 +214,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--top-k",
         type=int,
-        default=3,
+        default=None,
         help="Number of retrieved chunks to evaluate per query.",
     )
 
@@ -67,6 +229,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional path where comparison JSON should be written.",
     )
+
+    parser.add_argument(
+        "--report-output",
+        default=None,
+        help="Optional path where a Markdown comparison report should be written.",
+    )    
 
     parser.add_argument(
         "--max-regressed-cases",
@@ -221,6 +389,78 @@ def build_strategy_diagnostics(
         )
 
     return diagnostics
+
+
+def build_candidate_strategy_decision(
+    *,
+    diagnostic: dict[str, Any],
+    max_regressed_cases: int | None,
+    min_improved_cases: int | None,
+) -> dict[str, Any]:
+    rejection_reasons = []
+
+    if (
+        max_regressed_cases is not None
+        and diagnostic["regressed_count"] > max_regressed_cases
+    ):
+        rejection_reasons.append("too_many_regressions")
+
+    if (
+        min_improved_cases is not None
+        and diagnostic["improved_count"] < min_improved_cases
+    ):
+        rejection_reasons.append("insufficient_improvements")
+
+    return {
+        "strategy": diagnostic["strategy"],
+        "baseline_strategy": diagnostic["baseline_strategy"],
+        "improved_count": diagnostic["improved_count"],
+        "regressed_count": diagnostic["regressed_count"],
+        "unchanged_count": diagnostic["unchanged_count"],
+        "accepted": len(rejection_reasons) == 0,
+        "rejection_reasons": rejection_reasons,
+    }
+
+
+def build_candidate_strategy_decisions(
+    *,
+    strategy_diagnostics: list[dict[str, Any]],
+    max_regressed_cases: int | None,
+    min_improved_cases: int | None,
+) -> list[dict[str, Any]]:
+    return [
+        build_candidate_strategy_decision(
+            diagnostic=diagnostic,
+            max_regressed_cases=max_regressed_cases,
+            min_improved_cases=min_improved_cases,
+        )
+        for diagnostic in strategy_diagnostics
+    ]
+
+
+def select_best_accepted_strategy_result(
+    *,
+    strategy_results: list[dict[str, Any]],
+    candidate_decisions: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    accepted_strategies = {
+        decision["strategy"]
+        for decision in candidate_decisions
+        if decision["accepted"]
+    }
+
+    accepted_results = [
+        result
+        for result in strategy_results
+        if result["retrieval_strategy"] in accepted_strategies
+    ]
+
+    if not accepted_results:
+        return None
+
+    return select_best_strategy_result(
+        accepted_results,
+    )
 
 
 def build_regression_gate_result(
@@ -390,46 +630,6 @@ def select_best_strategy_result(
         ),
     )
 
-def run_strategy_comparison_from_args(
-    raw_args: list[str] | None = None,
-) -> dict[str, Any]:
-    parser = build_arg_parser()
-    args = parser.parse_args(raw_args)
-
-    store = load_rag_store_from_path(
-        path=args.knowledge_path,
-    )
-
-    cases = load_rag_retrieval_eval_cases_from_json_file(
-        path=args.cases,
-    )
-
-    strategy_results = [
-        evaluate_strategy(
-            store=store,
-            cases=cases,
-            strategy=strategy,
-            top_k=args.top_k,
-        )
-        for strategy in args.strategies
-    ]
-
-    output = {
-        "knowledge_path": args.knowledge_path,
-        "cases": args.cases,
-        "top_k": args.top_k,
-        "strategies": args.strategies,
-        "results": strategy_results,
-    }
-
-    if args.output:
-        output_path = Path(args.output)
-        output_path.write_text(
-            json.dumps(output, indent=2),
-            encoding="utf-8",
-        )
-
-    return output
 
 def format_matched_rank(
     value: Any,
@@ -438,6 +638,29 @@ def format_matched_rank(
         return "<missing>"
 
     return str(value)
+
+def format_markdown_bool(
+    value: bool,
+) -> str:
+    return str(value).lower()
+
+
+def format_markdown_optional_text(
+    value: Any,
+) -> str:
+    if value is None:
+        return "<none>"
+
+    if isinstance(value, list):
+        return ",".join(str(item) for item in value)
+
+    return str(value)
+
+
+def format_markdown_metric(
+    value: float,
+) -> str:
+    return f"{value:.2f}"
 
 
 def format_strategy_comparison_summary(
@@ -513,6 +736,43 @@ def format_strategy_comparison_summary(
                         f"-> {format_matched_rank(case_delta['candidate_matched_rank'])}"
                     )
 
+    if "candidate_decisions" in output:
+        lines.extend(
+            [
+                "",
+                "Candidate decisions:",
+            ]
+        )
+
+        for decision in output["candidate_decisions"]:
+            line = (
+                f"{decision['strategy']}: "
+                f"accepted={str(decision['accepted']).lower()}, "
+                f"improved={decision['improved_count']}, "
+                f"regressed={decision['regressed_count']}"
+            )
+
+            if decision["rejection_reasons"]:
+                line += (
+                    ", reasons="
+                    + ",".join(decision["rejection_reasons"])
+                )
+
+            lines.append(line)
+
+        best_accepted_strategy = output.get("best_accepted_strategy")
+
+        lines.extend(
+            [
+                "",
+                (
+                    "Best accepted strategy: "
+                    f"{best_accepted_strategy if best_accepted_strategy is not None else '<none>'}"
+                ),
+            ]
+        )
+
+
     if "regression_gate" in output:
         gate = output["regression_gate"]
 
@@ -569,6 +829,278 @@ def format_strategy_comparison_summary(
                     ),
                 ]
             )             
+
+    return "\n".join(lines)
+
+
+def format_strategy_comparison_markdown_report(
+    output: dict[str, Any],
+) -> str:
+    lines = [
+        "# RAG Strategy Comparison Report",
+    ]
+
+    if "run_metadata" in output:
+        metadata = output["run_metadata"]
+
+        lines.extend(
+            [
+                "",
+                "## Run metadata",
+                "",
+                f"Created at UTC: `{metadata['created_at_utc']}`",
+                f"Knowledge path: `{metadata['knowledge_path']}`",
+                f"Cases path: `{metadata['cases']}`",
+                f"Top K: `{metadata['top_k']}`",
+                f"Strategies: `{','.join(metadata['strategies'])}`",
+            ]
+        )
+
+        if metadata["baseline_strategy"] is not None:
+            lines.append(
+                f"Baseline strategy: `{metadata['baseline_strategy']}`"
+            )
+
+        if metadata["max_regressed_cases"] is not None:
+            lines.append(
+                f"Max regressed cases: `{metadata['max_regressed_cases']}`"
+            )
+
+        if metadata["min_improved_cases"] is not None:
+            lines.append(
+                f"Min improved cases: `{metadata['min_improved_cases']}`"
+            )    
+
+    if "input_fingerprints" in output:
+        fingerprints = output["input_fingerprints"]
+
+        lines.extend(
+            [
+                "",
+                "## Input fingerprints",
+                "",
+                "### Knowledge files",
+                "",
+                "| Relative path | Size bytes | SHA256 |",
+                "|---|---:|---|",
+            ]
+        )
+
+        for fingerprint in fingerprints["knowledge_files"]:
+            lines.append(
+                "| "
+                f"{fingerprint['relative_path']} | "
+                f"{fingerprint['size_bytes']} | "
+                f"`{fingerprint['sha256']}` |"
+            )
+
+        lines.extend(
+            [
+                "",
+                "### Case files",
+                "",
+                "| Relative path | Size bytes | SHA256 |",
+                "|---|---:|---|",
+            ]
+        )
+
+        for fingerprint in fingerprints["case_files"]:
+            lines.append(
+                "| "
+                f"{fingerprint['relative_path']} | "
+                f"{fingerprint['size_bytes']} | "
+                f"`{fingerprint['sha256']}` |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Summary",
+            "",
+            "| Strategy | Hit rate | Top-1 accuracy | MRR |",
+            "|---|---:|---:|---:|",
+        ]
+    )
+
+    for result in output["results"]:
+        lines.append(
+            "| "
+            f"{result['retrieval_strategy']} | "
+            f"{format_markdown_metric(result['hit_rate'])} | "
+            f"{format_markdown_metric(result['top_1_accuracy'])} | "
+            f"{format_markdown_metric(result['mean_reciprocal_rank'])} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            f"Best strategy: **{output['best_strategy']}**",
+        ]
+    )
+
+    if "best_strategy_metrics" in output:
+        metrics = output["best_strategy_metrics"]
+
+        lines.extend(
+            [
+                "",
+                (
+                    "Best strategy metrics: "
+                    f"MRR={format_markdown_metric(metrics['mean_reciprocal_rank'])}, "
+                    f"Top-1={format_markdown_metric(metrics['top_1_accuracy'])}, "
+                    f"Hit rate={format_markdown_metric(metrics['hit_rate'])}"
+                ),
+            ]
+        )
+
+    if "baseline_strategy" in output:
+        lines.extend(
+            [
+                "",
+                "## Baseline",
+                "",
+                f"Baseline strategy: **{output['baseline_strategy']}**",
+            ]
+        )
+
+    if "strategy_diagnostics" in output:
+        lines.extend(
+            [
+                "",
+                "## Strategy diagnostics vs baseline",
+            ]
+        )
+
+        for diagnostic in output["strategy_diagnostics"]:
+            lines.extend(
+                [
+                    "",
+                    f"### {diagnostic['strategy']}",
+                    "",
+                    (
+                        f"Improved: **{diagnostic['improved_count']}**, "
+                        f"regressed: **{diagnostic['regressed_count']}**, "
+                        f"unchanged: **{diagnostic['unchanged_count']}**"
+                    ),
+                ]
+            )
+
+            if diagnostic["improved_cases"]:
+                lines.extend(
+                    [
+                        "",
+                        "Improved cases:",
+                        "",
+                    ]
+                )
+
+                for case_delta in diagnostic["improved_cases"]:
+                    lines.append(
+                        "- "
+                        f"{case_delta['name']}: "
+                        f"rank {format_matched_rank(case_delta['baseline_matched_rank'])} "
+                        f"→ {format_matched_rank(case_delta['candidate_matched_rank'])}"
+                    )
+
+            if diagnostic["regressed_cases"]:
+                lines.extend(
+                    [
+                        "",
+                        "Regressed cases:",
+                        "",
+                    ]
+                )
+
+                for case_delta in diagnostic["regressed_cases"]:
+                    lines.append(
+                        "- "
+                        f"{case_delta['name']}: "
+                        f"rank {format_matched_rank(case_delta['baseline_matched_rank'])} "
+                        f"→ {format_matched_rank(case_delta['candidate_matched_rank'])}"
+                    )
+
+    if "candidate_decisions" in output:
+        lines.extend(
+            [
+                "",
+                "## Candidate decisions",
+                "",
+                "| Candidate | Accepted | Improved | Regressed | Reasons |",
+                "|---|---:|---:|---:|---|",
+            ]
+        )
+
+        for decision in output["candidate_decisions"]:
+            lines.append(
+                "| "
+                f"{decision['strategy']} | "
+                f"{format_markdown_bool(decision['accepted'])} | "
+                f"{decision['improved_count']} | "
+                f"{decision['regressed_count']} | "
+                f"{format_markdown_optional_text(decision['rejection_reasons'])} |"
+            )
+
+        lines.extend(
+            [
+                "",
+                (
+                    "Best accepted strategy: "
+                    f"**{format_markdown_optional_text(output['best_accepted_strategy'])}**"
+                ),
+            ]
+        )
+
+    if "regression_gate" in output:
+        gate = output["regression_gate"]
+
+        lines.extend(
+            [
+                "",
+                "## Regression gate",
+                "",
+                (
+                    f"Max regressed cases: **{gate['max_regressed_cases']}**  "
+                    f"Total regressed cases: **{gate['total_regressed_cases']}**  "
+                    f"Passed: **{format_markdown_bool(gate['passed'])}**"
+                ),
+            ]
+        )
+
+    if "improvement_gate" in output:
+        gate = output["improvement_gate"]
+
+        lines.extend(
+            [
+                "",
+                "## Improvement gate",
+                "",
+                (
+                    f"Min improved cases: **{gate['min_improved_cases']}**  "
+                    f"Total improved cases: **{gate['total_improved_cases']}**  "
+                    f"Passed: **{format_markdown_bool(gate['passed'])}**"
+                ),
+            ]
+        )
+
+    if "quality_gate" in output:
+        gate = output["quality_gate"]
+
+        lines.extend(
+            [
+                "",
+                "## Quality gate",
+                "",
+                f"Passed: **{format_markdown_bool(gate['passed'])}**",
+            ]
+        )
+
+        if gate["failed_gates"]:
+            lines.append(
+                "Failed gates: "
+                f"**{format_markdown_optional_text(gate['failed_gates'])}**"
+            )
+
+    lines.append("")
 
     return "\n".join(lines)
 
@@ -656,7 +1188,101 @@ def validate_regression_gate_args(
             raise ValueError(
                 "min_improved_cases must be greater than or equal to 0."
             )
-    
+
+def calculate_file_sha256(
+    path: Path,
+) -> str:
+    if not path.is_file():
+        raise ValueError(f"path must be a file: {path}")
+
+    hasher = hashlib.sha256()
+
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            hasher.update(chunk)
+
+    return hasher.hexdigest()
+
+
+def collect_file_fingerprint(
+    *,
+    path: Path,
+    root_path: Path,
+) -> dict[str, Any]:
+    if not path.is_file():
+        raise ValueError(f"path must be a file: {path}")
+
+    return {
+        "path": str(path),
+        "relative_path": str(path.relative_to(root_path)),
+        "size_bytes": path.stat().st_size,
+        "sha256": calculate_file_sha256(path),
+    }
+
+
+def collect_path_fingerprints(
+    path: str,
+) -> list[dict[str, Any]]:
+    input_path = Path(path)
+
+    if not input_path.exists():
+        raise ValueError(f"path does not exist: {path}")
+
+    if input_path.is_file():
+        return [
+            collect_file_fingerprint(
+                path=input_path,
+                root_path=input_path.parent,
+            )
+        ]
+
+    if input_path.is_dir():
+        files = [
+            file_path
+            for file_path in input_path.rglob("*")
+            if file_path.is_file()
+        ]
+
+        return [
+            collect_file_fingerprint(
+                path=file_path,
+                root_path=input_path,
+            )
+            for file_path in sorted(files)
+        ]
+
+    raise ValueError(f"path must be a file or directory: {path}")
+
+def build_run_metadata(
+    *,
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    return {
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "knowledge_path": args.knowledge_path,
+        "cases": args.cases,
+        "top_k": args.top_k,
+        "strategies": list(args.strategies),
+        "baseline_strategy": args.baseline_strategy,
+        "max_regressed_cases": args.max_regressed_cases,
+        "min_improved_cases": args.min_improved_cases,
+        "fail_on_regression_gate": args.fail_on_regression_gate,
+        "fail_on_improvement_gate": args.fail_on_improvement_gate,
+    }    
+
+def build_input_fingerprints(
+    *,
+    knowledge_path: str,
+    cases_path: str,
+) -> dict[str, Any]:
+    return {
+        "knowledge_files": collect_path_fingerprints(
+            knowledge_path,
+        ),
+        "case_files": collect_path_fingerprints(
+            cases_path,
+        ),
+    }
 
 def run_strategy_comparison(
     args: argparse.Namespace,
@@ -667,6 +1293,15 @@ def run_strategy_comparison(
         fail_on_regression_gate=args.fail_on_regression_gate,
         min_improved_cases=args.min_improved_cases,
         fail_on_improvement_gate=args.fail_on_improvement_gate,
+    )
+
+    run_metadata = build_run_metadata(
+        args=args,
+    )
+
+    input_fingerprints = build_input_fingerprints(
+        knowledge_path=args.knowledge_path,
+        cases_path=args.cases,
     )
 
     store = load_rag_store_from_path(
@@ -681,6 +1316,8 @@ def run_strategy_comparison(
         strategies=args.strategies,
         baseline_strategy=args.baseline_strategy,
     )
+
+    run_metadata["strategies"] = strategy_names
 
     strategy_results = [
         evaluate_strategy(
@@ -697,6 +1334,8 @@ def run_strategy_comparison(
     )    
 
     output = {
+        "run_metadata": run_metadata,
+        "input_fingerprints": input_fingerprints,
         "knowledge_path": args.knowledge_path,
         "cases": args.cases,
         "top_k": args.top_k,
@@ -717,6 +1356,32 @@ def run_strategy_comparison(
             baseline_strategy=args.baseline_strategy,
         )
 
+        output["candidate_decisions"] = build_candidate_strategy_decisions(
+            strategy_diagnostics=output["strategy_diagnostics"],
+            max_regressed_cases=args.max_regressed_cases,
+            min_improved_cases=args.min_improved_cases,
+        )
+
+        best_accepted_result = select_best_accepted_strategy_result(
+            strategy_results=strategy_results,
+            candidate_decisions=output["candidate_decisions"],
+        )
+
+        if best_accepted_result is None:
+            output["best_accepted_strategy"] = None
+            output["best_accepted_strategy_metrics"] = None
+        else:
+            output["best_accepted_strategy"] = best_accepted_result[
+                "retrieval_strategy"
+            ]
+            output["best_accepted_strategy_metrics"] = {
+                "hit_rate": best_accepted_result["hit_rate"],
+                "top_1_accuracy": best_accepted_result["top_1_accuracy"],
+                "mean_reciprocal_rank": best_accepted_result[
+                    "mean_reciprocal_rank"
+                ],
+            }
+
         if args.max_regressed_cases is not None:
             output["regression_gate"] = build_regression_gate_result(
                 strategy_diagnostics=output["strategy_diagnostics"],
@@ -728,6 +1393,7 @@ def run_strategy_comparison(
                 strategy_diagnostics=output["strategy_diagnostics"],
                 min_improved_cases=args.min_improved_cases,
             )
+
 
     quality_gate = build_quality_gate_result(
         output=output,
@@ -743,26 +1409,39 @@ def run_strategy_comparison(
             encoding="utf-8",
         )
 
+    if args.report_output:
+        report_output_path = Path(args.report_output)
+        report_output_path.write_text(
+            format_strategy_comparison_markdown_report(output),
+            encoding="utf-8",
+        )
+
     return output
 
 
 def run_strategy_comparison_from_args(
     raw_args: list[str] | None = None,
 ) -> dict[str, Any]:
-    parser = build_arg_parser()
-    args = parser.parse_args(raw_args)
+    args = resolve_comparison_args(
+        raw_args,
+    )
 
-    return run_strategy_comparison(args)
+    return run_strategy_comparison(
+        args,
+    )
 
 
 def main() -> None:
-    parser = build_arg_parser()
-    args = parser.parse_args()
+    args = resolve_comparison_args()
 
-    output = run_strategy_comparison(args)
+    output = run_strategy_comparison(
+        args,
+    )
 
     if args.summary_only:
-        print(format_strategy_comparison_summary(output))
+        print(
+            format_strategy_comparison_summary(output)
+        )
     else:
         print(
             json.dumps(
