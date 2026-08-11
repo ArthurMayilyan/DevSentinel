@@ -25,10 +25,20 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--artifacts-dir",
+        default=None,
+        help=(
+            "Optional directory where profile JSON/Markdown artifacts and "
+            "suite summaries should be written."
+        ),
+    )    
+
+    parser.add_argument(
         "--fail-on-quality-gate",
         action="store_true",
         help="Exit with code 1 if any profile quality gate fails.",
     )
+
 
     return parser
 
@@ -53,6 +63,41 @@ def discover_profile_configs(
         )
 
     return configs
+
+
+def build_profile_artifacts_dir(
+    *,
+    artifacts_dir: Path,
+    config_path: Path,
+) -> Path:
+    return artifacts_dir / config_path.stem
+
+
+def build_profile_artifact_paths(
+    *,
+    artifacts_dir: Path,
+    config_path: Path,
+) -> dict[str, Path]:
+    profile_dir = build_profile_artifacts_dir(
+        artifacts_dir=artifacts_dir,
+        config_path=config_path,
+    )
+
+    return {
+        "profile_dir": profile_dir,
+        "comparison_json": profile_dir / "comparison.json",
+        "report_markdown": profile_dir / "report.md",
+    }
+
+
+def ensure_artifact_directories(
+    *,
+    artifact_paths: dict[str, Path],
+) -> None:
+    artifact_paths["profile_dir"].mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
 
 def get_profile_quality_gate_status(
@@ -88,29 +133,66 @@ def build_profile_run_summary(
 
 def run_profile_config(
     config_path: Path,
+    artifact_paths: dict[str, Path] | None = None,
 ) -> dict[str, Any]:
+    raw_args = [
+        "--config",
+        str(config_path),
+    ]
+
+    if artifact_paths is not None:
+        ensure_artifact_directories(
+            artifact_paths=artifact_paths,
+        )
+
+        raw_args.extend(
+            [
+                "--output",
+                str(artifact_paths["comparison_json"]),
+                "--report-output",
+                str(artifact_paths["report_markdown"]),
+            ]
+        )
+
     output = run_strategy_comparison_from_args(
-        [
-            "--config",
-            str(config_path),
-        ]
+        raw_args,
     )
 
-    return build_profile_run_summary(
+    summary = build_profile_run_summary(
         config_path=config_path,
         output=output,
     )
 
+    if artifact_paths is not None:
+        summary["artifacts"] = {
+            "comparison_json": str(artifact_paths["comparison_json"]),
+            "report_markdown": str(artifact_paths["report_markdown"]),
+        }
+
+    return summary
+
 
 def run_profile_configs(
     config_paths: list[Path],
+    artifacts_dir: Path | None = None,
 ) -> dict[str, Any]:
-    profile_summaries = [
-        run_profile_config(
-            config_path,
+    profile_summaries = []
+
+    for config_path in config_paths:
+        artifact_paths = None
+
+        if artifacts_dir is not None:
+            artifact_paths = build_profile_artifact_paths(
+                artifacts_dir=artifacts_dir,
+                config_path=config_path,
+            )
+
+        profile_summaries.append(
+            run_profile_config(
+                config_path=config_path,
+                artifact_paths=artifact_paths,
+            )
         )
-        for config_path in config_paths
-    ]
 
     failed_profiles = [
         summary["profile"]
@@ -156,6 +238,71 @@ def format_profiles_summary(
     return "\n".join(lines)
 
 
+def format_profiles_markdown_summary(
+    summary: dict[str, Any],
+) -> str:
+    lines = [
+        "# RAG Eval Profiles Summary",
+        "",
+        "| Profile | Quality gate | Best accepted strategy |",
+        "|---|---|---|",
+    ]
+
+    for profile in summary["profiles"]:
+        lines.append(
+            "| "
+            f"{profile['profile']} | "
+            f"{profile['quality_gate_status']} | "
+            f"{profile['best_accepted_strategy']} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            f"Overall: **{'passed' if summary['passed'] else 'failed'}**",
+        ]
+    )
+
+    if summary["failed_profiles"]:
+        lines.extend(
+            [
+                "",
+                "Failed profiles: "
+                + ", ".join(summary["failed_profiles"]),
+            ]
+        )
+
+    lines.append("")
+
+    return "\n".join(lines)
+
+def write_suite_artifacts(
+    *,
+    summary: dict[str, Any],
+    artifacts_dir: Path,
+) -> None:
+    artifacts_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    summary_json_path = artifacts_dir / "profiles_summary.json"
+    summary_json_path.write_text(
+        json.dumps(
+            summary,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    summary_markdown_path = artifacts_dir / "profiles_summary.md"
+    summary_markdown_path.write_text(
+        format_profiles_markdown_summary(
+            summary,
+        ),
+        encoding="utf-8",
+    )
+
 def should_fail_due_to_profiles_quality_gate(
     *,
     summary: dict[str, Any],
@@ -177,8 +324,15 @@ def run_from_args(
         args.config_dir,
     )
 
+    artifacts_dir = (
+        Path(args.artifacts_dir)
+        if args.artifacts_dir is not None
+        else None
+    )
+
     summary = run_profile_configs(
         config_paths,
+        artifacts_dir=artifacts_dir,
     )
 
     if args.output:
@@ -189,6 +343,12 @@ def run_from_args(
                 indent=2,
             ),
             encoding="utf-8",
+        )
+
+    if artifacts_dir is not None:
+        write_suite_artifacts(
+            summary=summary,
+            artifacts_dir=artifacts_dir,
         )
 
     return summary
@@ -198,12 +358,34 @@ def main() -> None:
     parser = build_arg_parser()
     args = parser.parse_args()
 
-    config_paths = discover_profile_configs(
-        args.config_dir,
-    )
-
-    summary = run_profile_configs(
-        config_paths,
+    summary = run_from_args(
+        [
+            "--config-dir",
+            args.config_dir,
+            *(
+                [
+                    "--output",
+                    args.output,
+                ]
+                if args.output is not None
+                else []
+            ),
+            *(
+                [
+                    "--artifacts-dir",
+                    args.artifacts_dir,
+                ]
+                if args.artifacts_dir is not None
+                else []
+            ),
+            *(
+                [
+                    "--fail-on-quality-gate",
+                ]
+                if args.fail_on_quality_gate
+                else []
+            ),
+        ]
     )
 
     print(
@@ -211,16 +393,6 @@ def main() -> None:
             summary,
         )
     )
-
-    if args.output:
-        output_path = Path(args.output)
-        output_path.write_text(
-            json.dumps(
-                summary,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
 
     if should_fail_due_to_profiles_quality_gate(
         summary=summary,
@@ -233,4 +405,3 @@ if __name__ == "__main__":
     main()
 
 
-    

@@ -4,15 +4,19 @@ from pathlib import Path
 import pytest
 
 from run_rag_eval_profiles import (
+    build_profile_artifact_paths,
+    build_profile_artifacts_dir,
     build_profile_run_summary,
     discover_profile_configs,
+    ensure_artifact_directories,
+    format_profiles_markdown_summary,
     format_profiles_summary,
     get_profile_quality_gate_status,
     run_from_args,
     run_profile_configs,
     should_fail_due_to_profiles_quality_gate,
+    write_suite_artifacts,
 )
-
 
 def create_noisy_eval_fixture(
     tmp_path: Path,
@@ -221,11 +225,26 @@ def test_run_profile_configs_returns_passing_summary(tmp_path):
         ]
     )
 
+    artifacts_dir = tmp_path / "artifacts"
+
+    summary = run_profile_configs(
+        [
+            config_path,
+        ],
+        artifacts_dir=artifacts_dir,
+    )    
+
     assert summary["passed"] is True
     assert summary["failed_profiles"] == []
     assert summary["profiles"][0]["profile"] == "passing.json"
     assert summary["profiles"][0]["quality_gate_status"] == "passed"
     assert summary["profiles"][0]["best_accepted_strategy"] == "binary-overlap"
+
+    profile_summary = summary["profiles"][0]
+
+    assert "artifacts" in profile_summary
+    assert Path(profile_summary["artifacts"]["comparison_json"]).is_file()
+    assert Path(profile_summary["artifacts"]["report_markdown"]).is_file()    
 
 
 def test_run_profile_configs_returns_failing_summary(tmp_path):
@@ -393,4 +412,215 @@ def test_run_from_args_writes_json_summary(tmp_path):
 
     assert saved_summary["passed"] is True
 
-    
+def test_build_profile_artifacts_dir_uses_config_stem(tmp_path):
+    artifacts_dir = tmp_path / "artifacts"
+    config_path = tmp_path / "rag_strategy_noisy.json"
+
+    assert build_profile_artifacts_dir(
+        artifacts_dir=artifacts_dir,
+        config_path=config_path,
+    ) == artifacts_dir / "rag_strategy_noisy"
+
+def test_build_profile_artifact_paths_returns_expected_paths(tmp_path):
+    artifacts_dir = tmp_path / "artifacts"
+    config_path = tmp_path / "rag_strategy_noisy.json"
+
+    paths = build_profile_artifact_paths(
+        artifacts_dir=artifacts_dir,
+        config_path=config_path,
+    )
+
+    assert paths == {
+        "profile_dir": artifacts_dir / "rag_strategy_noisy",
+        "comparison_json": artifacts_dir / "rag_strategy_noisy" / "comparison.json",
+        "report_markdown": artifacts_dir / "rag_strategy_noisy" / "report.md",
+    }
+
+def test_ensure_artifact_directories_creates_profile_dir(tmp_path):
+    artifact_paths = {
+        "profile_dir": tmp_path / "artifacts" / "profile",
+        "comparison_json": tmp_path / "artifacts" / "profile" / "comparison.json",
+        "report_markdown": tmp_path / "artifacts" / "profile" / "report.md",
+    }
+
+    ensure_artifact_directories(
+        artifact_paths=artifact_paths,
+    )
+
+    assert artifact_paths["profile_dir"].is_dir()
+
+def test_format_profiles_markdown_summary_formats_passing_summary():
+    summary = {
+        "profiles": [
+            {
+                "profile": "passing.json",
+                "quality_gate_status": "passed",
+                "best_accepted_strategy": "binary-overlap",
+            }
+        ],
+        "failed_profiles": [],
+        "passed": True,
+    }
+
+    assert format_profiles_markdown_summary(summary) == "\n".join(
+        [
+            "# RAG Eval Profiles Summary",
+            "",
+            "| Profile | Quality gate | Best accepted strategy |",
+            "|---|---|---|",
+            "| passing.json | passed | binary-overlap |",
+            "",
+            "Overall: **passed**",
+            "",
+        ]
+    )
+
+def test_format_profiles_markdown_summary_formats_failed_summary():
+    summary = {
+        "profiles": [
+            {
+                "profile": "failing.json",
+                "quality_gate_status": "failed",
+                "best_accepted_strategy": None,
+            }
+        ],
+        "failed_profiles": [
+            "failing.json",
+        ],
+        "passed": False,
+    }
+
+    assert format_profiles_markdown_summary(summary) == "\n".join(
+        [
+            "# RAG Eval Profiles Summary",
+            "",
+            "| Profile | Quality gate | Best accepted strategy |",
+            "|---|---|---|",
+            "| failing.json | failed | None |",
+            "",
+            "Overall: **failed**",
+            "",
+            "Failed profiles: failing.json",
+            "",
+        ]
+    )
+
+def test_write_suite_artifacts_writes_json_and_markdown(tmp_path):
+    artifacts_dir = tmp_path / "artifacts"
+
+    summary = {
+        "profiles": [
+            {
+                "profile": "passing.json",
+                "quality_gate_status": "passed",
+                "best_accepted_strategy": "binary-overlap",
+            }
+        ],
+        "failed_profiles": [],
+        "passed": True,
+    }
+
+    write_suite_artifacts(
+        summary=summary,
+        artifacts_dir=artifacts_dir,
+    )
+
+    json_path = artifacts_dir / "profiles_summary.json"
+    markdown_path = artifacts_dir / "profiles_summary.md"
+
+    assert json_path.is_file()
+    assert markdown_path.is_file()
+
+    saved_summary = json.loads(
+        json_path.read_text(
+            encoding="utf-8",
+        )
+    )
+
+    assert saved_summary["passed"] is True
+    assert markdown_path.read_text(
+        encoding="utf-8",
+    ).startswith("# RAG Eval Profiles Summary")
+
+
+def test_run_profile_configs_writes_profile_artifacts_when_artifacts_dir_is_provided(tmp_path):
+    knowledge_path, cases_path = create_noisy_eval_fixture(
+        tmp_path,
+    )
+
+    config_dir = tmp_path / "eval_configs"
+    config_dir.mkdir()
+
+    config_path = write_profile_config(
+        config_dir=config_dir,
+        name="passing.json",
+        knowledge_path=knowledge_path,
+        cases_path=cases_path,
+        baseline_strategy="term-frequency",
+        strategies=[
+            "binary-overlap",
+        ],
+        max_regressed_cases=0,
+        min_improved_cases=1,
+    )
+
+    artifacts_dir = tmp_path / "artifacts"
+
+    summary = run_profile_configs(
+        [
+            config_path,
+        ],
+        artifacts_dir=artifacts_dir,
+    )
+
+    profile_summary = summary["profiles"][0]
+
+    assert profile_summary["artifacts"] == {
+        "comparison_json": str(
+            artifacts_dir / "passing" / "comparison.json"
+        ),
+        "report_markdown": str(
+            artifacts_dir / "passing" / "report.md"
+        ),
+    }
+
+    assert (artifacts_dir / "passing" / "comparison.json").is_file()
+    assert (artifacts_dir / "passing" / "report.md").is_file()                        
+
+def test_run_from_args_writes_artifacts_dir(tmp_path):
+    knowledge_path, cases_path = create_noisy_eval_fixture(
+        tmp_path,
+    )
+
+    config_dir = tmp_path / "eval_configs"
+    config_dir.mkdir()
+
+    write_profile_config(
+        config_dir=config_dir,
+        name="passing.json",
+        knowledge_path=knowledge_path,
+        cases_path=cases_path,
+        baseline_strategy="term-frequency",
+        strategies=[
+            "binary-overlap",
+        ],
+        max_regressed_cases=0,
+        min_improved_cases=1,
+    )
+
+    artifacts_dir = tmp_path / "artifacts"
+
+    summary = run_from_args(
+        [
+            "--config-dir",
+            str(config_dir),
+            "--artifacts-dir",
+            str(artifacts_dir),
+        ]
+    )
+
+    assert summary["passed"] is True
+    assert (artifacts_dir / "profiles_summary.json").is_file()
+    assert (artifacts_dir / "profiles_summary.md").is_file()
+    assert (artifacts_dir / "passing" / "comparison.json").is_file()
+    assert (artifacts_dir / "passing" / "report.md").is_file()    
