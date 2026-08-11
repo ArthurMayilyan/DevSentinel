@@ -1,0 +1,11 @@
+{
+  "retrieval": {
+    "config_dir": "./eval_configs"
+  },
+  "answer": {
+    "knowledge_path": "./knowledge_base_noisy",
+    "cases": "./eval_cases/rag_answer_eval_cases.json",
+    "top_k": 3,
+    "min_answer_accuracy": 1.0
+  }
+}

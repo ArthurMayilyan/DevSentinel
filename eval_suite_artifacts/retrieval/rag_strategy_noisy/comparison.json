@@ -1,0 +1,402 @@
+{
+  "run_metadata": {
+    "created_at_utc": "2026-08-11T10:44:39.340466+00:00",
+    "knowledge_path": "./knowledge_base_noisy",
+    "cases": "./eval_cases/noisy_rag_eval_cases.json",
+    "top_k": 3,
+    "strategies": [
+      "term-frequency",
+      "binary-overlap",
+      "hybrid-lexical"
+    ],
+    "baseline_strategy": "term-frequency",
+    "max_regressed_cases": 0,
+    "min_improved_cases": 1,
+    "fail_on_regression_gate": true,
+    "fail_on_improvement_gate": true
+  },
+  "input_fingerprints": {
+    "knowledge_files": [
+      {
+        "path": "knowledge_base_noisy\\coding.md",
+        "relative_path": "coding.md",
+        "size_bytes": 163,
+        "sha256": "fad39bb121f5e9ad24c5f6c400a36326effa25aea6d45f76a6dafd602ec86779"
+      },
+      {
+        "path": "knowledge_base_noisy\\noise_functions.md",
+        "relative_path": "noise_functions.md",
+        "size_bytes": 73,
+        "sha256": "d2a0efc3016533e1a492fa5d732b459ec7f1b8ed5b377c92c98cc80a0cc14a2e"
+      },
+      {
+        "path": "knowledge_base_noisy\\noise_tokens.md",
+        "relative_path": "noise_tokens.md",
+        "size_bytes": 64,
+        "sha256": "c1c68a23229d534e8b98d78fd7b7f5565462e026fdb4ba311a906e278b9bce0c"
+      },
+      {
+        "path": "knowledge_base_noisy\\security.md",
+        "relative_path": "security.md",
+        "size_bytes": 177,
+        "sha256": "83d5b1a52d594670db8909bce1230c41efc8218ad35733d2733c13a5d57cf566"
+      }
+    ],
+    "case_files": [
+      {
+        "path": "eval_cases\\noisy_rag_eval_cases.json",
+        "relative_path": "noisy_rag_eval_cases.json",
+        "size_bytes": 386,
+        "sha256": "95bf3ebe7e9791b5a76b58f8b62b4e0f2925c7da950cf9df457697b8386c5909"
+      }
+    ]
+  },
+  "knowledge_path": "./knowledge_base_noisy",
+  "cases": "./eval_cases/noisy_rag_eval_cases.json",
+  "top_k": 3,
+  "strategies": [
+    "term-frequency",
+    "binary-overlap",
+    "hybrid-lexical"
+  ],
+  "best_strategy": "binary-overlap",
+  "best_strategy_metrics": {
+    "hit_rate": 1.0,
+    "top_1_accuracy": 1.0,
+    "mean_reciprocal_rank": 1.0
+  },
+  "results": [
+    {
+      "total_cases": 2,
+      "passed_cases": 2,
+      "failed_cases": 0,
+      "hit_rate": 1.0,
+      "top_1_accuracy": 0.0,
+      "mean_reciprocal_rank": 0.5,
+      "results": [
+        {
+          "name": "token expiration policy",
+          "query": "token expiration",
+          "passed": true,
+          "expected_source_contains": "security.md",
+          "expected_text_contains": "Token expiration policy",
+          "retrieved_sources": [
+            "knowledge_base_noisy\\noise_tokens.md",
+            "knowledge_base_noisy\\security.md"
+          ],
+          "retrieved_texts": [
+            "# Token Noise\n\ntoken token token token token token token token",
+            "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production."
+          ],
+          "matched_rank": 2,
+          "reciprocal_rank": 0.5,
+          "retrieved_chunks": [
+            {
+              "rank": 1,
+              "source": "knowledge_base_noisy\\noise_tokens.md",
+              "chunk_index": 0,
+              "score": 9,
+              "text": "# Token Noise\n\ntoken token token token token token token token"
+            },
+            {
+              "rank": 2,
+              "source": "knowledge_base_noisy\\security.md",
+              "chunk_index": 0,
+              "score": 4,
+              "text": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production."
+            }
+          ]
+        },
+        {
+          "name": "small function guideline",
+          "query": "small function",
+          "passed": true,
+          "expected_source_contains": "coding.md",
+          "expected_text_contains": "Small function guidelines",
+          "retrieved_sources": [
+            "knowledge_base_noisy\\noise_functions.md",
+            "knowledge_base_noisy\\coding.md"
+          ],
+          "retrieved_texts": [
+            "# Function Noise\n\nfunction function function function function function",
+            "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function."
+          ],
+          "matched_rank": 2,
+          "reciprocal_rank": 0.5,
+          "retrieved_chunks": [
+            {
+              "rank": 1,
+              "source": "knowledge_base_noisy\\noise_functions.md",
+              "chunk_index": 0,
+              "score": 7,
+              "text": "# Function Noise\n\nfunction function function function function function"
+            },
+            {
+              "rank": 2,
+              "source": "knowledge_base_noisy\\coding.md",
+              "chunk_index": 0,
+              "score": 5,
+              "text": "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function."
+            }
+          ]
+        }
+      ],
+      "retrieval_strategy": "term-frequency"
+    },
+    {
+      "total_cases": 2,
+      "passed_cases": 2,
+      "failed_cases": 0,
+      "hit_rate": 1.0,
+      "top_1_accuracy": 1.0,
+      "mean_reciprocal_rank": 1.0,
+      "results": [
+        {
+          "name": "token expiration policy",
+          "query": "token expiration",
+          "passed": true,
+          "expected_source_contains": "security.md",
+          "expected_text_contains": "Token expiration policy",
+          "retrieved_sources": [
+            "knowledge_base_noisy\\security.md",
+            "knowledge_base_noisy\\noise_tokens.md"
+          ],
+          "retrieved_texts": [
+            "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production.",
+            "# Token Noise\n\ntoken token token token token token token token"
+          ],
+          "matched_rank": 1,
+          "reciprocal_rank": 1.0,
+          "retrieved_chunks": [
+            {
+              "rank": 1,
+              "source": "knowledge_base_noisy\\security.md",
+              "chunk_index": 0,
+              "score": 2,
+              "text": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production."
+            },
+            {
+              "rank": 2,
+              "source": "knowledge_base_noisy\\noise_tokens.md",
+              "chunk_index": 0,
+              "score": 1,
+              "text": "# Token Noise\n\ntoken token token token token token token token"
+            }
+          ]
+        },
+        {
+          "name": "small function guideline",
+          "query": "small function",
+          "passed": true,
+          "expected_source_contains": "coding.md",
+          "expected_text_contains": "Small function guidelines",
+          "retrieved_sources": [
+            "knowledge_base_noisy\\coding.md",
+            "knowledge_base_noisy\\noise_functions.md"
+          ],
+          "retrieved_texts": [
+            "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function.",
+            "# Function Noise\n\nfunction function function function function function"
+          ],
+          "matched_rank": 1,
+          "reciprocal_rank": 1.0,
+          "retrieved_chunks": [
+            {
+              "rank": 1,
+              "source": "knowledge_base_noisy\\coding.md",
+              "chunk_index": 0,
+              "score": 2,
+              "text": "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function."
+            },
+            {
+              "rank": 2,
+              "source": "knowledge_base_noisy\\noise_functions.md",
+              "chunk_index": 0,
+              "score": 1,
+              "text": "# Function Noise\n\nfunction function function function function function"
+            }
+          ]
+        }
+      ],
+      "retrieval_strategy": "binary-overlap"
+    },
+    {
+      "total_cases": 2,
+      "passed_cases": 2,
+      "failed_cases": 0,
+      "hit_rate": 1.0,
+      "top_1_accuracy": 1.0,
+      "mean_reciprocal_rank": 1.0,
+      "results": [
+        {
+          "name": "token expiration policy",
+          "query": "token expiration",
+          "passed": true,
+          "expected_source_contains": "security.md",
+          "expected_text_contains": "Token expiration policy",
+          "retrieved_sources": [
+            "knowledge_base_noisy\\security.md",
+            "knowledge_base_noisy\\noise_tokens.md"
+          ],
+          "retrieved_texts": [
+            "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production.",
+            "# Token Noise\n\ntoken token token token token token token token"
+          ],
+          "matched_rank": 1,
+          "reciprocal_rank": 1.0,
+          "retrieved_chunks": [
+            {
+              "rank": 1,
+              "source": "knowledge_base_noisy\\security.md",
+              "chunk_index": 0,
+              "score": 204,
+              "text": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production."
+            },
+            {
+              "rank": 2,
+              "source": "knowledge_base_noisy\\noise_tokens.md",
+              "chunk_index": 0,
+              "score": 109,
+              "text": "# Token Noise\n\ntoken token token token token token token token"
+            }
+          ]
+        },
+        {
+          "name": "small function guideline",
+          "query": "small function",
+          "passed": true,
+          "expected_source_contains": "coding.md",
+          "expected_text_contains": "Small function guidelines",
+          "retrieved_sources": [
+            "knowledge_base_noisy\\coding.md",
+            "knowledge_base_noisy\\noise_functions.md"
+          ],
+          "retrieved_texts": [
+            "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function.",
+            "# Function Noise\n\nfunction function function function function function"
+          ],
+          "matched_rank": 1,
+          "reciprocal_rank": 1.0,
+          "retrieved_chunks": [
+            {
+              "rank": 1,
+              "source": "knowledge_base_noisy\\coding.md",
+              "chunk_index": 0,
+              "score": 205,
+              "text": "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function."
+            },
+            {
+              "rank": 2,
+              "source": "knowledge_base_noisy\\noise_functions.md",
+              "chunk_index": 0,
+              "score": 107,
+              "text": "# Function Noise\n\nfunction function function function function function"
+            }
+          ]
+        }
+      ],
+      "retrieval_strategy": "hybrid-lexical"
+    }
+  ],
+  "baseline_strategy": "term-frequency",
+  "strategy_diagnostics": [
+    {
+      "baseline_strategy": "term-frequency",
+      "strategy": "binary-overlap",
+      "improved_count": 2,
+      "regressed_count": 0,
+      "unchanged_count": 0,
+      "improved_cases": [
+        {
+          "name": "token expiration policy",
+          "query": "token expiration",
+          "baseline_matched_rank": 2,
+          "candidate_matched_rank": 1,
+          "baseline_reciprocal_rank": 0.5,
+          "candidate_reciprocal_rank": 1.0
+        },
+        {
+          "name": "small function guideline",
+          "query": "small function",
+          "baseline_matched_rank": 2,
+          "candidate_matched_rank": 1,
+          "baseline_reciprocal_rank": 0.5,
+          "candidate_reciprocal_rank": 1.0
+        }
+      ],
+      "regressed_cases": [],
+      "unchanged_cases": []
+    },
+    {
+      "baseline_strategy": "term-frequency",
+      "strategy": "hybrid-lexical",
+      "improved_count": 2,
+      "regressed_count": 0,
+      "unchanged_count": 0,
+      "improved_cases": [
+        {
+          "name": "token expiration policy",
+          "query": "token expiration",
+          "baseline_matched_rank": 2,
+          "candidate_matched_rank": 1,
+          "baseline_reciprocal_rank": 0.5,
+          "candidate_reciprocal_rank": 1.0
+        },
+        {
+          "name": "small function guideline",
+          "query": "small function",
+          "baseline_matched_rank": 2,
+          "candidate_matched_rank": 1,
+          "baseline_reciprocal_rank": 0.5,
+          "candidate_reciprocal_rank": 1.0
+        }
+      ],
+      "regressed_cases": [],
+      "unchanged_cases": []
+    }
+  ],
+  "candidate_decisions": [
+    {
+      "strategy": "binary-overlap",
+      "baseline_strategy": "term-frequency",
+      "improved_count": 2,
+      "regressed_count": 0,
+      "unchanged_count": 0,
+      "accepted": true,
+      "rejection_reasons": []
+    },
+    {
+      "strategy": "hybrid-lexical",
+      "baseline_strategy": "term-frequency",
+      "improved_count": 2,
+      "regressed_count": 0,
+      "unchanged_count": 0,
+      "accepted": true,
+      "rejection_reasons": []
+    }
+  ],
+  "best_accepted_strategy": "binary-overlap",
+  "best_accepted_strategy_metrics": {
+    "hit_rate": 1.0,
+    "top_1_accuracy": 1.0,
+    "mean_reciprocal_rank": 1.0
+  },
+  "regression_gate": {
+    "max_regressed_cases": 0,
+    "total_regressed_cases": 0,
+    "passed": true
+  },
+  "improvement_gate": {
+    "min_improved_cases": 1,
+    "total_improved_cases": 4,
+    "passed": true
+  },
+  "quality_gate": {
+    "enabled_gates": [
+      "regression",
+      "improvement"
+    ],
+    "failed_gates": [],
+    "passed": true
+  }
+}
