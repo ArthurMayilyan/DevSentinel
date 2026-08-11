@@ -34,4 +34,13 @@ def test_run_ci_checks_requests_github_step_summary():
 
     assert "--github-step-summary" in script
 
-        
+def test_run_ci_checks_runs_answer_eval_quality_gate():
+    script = Path("scripts/run_ci_checks.py").read_text(
+        encoding="utf-8",
+    )
+
+    assert "run_rag_answer_eval.py" in script
+    assert "./eval_cases/rag_answer_eval_cases.json" in script
+    assert "./rag_answer_eval_artifacts/result.json" in script
+    assert "./rag_answer_eval_artifacts/report.md" in script
+    assert "--fail-on-quality-gate" in script        

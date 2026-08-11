@@ -16,4 +16,5 @@ def test_rag_eval_github_workflow_uploads_artifacts():
 
     assert "actions/upload-artifact@v4" in workflow
     assert "rag_eval_artifacts" in workflow
+    assert "rag_answer_eval_artifacts" in workflow
     assert "python scripts/run_ci_checks.py" in workflow

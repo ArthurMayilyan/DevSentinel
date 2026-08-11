@@ -37,6 +37,23 @@ def main() -> None:
         ]
     )
 
+    run_command(
+        [
+            sys.executable,
+            "run_rag_answer_eval.py",
+            "--knowledge-path",
+            "./knowledge_base_noisy",
+            "--cases",
+            "./eval_cases/rag_answer_eval_cases.json",
+            "--output",
+            "./rag_answer_eval_artifacts/result.json",
+            "--report-output",
+            "./rag_answer_eval_artifacts/report.md",
+            "--summary-only",
+            "--fail-on-quality-gate",
+        ]
+    )
+
 
 if __name__ == "__main__":
     main()
