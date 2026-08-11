@@ -1,0 +1,14 @@
+[
+  {
+    "name": "token expiration answer",
+    "query": "token expiration",
+    "expected_answer_contains": "Token expiration policy",
+    "expected_source_contains": "security.md"
+  },
+  {
+    "name": "small function answer",
+    "query": "small function",
+    "expected_answer_contains": "Small function guidelines",
+    "expected_source_contains": "coding.md"
+  }
+]
