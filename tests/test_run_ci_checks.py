@@ -1,5 +1,5 @@
 import sys
-
+from pathlib import Path
 import pytest
 
 from scripts.run_ci_checks import run_command
@@ -26,3 +26,12 @@ def test_run_command_exits_on_failed_command():
         )
 
     assert error.value.code == 7
+
+def test_run_ci_checks_requests_github_step_summary():
+    script = Path("scripts/run_ci_checks.py").read_text(
+        encoding="utf-8",
+    )
+
+    assert "--github-step-summary" in script
+
+        

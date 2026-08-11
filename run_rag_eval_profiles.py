@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -31,7 +32,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "Optional directory where profile JSON/Markdown artifacts and "
             "suite summaries should be written."
         ),
-    )    
+    )   
+
+    parser.add_argument(
+        "--github-step-summary",
+        action="store_true",
+        help=(
+            "Write the profiles Markdown summary to GitHub Actions step summary "
+            "when GITHUB_STEP_SUMMARY is available."
+        ),
+    )     
 
     parser.add_argument(
         "--fail-on-quality-gate",
@@ -88,6 +98,11 @@ def build_profile_artifact_paths(
         "comparison_json": profile_dir / "comparison.json",
         "report_markdown": profile_dir / "report.md",
     }
+
+def format_artifact_link_path(
+    path: str,
+) -> str:
+    return path.replace("\\", "/")
 
 
 def ensure_artifact_directories(
@@ -276,6 +291,54 @@ def format_profiles_markdown_summary(
 
     return "\n".join(lines)
 
+
+def format_profiles_artifact_index(
+    summary: dict[str, Any],
+) -> str:
+    lines = [
+        "# RAG Eval Artifact Index",
+        "",
+        f"Overall: **{'passed' if summary['passed'] else 'failed'}**",
+        "",
+        "| Profile | Quality gate | Best accepted strategy | Report | JSON |",
+        "|---|---|---|---|---|",
+    ]
+
+    for profile in summary["profiles"]:
+        artifacts = profile.get("artifacts", {})
+
+        report_path = artifacts.get(
+            "report_markdown",
+            "",
+        )
+        comparison_path = artifacts.get(
+            "comparison_json",
+            "",
+        )
+
+        lines.append(
+            "| "
+            f"{profile['profile']} | "
+            f"{profile['quality_gate_status']} | "
+            f"{profile['best_accepted_strategy']} | "
+            f"{format_artifact_link_path(report_path)} | "
+            f"{format_artifact_link_path(comparison_path)} |"
+        )
+
+    if summary["failed_profiles"]:
+        lines.extend(
+            [
+                "",
+                "Failed profiles: "
+                + ", ".join(summary["failed_profiles"]),
+            ]
+        )
+
+    lines.append("")
+
+    return "\n".join(lines)
+
+
 def write_suite_artifacts(
     *,
     summary: dict[str, Any],
@@ -302,6 +365,42 @@ def write_suite_artifacts(
         ),
         encoding="utf-8",
     )
+
+    index_markdown_path = artifacts_dir / "index.md"
+    index_markdown_path.write_text(
+        format_profiles_artifact_index(
+            summary,
+        ),
+        encoding="utf-8",
+    )
+
+def write_github_step_summary(
+    *,
+    summary: dict[str, Any],
+    env: dict[str, str] | None = None,
+) -> bool:
+    if env is None:
+        env = dict(os.environ)
+
+    summary_path = env.get("GITHUB_STEP_SUMMARY")
+
+    if not summary_path:
+        return False
+
+    path = Path(summary_path)
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    path.write_text(
+        format_profiles_markdown_summary(
+            summary,
+        ),
+        encoding="utf-8",
+    )
+
+    return True
 
 def should_fail_due_to_profiles_quality_gate(
     *,
@@ -351,6 +450,11 @@ def run_from_args(
             artifacts_dir=artifacts_dir,
         )
 
+    if args.github_step_summary:
+        write_github_step_summary(
+            summary=summary,
+        )
+
     return summary
 
 
@@ -358,34 +462,39 @@ def main() -> None:
     parser = build_arg_parser()
     args = parser.parse_args()
 
+    raw_args = [
+        "--config-dir",
+        args.config_dir,
+    ]
+
+    if args.output is not None:
+        raw_args.extend(
+            [
+                "--output",
+                args.output,
+            ]
+        )
+
+    if args.artifacts_dir is not None:
+        raw_args.extend(
+            [
+                "--artifacts-dir",
+                args.artifacts_dir,
+            ]
+        )
+
+    if args.github_step_summary:
+        raw_args.append(
+            "--github-step-summary",
+        )
+
+    if args.fail_on_quality_gate:
+        raw_args.append(
+            "--fail-on-quality-gate",
+        )
+
     summary = run_from_args(
-        [
-            "--config-dir",
-            args.config_dir,
-            *(
-                [
-                    "--output",
-                    args.output,
-                ]
-                if args.output is not None
-                else []
-            ),
-            *(
-                [
-                    "--artifacts-dir",
-                    args.artifacts_dir,
-                ]
-                if args.artifacts_dir is not None
-                else []
-            ),
-            *(
-                [
-                    "--fail-on-quality-gate",
-                ]
-                if args.fail_on_quality_gate
-                else []
-            ),
-        ]
+        raw_args,
     )
 
     print(

@@ -9,12 +9,15 @@ from run_rag_eval_profiles import (
     build_profile_run_summary,
     discover_profile_configs,
     ensure_artifact_directories,
+    format_artifact_link_path,
+    format_profiles_artifact_index,
     format_profiles_markdown_summary,
     format_profiles_summary,
     get_profile_quality_gate_status,
     run_from_args,
     run_profile_configs,
     should_fail_due_to_profiles_quality_gate,
+    write_github_step_summary,
     write_suite_artifacts,
 )
 
@@ -505,7 +508,7 @@ def test_format_profiles_markdown_summary_formats_failed_summary():
         ]
     )
 
-def test_write_suite_artifacts_writes_json_and_markdown(tmp_path):
+def test_write_suite_artifacts_writes_json_markdown_and_index(tmp_path):
     artifacts_dir = tmp_path / "artifacts"
 
     summary = {
@@ -514,6 +517,10 @@ def test_write_suite_artifacts_writes_json_and_markdown(tmp_path):
                 "profile": "passing.json",
                 "quality_gate_status": "passed",
                 "best_accepted_strategy": "binary-overlap",
+                "artifacts": {
+                    "report_markdown": "artifacts\\passing\\report.md",
+                    "comparison_json": "artifacts\\passing\\comparison.json",
+                },
             }
         ],
         "failed_profiles": [],
@@ -527,9 +534,11 @@ def test_write_suite_artifacts_writes_json_and_markdown(tmp_path):
 
     json_path = artifacts_dir / "profiles_summary.json"
     markdown_path = artifacts_dir / "profiles_summary.md"
+    index_path = artifacts_dir / "index.md"
 
     assert json_path.is_file()
     assert markdown_path.is_file()
+    assert index_path.is_file()
 
     saved_summary = json.loads(
         json_path.read_text(
@@ -538,9 +547,21 @@ def test_write_suite_artifacts_writes_json_and_markdown(tmp_path):
     )
 
     assert saved_summary["passed"] is True
+
     assert markdown_path.read_text(
         encoding="utf-8",
     ).startswith("# RAG Eval Profiles Summary")
+
+    index_content = index_path.read_text(
+        encoding="utf-8",
+    )
+
+    assert index_content.startswith("# RAG Eval Artifact Index")
+    assert "Overall: **passed**" in index_content
+    assert "passing.json" in index_content
+    assert "binary-overlap" in index_content
+    assert "artifacts/passing/report.md" in index_content
+    assert "artifacts/passing/comparison.json" in index_content
 
 
 def test_run_profile_configs_writes_profile_artifacts_when_artifacts_dir_is_provided(tmp_path):
@@ -622,5 +643,121 @@ def test_run_from_args_writes_artifacts_dir(tmp_path):
     assert summary["passed"] is True
     assert (artifacts_dir / "profiles_summary.json").is_file()
     assert (artifacts_dir / "profiles_summary.md").is_file()
+    assert (artifacts_dir / "index.md").is_file()
     assert (artifacts_dir / "passing" / "comparison.json").is_file()
     assert (artifacts_dir / "passing" / "report.md").is_file()    
+
+def test_format_artifact_link_path_normalizes_windows_separators():
+    assert (
+        format_artifact_link_path(
+            "rag_eval_artifacts\\passing\\report.md"
+        )
+        == "rag_eval_artifacts/passing/report.md"
+    )
+
+def test_format_profiles_artifact_index_formats_artifact_links():
+    summary = {
+        "profiles": [
+            {
+                "profile": "passing.json",
+                "quality_gate_status": "passed",
+                "best_accepted_strategy": "binary-overlap",
+                "artifacts": {
+                    "report_markdown": "rag_eval_artifacts\\passing\\report.md",
+                    "comparison_json": "rag_eval_artifacts\\passing\\comparison.json",
+                },
+            }
+        ],
+        "failed_profiles": [],
+        "passed": True,
+    }
+
+    assert format_profiles_artifact_index(summary) == "\n".join(
+        [
+            "# RAG Eval Artifact Index",
+            "",
+            "Overall: **passed**",
+            "",
+            "| Profile | Quality gate | Best accepted strategy | Report | JSON |",
+            "|---|---|---|---|---|",
+            "| passing.json | passed | binary-overlap | rag_eval_artifacts/passing/report.md | rag_eval_artifacts/passing/comparison.json |",
+            "",
+        ]
+    )
+
+
+def test_format_profiles_artifact_index_includes_failed_profiles():
+    summary = {
+        "profiles": [
+            {
+                "profile": "failing.json",
+                "quality_gate_status": "failed",
+                "best_accepted_strategy": None,
+                "artifacts": {
+                    "report_markdown": "artifacts/failing/report.md",
+                    "comparison_json": "artifacts/failing/comparison.json",
+                },
+            }
+        ],
+        "failed_profiles": [
+            "failing.json",
+        ],
+        "passed": False,
+    }
+
+    assert format_profiles_artifact_index(summary) == "\n".join(
+        [
+            "# RAG Eval Artifact Index",
+            "",
+            "Overall: **failed**",
+            "",
+            "| Profile | Quality gate | Best accepted strategy | Report | JSON |",
+            "|---|---|---|---|---|",
+            "| failing.json | failed | None | artifacts/failing/report.md | artifacts/failing/comparison.json |",
+            "",
+            "Failed profiles: failing.json",
+            "",
+        ]
+    )
+
+
+def test_write_github_step_summary_returns_false_when_env_var_is_missing():
+    written = write_github_step_summary(
+        summary={
+            "profiles": [],
+            "failed_profiles": [],
+            "passed": True,
+        },
+        env={},
+    )
+
+    assert written is False
+
+def test_write_github_step_summary_writes_summary_file(tmp_path):
+    summary_path = tmp_path / "github_step_summary.md"
+
+    written = write_github_step_summary(
+        summary={
+            "profiles": [
+                {
+                    "profile": "passing.json",
+                    "quality_gate_status": "passed",
+                    "best_accepted_strategy": "binary-overlap",
+                }
+            ],
+            "failed_profiles": [],
+            "passed": True,
+        },
+        env={
+            "GITHUB_STEP_SUMMARY": str(summary_path),
+        },
+    )
+
+    assert written is True
+    assert summary_path.is_file()
+
+    assert summary_path.read_text(
+        encoding="utf-8",
+    ).startswith("# RAG Eval Profiles Summary")
+
+                        
