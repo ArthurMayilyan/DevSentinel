@@ -32,6 +32,7 @@ def main() -> None:
             "./eval_configs",
             "--artifacts-dir",
             "./rag_eval_artifacts",
+            "--github-step-summary",
             "--fail-on-quality-gate",
         ]
     )
