@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from run_rag_answer_eval import run_from_args as run_answer_eval_from_args
+from run_rag_grounding_eval import run_from_args as run_grounding_eval_from_args
 from run_rag_eval_profiles import (
     discover_profile_configs,
     run_profile_configs,
@@ -19,6 +20,15 @@ from rag_strategy_factory import (
 ALLOWED_SUITE_CONFIG_KEYS = {
     "retrieval",
     "answer",
+    "grounding",
+}
+
+ALLOWED_GROUNDING_CONFIG_KEYS = {
+    "knowledge_path",
+    "cases",
+    "top_k",
+    "strategy",
+    "min_grounding_accuracy",
 }
 
 ALLOWED_RETRIEVAL_CONFIG_KEYS = {
@@ -99,13 +109,22 @@ def load_eval_suite_config(
     if "answer" not in config:
         raise ValueError("suite config must contain answer section.")
 
+    if "grounding" not in config:
+        raise ValueError("suite config must contain grounding section.")
+    
     validate_retrieval_suite_config(
         config["retrieval"],
+    )
+
+    validate_grounding_suite_config(
+        config["grounding"],
     )
 
     validate_answer_suite_config(
         config["answer"],
     )
+
+    
 
     return config
 
@@ -128,6 +147,62 @@ def validate_retrieval_suite_config(
 
     if not config.get("config_dir"):
         raise ValueError("retrieval config must contain config_dir.")
+
+def validate_grounding_suite_config(
+    config: Any,
+) -> None:
+    if not isinstance(config, dict):
+        raise ValueError("grounding config must be an object.")
+
+    unknown_keys = sorted(
+        set(config.keys()) - ALLOWED_GROUNDING_CONFIG_KEYS
+    )
+
+    if unknown_keys:
+        raise ValueError(
+            "grounding config contains unsupported keys: "
+            + ", ".join(unknown_keys)
+        )
+
+    if not config.get("knowledge_path"):
+        raise ValueError("grounding config must contain knowledge_path.")
+
+    if not config.get("cases"):
+        raise ValueError("grounding config must contain cases.")
+
+    top_k = config.get(
+        "top_k",
+        3,
+    )
+
+    if type(top_k) is not int:
+        raise ValueError("grounding top_k must be an integer.")
+
+    if top_k <= 0:
+        raise ValueError("grounding top_k must be greater than 0.")
+
+    strategy = config.get(
+        "strategy",
+        RETRIEVAL_STRATEGY_DEFAULT,
+    )
+
+    validate_retrieval_strategy(
+        strategy,
+    )
+
+    min_grounding_accuracy = config.get(
+        "min_grounding_accuracy",
+        1.0,
+    )
+
+    if type(min_grounding_accuracy) not in {
+        int,
+        float,
+    }:
+        raise ValueError("min_grounding_accuracy must be a number.")
+
+    if min_grounding_accuracy < 0 or min_grounding_accuracy > 1:
+        raise ValueError("min_grounding_accuracy must be between 0 and 1.")
 
 
 def validate_answer_suite_config(
@@ -251,17 +326,61 @@ def run_answer_suite(
         raw_args,
     )
 
+def run_grounding_suite(
+    *,
+    config: dict[str, Any],
+    artifacts_dir: Path,
+) -> dict[str, Any]:
+    output_path = artifacts_dir / "result.json"
+    report_output_path = artifacts_dir / "report.md"
+
+    raw_args = [
+        "--knowledge-path",
+        config["knowledge_path"],
+        "--cases",
+        config["cases"],
+        "--top-k",
+        str(
+            config.get(
+                "top_k",
+                3,
+            )
+        ),
+        "--strategy",
+        config.get(
+            "strategy",
+            RETRIEVAL_STRATEGY_DEFAULT,
+        ),
+        "--min-grounding-accuracy",
+        str(
+            config.get(
+                "min_grounding_accuracy",
+                1.0,
+            )
+        ),
+        "--output",
+        str(output_path),
+        "--report-output",
+        str(report_output_path),
+    ]
+
+    return run_grounding_eval_from_args(
+        raw_args,
+    )
+
 
 def build_eval_suite_summary(
     *,
     retrieval_summary: dict[str, Any],
     answer_output: dict[str, Any],
+    grounding_output: dict[str, Any],
 ) -> dict[str, Any]:
     retrieval_passed = retrieval_summary["passed"]
     answer_passed = answer_output["quality_gate"]["passed"]
+    grounding_passed = grounding_output["quality_gate"]["passed"]
 
     return {
-        "passed": retrieval_passed and answer_passed,
+        "passed": retrieval_passed and answer_passed and grounding_passed,
         "retrieval": {
             "passed": retrieval_passed,
             "failed_profiles": retrieval_summary["failed_profiles"],
@@ -275,6 +394,15 @@ def build_eval_suite_summary(
             "failed_cases": answer_output["summary"]["failed_cases"],
             "total_cases": answer_output["summary"]["total_cases"],
             "quality_gate": answer_output["quality_gate"],
+        },
+        "grounding": {
+            "passed": grounding_passed,
+            "strategy": grounding_output["strategy"],
+            "grounding_accuracy": grounding_output["summary"]["grounding_accuracy"],
+            "passed_cases": grounding_output["summary"]["passed_cases"],
+            "failed_cases": grounding_output["summary"]["failed_cases"],
+            "total_cases": grounding_output["summary"]["total_cases"],
+            "quality_gate": grounding_output["quality_gate"],
         },
     }
 
@@ -290,6 +418,9 @@ def format_eval_suite_summary(
             f"answer: {'passed' if summary['answer']['passed'] else 'failed'}",
             f"answer_strategy: {summary['answer']['strategy']}",
             f"answer_accuracy: {summary['answer']['answer_accuracy']:.2f}",
+            f"grounding: {'passed' if summary['grounding']['passed'] else 'failed'}",
+            f"grounding_strategy: {summary['grounding']['strategy']}",
+            f"grounding_accuracy: {summary['grounding']['grounding_accuracy']:.2f}",
         ]
     )
 
@@ -332,6 +463,20 @@ def format_eval_suite_markdown_summary(
             "",
         ]
     )
+
+    lines.extend(
+        [
+            "## Grounding eval",
+            "",
+            f"Passed: **{str(summary['grounding']['passed']).lower()}**",
+            f"Strategy: **{summary['grounding']['strategy']}**",
+            f"Total cases: **{summary['grounding']['total_cases']}**",
+            f"Passed cases: **{summary['grounding']['passed_cases']}**",
+            f"Failed cases: **{summary['grounding']['failed_cases']}**",
+            f"Grounding accuracy: **{summary['grounding']['grounding_accuracy']:.2f}**",
+            "",
+        ]
+    )    
 
     if summary["retrieval"]["failed_profiles"]:
         lines.extend(
@@ -429,6 +574,7 @@ def run_from_args(
 
     retrieval_artifacts_dir = artifacts_dir / "retrieval"
     answer_artifacts_dir = artifacts_dir / "answer"
+    grounding_artifacts_dir = artifacts_dir / "grounding"
 
     retrieval_summary = run_retrieval_suite(
         config=config["retrieval"],
@@ -440,9 +586,15 @@ def run_from_args(
         artifacts_dir=answer_artifacts_dir,
     )
 
+    grounding_output = run_grounding_suite(
+        config=config["grounding"],
+        artifacts_dir=grounding_artifacts_dir,
+    )
+
     summary = build_eval_suite_summary(
         retrieval_summary=retrieval_summary,
         answer_output=answer_output,
+        grounding_output=grounding_output,
     )
 
     write_eval_suite_artifacts(

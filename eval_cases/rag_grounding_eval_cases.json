@@ -1,0 +1,22 @@
+[
+  {
+    "name": "token expiration grounding",
+    "query": "token expiration",
+    "should_have_answer": true,
+    "forbidden_answer_contains": [
+      "24 hours",
+      "30 days",
+      "OAuth"
+    ]
+  },
+  {
+    "name": "small function grounding",
+    "query": "small function",
+    "should_have_answer": true,
+    "forbidden_answer_contains": [
+      "maximum 10 lines",
+      "cyclomatic complexity",
+      "PEP8"
+    ]
+  }
+]

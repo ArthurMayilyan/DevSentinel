@@ -1,0 +1,46 @@
+{
+  "knowledge_path": "./knowledge_base_noisy",
+  "cases": "./eval_cases/rag_grounding_eval_cases.json",
+  "top_k": 1,
+  "strategy": "binary-overlap",
+  "min_grounding_accuracy": 1.0,
+  "summary": {
+    "total_cases": 2,
+    "passed_cases": 2,
+    "failed_cases": 0,
+    "grounding_accuracy": 1.0,
+    "results": [
+      {
+        "name": "token expiration grounding",
+        "query": "token expiration",
+        "passed": true,
+        "answer": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production.\n\nSource: knowledge_base_noisy\\security.md",
+        "cited_sources": [
+          "knowledge_base_noisy\\security.md"
+        ],
+        "evidence_sources": [
+          "knowledge_base_noisy\\security.md"
+        ],
+        "failure_reasons": []
+      },
+      {
+        "name": "small function grounding",
+        "query": "small function",
+        "passed": true,
+        "answer": "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function.\n\nSource: knowledge_base_noisy\\coding.md",
+        "cited_sources": [
+          "knowledge_base_noisy\\coding.md"
+        ],
+        "evidence_sources": [
+          "knowledge_base_noisy\\coding.md"
+        ],
+        "failure_reasons": []
+      }
+    ]
+  },
+  "quality_gate": {
+    "min_grounding_accuracy": 1.0,
+    "actual_grounding_accuracy": 1.0,
+    "passed": true
+  }
+}

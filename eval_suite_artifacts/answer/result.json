@@ -1,7 +1,8 @@
 {
   "knowledge_path": "./knowledge_base_noisy",
   "cases": "./eval_cases/rag_answer_eval_cases.json",
-  "top_k": 3,
+  "top_k": 1,
+  "strategy": "binary-overlap",
   "min_answer_accuracy": 1.0,
   "summary": {
     "total_cases": 2,
@@ -15,8 +16,7 @@
         "passed": true,
         "answer": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production.",
         "cited_sources": [
-          "knowledge_base_noisy\\security.md",
-          "knowledge_base_noisy\\noise_tokens.md"
+          "knowledge_base_noisy\\security.md"
         ],
         "expected_answer_contains": "Token expiration policy",
         "expected_source_contains": "security.md",
@@ -28,8 +28,7 @@
         "passed": true,
         "answer": "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function.",
         "cited_sources": [
-          "knowledge_base_noisy\\coding.md",
-          "knowledge_base_noisy\\noise_functions.md"
+          "knowledge_base_noisy\\coding.md"
         ],
         "expected_answer_contains": "Small function guidelines",
         "expected_source_contains": "coding.md",
