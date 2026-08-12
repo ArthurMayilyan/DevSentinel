@@ -8,5 +8,12 @@
     "top_k": 1,
     "strategy": "binary-overlap",
     "min_answer_accuracy": 1.0
+  },
+  "grounding": {
+    "knowledge_path": "./knowledge_base_noisy",
+    "cases": "./eval_cases/rag_grounding_eval_cases.json",
+    "top_k": 1,
+    "strategy": "binary-overlap",
+    "min_grounding_accuracy": 1.0
   }
 }

@@ -13,7 +13,17 @@ Passed: **true**
 ## Answer eval
 
 Passed: **true**
+Strategy: **binary-overlap**
 Total cases: **2**
 Passed cases: **2**
 Failed cases: **0**
 Answer accuracy: **1.00**
+
+## Grounding eval
+
+Passed: **true**
+Strategy: **binary-overlap**
+Total cases: **2**
+Passed cases: **2**
+Failed cases: **0**
+Grounding accuracy: **1.00**

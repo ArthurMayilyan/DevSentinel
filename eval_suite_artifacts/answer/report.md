@@ -4,7 +4,8 @@
 
 Knowledge path: `./knowledge_base_noisy`
 Cases path: `./eval_cases/rag_answer_eval_cases.json`
-Top K: `3`
+Top K: `1`
+Strategy: `binary-overlap`
 Min answer accuracy: `1.0`
 
 ## Summary
