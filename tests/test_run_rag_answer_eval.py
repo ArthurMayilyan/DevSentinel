@@ -126,6 +126,7 @@ def test_build_output_contains_summary_and_quality_gate():
         knowledge_path="./knowledge_base",
         cases_path="./eval_cases/rag_answer_eval_cases.json",
         top_k=3,
+        strategy="binary-overlap",
         min_answer_accuracy=1.0,
         summary=summary,
     )
@@ -133,6 +134,7 @@ def test_build_output_contains_summary_and_quality_gate():
     assert output["knowledge_path"] == "./knowledge_base"
     assert output["cases"] == "./eval_cases/rag_answer_eval_cases.json"
     assert output["top_k"] == 3
+    assert output["strategy"] == "binary-overlap"
     assert output["summary"]["answer_accuracy"] == 1.0
     assert output["quality_gate"]["passed"] is True
 
@@ -142,6 +144,7 @@ def test_format_answer_eval_summary_formats_concise_text():
         knowledge_path="./knowledge_base",
         cases_path="./cases.json",
         top_k=3,
+        strategy="binary-overlap",
         min_answer_accuracy=1.0,
         summary=build_test_summary(),
     )
@@ -149,6 +152,7 @@ def test_format_answer_eval_summary_formats_concise_text():
     assert format_answer_eval_summary(output) == "\n".join(
         [
             "RAG answer eval",
+            "strategy: binary-overlap",
             "cases: 1",
             "passed: 1",
             "failed: 0",
@@ -163,6 +167,7 @@ def test_format_answer_eval_markdown_report_formats_report():
         knowledge_path="./knowledge_base",
         cases_path="./cases.json",
         top_k=3,
+        strategy="binary-overlap",
         min_answer_accuracy=1.0,
         summary=build_test_summary(),
     )
@@ -173,6 +178,7 @@ def test_format_answer_eval_markdown_report_formats_report():
 
     assert report.startswith("# RAG Answer Eval Report")
     assert "Answer accuracy: **1.00**" in report
+    assert "Strategy: `binary-overlap`" in report
     assert "| token expiration answer | true |" in report
 
 
@@ -221,9 +227,12 @@ def test_run_from_args_returns_answer_eval_output(tmp_path):
             str(cases_path),
             "--top-k",
             "1",
+            "--strategy",
+            "binary-overlap",
         ]
     )
 
+    assert output["strategy"] == "binary-overlap"
     assert output["summary"]["total_cases"] == 2
     assert output["summary"]["passed_cases"] == 2
     assert output["summary"]["answer_accuracy"] == 1.0
@@ -246,6 +255,8 @@ def test_run_from_args_writes_output_and_report(tmp_path):
             str(cases_path),
             "--top-k",
             "1",
+            "--strategy",
+            "binary-overlap",
             "--output",
             str(output_path),
             "--report-output",
@@ -262,6 +273,7 @@ def test_run_from_args_writes_output_and_report(tmp_path):
         )
     )
 
+    assert saved_output["strategy"] == "binary-overlap"
     assert saved_output["quality_gate"]["passed"] is True
     assert report_output_path.read_text(
         encoding="utf-8",
@@ -283,6 +295,8 @@ def test_run_from_args_creates_output_parent_directories(tmp_path):
             str(cases_path),
             "--top-k",
             "1",
+            "--strategy",
+            "binary-overlap",
             "--output",
             str(output_path),
             "--report-output",
@@ -292,3 +306,83 @@ def test_run_from_args_creates_output_parent_directories(tmp_path):
 
     assert output_path.is_file()
     assert report_output_path.is_file()    
+
+def create_noisy_answer_eval_fixture(
+    tmp_path: Path,
+) -> tuple[Path, Path]:
+    knowledge_path = tmp_path / "knowledge_base_noisy"
+    knowledge_path.mkdir()
+
+    token_noise = knowledge_path / "noise_tokens.md"
+    token_noise.write_text(
+        "# Token Noise\n\n"
+        "token token token token token token token token",
+        encoding="utf-8",
+    )
+
+    security = knowledge_path / "security.md"
+    security.write_text(
+        "# Security Policy\n\n"
+        "Token expiration policy: tokens must be signed and must expire.",
+        encoding="utf-8",
+    )
+
+    cases_path = tmp_path / "rag_answer_eval_cases.json"
+    cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "token expiration answer",
+                    "query": "token expiration",
+                    "expected_answer_contains": "Token expiration policy",
+                    "expected_source_contains": "security.md",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    return knowledge_path, cases_path    
+
+def test_run_from_args_uses_strategy_for_answer_eval_on_noisy_data(tmp_path):
+    knowledge_path, cases_path = create_noisy_answer_eval_fixture(
+        tmp_path,
+    )
+
+    term_frequency_output = run_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--top-k",
+            "1",
+            "--strategy",
+            "term-frequency",
+            "--min-answer-accuracy",
+            "1.0",
+        ]
+    )
+
+    binary_overlap_output = run_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--top-k",
+            "1",
+            "--strategy",
+            "binary-overlap",
+            "--min-answer-accuracy",
+            "1.0",
+        ]
+    )
+
+    assert term_frequency_output["strategy"] == "term-frequency"
+    assert term_frequency_output["summary"]["answer_accuracy"] == 0.0
+    assert term_frequency_output["quality_gate"]["passed"] is False
+
+    assert binary_overlap_output["strategy"] == "binary-overlap"
+    assert binary_overlap_output["summary"]["answer_accuracy"] == 1.0
+    assert binary_overlap_output["quality_gate"]["passed"] is True
