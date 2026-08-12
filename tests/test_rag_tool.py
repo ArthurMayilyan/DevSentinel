@@ -1,5 +1,6 @@
 import pytest
 
+from rag_strategy_factory import build_rag_search_engine_for_strategy
 from rag_store import InMemoryRagStore
 from rag_tool import DEFAULT_RAG_TOP_K, search_knowledge
 
@@ -24,6 +25,29 @@ def test_search_knowledge_returns_serializable_chunks():
             "score": 2,
         }
     ]
+
+
+def test_search_knowledge_accepts_strategy_wrapped_search_engine():
+    store = InMemoryRagStore()
+    store.add_document(
+        source="security.md",
+        text="Token expiration policy: tokens must be signed and must expire.",
+    )
+
+    search_engine = build_rag_search_engine_for_strategy(
+        store=store,
+        strategy="binary-overlap",
+    )
+
+    results = search_knowledge(
+        store=search_engine,
+        query="token expiration",
+        top_k=1,
+    )
+
+    assert len(results) == 1
+    assert results[0]["source"] == "security.md"
+    assert "Token expiration policy" in results[0]["text"]
 
 
 def test_search_knowledge_respects_top_k():

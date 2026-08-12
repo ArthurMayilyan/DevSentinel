@@ -391,42 +391,44 @@ class Agent:
         if not answer.strip():
             return False, "final_answer rejected: answer must be a non-empty string."
 
-        if not state.report_written:
-            return False, "final_answer rejected: report has not been written yet."
+        if self.config.require_report_for_final_answer:
+            if not state.report_written:
+                return False, "final_answer rejected: report has not been written yet."
 
-        if not state.report_path:
-            return False, "final_answer rejected: report_path is missing."
+            if not state.report_path:
+                return False, "final_answer rejected: report_path is missing."
 
-        discovered_python_files = {
-            normalize_tool_path(file)
-            for file in state.discovered_files
-            if isinstance(file, str) and file.endswith(".py")
-        }
+        if self.config.require_all_python_files_processed_for_final_answer:
+            discovered_python_files = {
+                normalize_tool_path(file)
+                for file in state.discovered_files
+                if isinstance(file, str) and file.endswith(".py")
+            }
 
-        inspected_files = {
-            normalize_tool_path(file)
-            for file in state.inspected_files
-            if isinstance(file, str)
-        }
+            inspected_files = {
+                normalize_tool_path(file)
+                for file in state.inspected_files
+                if isinstance(file, str)
+            }
 
-        skipped_files = {
-            normalize_tool_path(file)
-            for file in state.skipped_files
-            if isinstance(file, str)
-        }
+            skipped_files = {
+                normalize_tool_path(file)
+                for file in state.skipped_files
+                if isinstance(file, str)
+            }
 
-        unprocessed_files = sorted(
-            file
-            for file in discovered_python_files
-            if file not in inspected_files
-            and file not in skipped_files
-        )
-
-        if unprocessed_files:
-            return (
-                False,
-                f"Cannot finish yet. Unprocessed files: {unprocessed_files}",
+            unprocessed_files = sorted(
+                file
+                for file in discovered_python_files
+                if file not in inspected_files
+                and file not in skipped_files
             )
+
+            if unprocessed_files:
+                return (
+                    False,
+                    f"Cannot finish yet. Unprocessed files: {unprocessed_files}",
+                )
 
         return True, ""
     
