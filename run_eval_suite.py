@@ -11,6 +11,10 @@ from run_rag_eval_profiles import (
     run_profile_configs,
     write_suite_artifacts as write_retrieval_suite_artifacts,
 )
+from rag_strategy_factory import (
+    RETRIEVAL_STRATEGY_DEFAULT,
+    validate_retrieval_strategy,
+)
 
 ALLOWED_SUITE_CONFIG_KEYS = {
     "retrieval",
@@ -25,6 +29,7 @@ ALLOWED_ANSWER_CONFIG_KEYS = {
     "knowledge_path",
     "cases",
     "top_k",
+    "strategy",
     "min_answer_accuracy",
 }
 
@@ -158,6 +163,15 @@ def validate_answer_suite_config(
     if top_k <= 0:
         raise ValueError("answer top_k must be greater than 0.")
 
+    strategy = config.get(
+        "strategy",
+        RETRIEVAL_STRATEGY_DEFAULT,
+    )
+
+    validate_retrieval_strategy(
+        strategy,
+    )
+
     min_answer_accuracy = config.get(
         "min_answer_accuracy",
         1.0,
@@ -215,6 +229,11 @@ def run_answer_suite(
                 3,
             )
         ),
+        "--strategy",
+        config.get(
+            "strategy",
+            RETRIEVAL_STRATEGY_DEFAULT,
+        ),
         "--min-answer-accuracy",
         str(
             config.get(
@@ -250,6 +269,7 @@ def build_eval_suite_summary(
         },
         "answer": {
             "passed": answer_passed,
+            "strategy": answer_output["strategy"],
             "answer_accuracy": answer_output["summary"]["answer_accuracy"],
             "passed_cases": answer_output["summary"]["passed_cases"],
             "failed_cases": answer_output["summary"]["failed_cases"],
@@ -268,6 +288,7 @@ def format_eval_suite_summary(
             f"overall: {'passed' if summary['passed'] else 'failed'}",
             f"retrieval: {'passed' if summary['retrieval']['passed'] else 'failed'}",
             f"answer: {'passed' if summary['answer']['passed'] else 'failed'}",
+            f"answer_strategy: {summary['answer']['strategy']}",
             f"answer_accuracy: {summary['answer']['answer_accuracy']:.2f}",
         ]
     )
@@ -303,6 +324,7 @@ def format_eval_suite_markdown_summary(
             "## Answer eval",
             "",
             f"Passed: **{str(summary['answer']['passed']).lower()}**",
+            f"Strategy: **{summary['answer']['strategy']}**",
             f"Total cases: **{summary['answer']['total_cases']}**",
             f"Passed cases: **{summary['answer']['passed_cases']}**",
             f"Failed cases: **{summary['answer']['failed_cases']}**",

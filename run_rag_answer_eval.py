@@ -12,7 +12,11 @@ from rag_answer_eval import (
     load_rag_answer_eval_cases_from_json_file,
 )
 from rag_loader import load_rag_store_from_path
-
+from rag_strategy_factory import (
+    RETRIEVAL_STRATEGY_DEFAULT,
+    SUPPORTED_RETRIEVAL_STRATEGIES,
+    build_rag_search_engine_for_strategy,
+)
 
 def extractive_answer_builder(
     *,
@@ -48,6 +52,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=3,
         help="Number of retrieved chunks to provide as answer evidence.",
     )
+
+    parser.add_argument(
+        "--strategy",
+        choices=sorted(SUPPORTED_RETRIEVAL_STRATEGIES),
+        default=RETRIEVAL_STRATEGY_DEFAULT,
+        help="Retrieval strategy to use for answer evaluation.",
+    )    
 
     parser.add_argument(
         "--min-answer-accuracy",
@@ -114,6 +125,7 @@ def build_output(
     knowledge_path: str,
     cases_path: str,
     top_k: int,
+    strategy: str,
     min_answer_accuracy: float,
     summary: RagAnswerEvalSummary,
 ) -> dict[str, Any]:
@@ -126,6 +138,7 @@ def build_output(
         "knowledge_path": knowledge_path,
         "cases": cases_path,
         "top_k": top_k,
+        "strategy": strategy,
         "min_answer_accuracy": min_answer_accuracy,
         "summary": rag_answer_eval_summary_to_dict(
             summary,
@@ -143,6 +156,7 @@ def format_answer_eval_summary(
     return "\n".join(
         [
             "RAG answer eval",
+            f"strategy: {output['strategy']}",
             f"cases: {summary['total_cases']}",
             f"passed: {summary['passed_cases']}",
             f"failed: {summary['failed_cases']}",
@@ -166,6 +180,7 @@ def format_answer_eval_markdown_report(
         f"Knowledge path: `{output['knowledge_path']}`",
         f"Cases path: `{output['cases']}`",
         f"Top K: `{output['top_k']}`",
+        f"Strategy: `{output['strategy']}`",
         f"Min answer accuracy: `{output['min_answer_accuracy']}`",
         "",
         "## Summary",
@@ -225,12 +240,17 @@ def run_from_args(
         path=args.knowledge_path,
     )
 
+    search_engine = build_rag_search_engine_for_strategy(
+        store=store,
+        strategy=args.strategy,
+    )
+
     cases = load_rag_answer_eval_cases_from_json_file(
         path=args.cases,
     )
 
     summary = evaluate_rag_answers(
-        store=store,
+        store=search_engine,
         cases=cases,
         answer_builder=extractive_answer_builder,
         top_k=args.top_k,
@@ -240,6 +260,7 @@ def run_from_args(
         knowledge_path=args.knowledge_path,
         cases_path=args.cases,
         top_k=args.top_k,
+        strategy=args.strategy,
         min_answer_accuracy=args.min_answer_accuracy,
         summary=summary,
     )
@@ -285,6 +306,8 @@ def main() -> None:
         args.cases,
         "--top-k",
         str(args.top_k),
+        "--strategy",
+        args.strategy,
         "--min-answer-accuracy",
         str(args.min_answer_accuracy),
     ]

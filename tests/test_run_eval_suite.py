@@ -124,6 +124,7 @@ def create_eval_suite_fixture(
                     "knowledge_path": str(knowledge_path),
                     "cases": str(answer_cases_path),
                     "top_k": 1,
+                    "strategy": "binary-overlap",
                     "min_answer_accuracy": 1.0,
                 },
             }
@@ -146,6 +147,7 @@ def test_load_eval_suite_config_loads_config(tmp_path):
                     "knowledge_path": "./knowledge_base_noisy",
                     "cases": "./eval_cases/rag_answer_eval_cases.json",
                     "top_k": 3,
+                    "strategy": "binary-overlap",
                     "min_answer_accuracy": 1.0,
                 },
             }
@@ -160,6 +162,7 @@ def test_load_eval_suite_config_loads_config(tmp_path):
     assert config["retrieval"]["config_dir"] == "./eval_configs"
     assert config["answer"]["knowledge_path"] == "./knowledge_base_noisy"
     assert config["answer"]["top_k"] == 3
+    assert config["answer"]["strategy"] == "binary-overlap"
 
 
 def test_load_eval_suite_config_rejects_unknown_top_level_keys(tmp_path):
@@ -194,6 +197,7 @@ def test_build_eval_suite_summary_passes_when_both_layers_pass():
             "profiles": [],
         },
         answer_output={
+            "strategy": "binary-overlap",
             "quality_gate": {
                 "passed": True,
             },
@@ -206,6 +210,7 @@ def test_build_eval_suite_summary_passes_when_both_layers_pass():
         },
     )
 
+    assert summary["answer"]["strategy"] == "binary-overlap"
     assert summary["passed"] is True
     assert summary["retrieval"]["passed"] is True
     assert summary["answer"]["passed"] is True
@@ -219,6 +224,7 @@ def test_build_eval_suite_summary_fails_when_answer_fails():
             "profiles": [],
         },
         answer_output={
+            "strategy": "binary-overlap",
             "quality_gate": {
                 "passed": False,
             },
@@ -231,6 +237,7 @@ def test_build_eval_suite_summary_fails_when_answer_fails():
         },
     )
 
+    assert summary["answer"]["strategy"] == "binary-overlap"
     assert summary["passed"] is False
     assert summary["retrieval"]["passed"] is True
     assert summary["answer"]["passed"] is False
@@ -244,6 +251,7 @@ def test_format_eval_suite_summary_formats_text():
         },
         "answer": {
             "passed": True,
+            "strategy": "binary-overlap",
             "answer_accuracy": 1.0,
         },
     }
@@ -254,6 +262,7 @@ def test_format_eval_suite_summary_formats_text():
             "overall: passed",
             "retrieval: passed",
             "answer: passed",
+            "answer_strategy: binary-overlap",
             "answer_accuracy: 1.00",
         ]
     )
@@ -275,6 +284,7 @@ def test_format_eval_suite_markdown_summary_formats_markdown():
         },
         "answer": {
             "passed": True,
+            "strategy": "binary-overlap",
             "answer_accuracy": 1.0,
             "passed_cases": 2,
             "failed_cases": 0,
@@ -289,6 +299,7 @@ def test_format_eval_suite_markdown_summary_formats_markdown():
     assert markdown.startswith("# Eval Suite Summary")
     assert "Overall: **passed**" in markdown
     assert "| rag_strategy_noisy.json | passed | binary-overlap |" in markdown
+    assert "Strategy: **binary-overlap**" in markdown
     assert "Answer accuracy: **1.00**" in markdown
 
 
@@ -329,6 +340,7 @@ def test_write_github_step_summary_writes_summary_file(tmp_path):
             },
             "answer": {
                 "passed": True,
+                "strategy": "binary-overlap",
                 "answer_accuracy": 1.0,
                 "passed_cases": 2,
                 "failed_cases": 0,
@@ -366,6 +378,7 @@ def test_run_from_args_runs_full_eval_suite_and_writes_artifacts(tmp_path):
     assert summary["passed"] is True
     assert summary["retrieval"]["passed"] is True
     assert summary["answer"]["passed"] is True
+    assert summary["answer"]["strategy"] == "binary-overlap"
 
     assert (artifacts_dir / "suite_summary.json").is_file()
     assert (artifacts_dir / "suite_summary.md").is_file()
