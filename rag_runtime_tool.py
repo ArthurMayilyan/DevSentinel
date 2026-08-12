@@ -1,21 +1,23 @@
 from typing import Any
 
-from rag_store import InMemoryRagStore
+from rag_search_engine import RagSearchEngine, validate_rag_search_engine
 from rag_tool import search_knowledge
 
 
 def build_search_knowledge_runtime_tool(
     *,
-    store: InMemoryRagStore,
+    store: RagSearchEngine,
 ):
-    if not isinstance(store, InMemoryRagStore):
-        raise ValueError("store must be an InMemoryRagStore.")
+    validate_rag_search_engine(
+        store,
+    )
 
-    def search_knowledge_runtime_tool(*, query: str) -> list[dict[str, Any]]:
+    def search_knowledge_runtime_tool(
+        query: str,
+    ) -> list[dict[str, Any]]:
         return search_knowledge(
             store=store,
             query=query,
         )
 
     return search_knowledge_runtime_tool
-

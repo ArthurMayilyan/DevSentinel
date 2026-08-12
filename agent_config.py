@@ -9,6 +9,9 @@ class AgentConfig:
     max_rejected_tool_calls: int = 5
     max_invalid_llm_outputs: int = 3
 
+    require_report_for_final_answer: bool = True
+    require_all_python_files_processed_for_final_answer: bool = True
+
     def __post_init__(self) -> None:
         self._validate_positive_int("max_steps", self.max_steps)
         self._validate_positive_int(
