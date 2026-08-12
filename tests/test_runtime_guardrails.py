@@ -462,6 +462,47 @@ def test_tool_arguments_must_be_dict_then_recovers():
     assert final_state["report_path"] == "report.md"
     assert len(final_state["findings"]) >= 1    
 
+
+def test_runtime_accepts_windows_style_read_file_path_after_recovery():
+    llm = bad_unknown_tool_then_recovers()
+    trace_recorder = TraceRecorder()
+
+    before_snapshot = snapshot_trace_files()
+
+    agent = Agent(
+        llm=llm,
+        trace_recorder=trace_recorder,
+        max_steps=20,
+    )
+
+    final_answer = agent.run(
+        "Review the sample project and find possible security or maintainability issues."
+    )
+
+    assert final_answer is not None
+
+    latest_trace_path = find_new_or_modified_trace(before_snapshot)
+    trace = json.loads(latest_trace_path.read_text(encoding="utf-8"))
+
+    read_file_steps = [
+        step
+        for step in trace
+        if step.get("llm_output", {}).get("tool") == "read_file"
+    ]
+
+    assert read_file_steps
+
+    assert any(
+        step["state_after"]["inspected_files"]
+        for step in read_file_steps
+    )
+
+    final_state = trace[-1]["state_after"]
+
+    assert final_state["report_written"] is True
+    assert final_state["report_path"] == "report.md"
+
+
 def test_read_file_missing_required_path_is_rejected_then_recovers():
     llm = bad_read_file_missing_path_then_recovers()
     trace_recorder = TraceRecorder()

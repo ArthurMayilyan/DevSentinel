@@ -246,6 +246,10 @@ def run_from_args(
 
     if args.output:
         output_path = Path(args.output)
+        output_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
         output_path.write_text(
             json.dumps(
                 output,
@@ -256,13 +260,17 @@ def run_from_args(
 
     if args.report_output:
         report_output_path = Path(args.report_output)
+        report_output_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
         report_output_path.write_text(
             format_answer_eval_markdown_report(
                 output,
             ),
             encoding="utf-8",
         )
-
+        
     return output
 
 

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from agent_state import AgentState
+from tool_path_utils import normalize_tool_path
 
 
 def list_files(path: str) -> list[str]:
@@ -20,7 +21,13 @@ def list_files(path: str) -> list[str]:
 
 
 def read_file(path: str) -> str:
-    file_path = Path(path)
+    normalized_path = normalize_tool_path(
+        path,
+    )
+
+    file_path = Path(
+        normalized_path,
+    )
 
     if not file_path.exists():
         raise FileNotFoundError(f"File does not exist: {path}")

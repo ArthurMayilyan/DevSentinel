@@ -34,4 +34,23 @@ def test_run_ci_checks_requests_github_step_summary():
 
     assert "--github-step-summary" in script
 
-        
+def test_run_ci_checks_runs_unified_eval_suite():
+    script = Path("scripts/run_ci_checks.py").read_text(
+        encoding="utf-8",
+    )
+
+    assert "run_eval_suite.py" in script
+    assert "./eval_suites/default.json" in script
+    assert "./eval_suite_artifacts" in script
+    assert "--github-step-summary" in script
+    assert "--fail-on-quality-gate" in script    
+
+def test_run_ci_checks_runs_unified_eval_suite():
+    script = Path("scripts/run_ci_checks.py").read_text(
+        encoding="utf-8",
+    )
+
+    assert "run_eval_suite.py" in script
+    assert "./eval_suites/default.json" in script
+    assert "./eval_suite_artifacts" in script
+    assert "--fail-on-quality-gate" in script    

@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "retrieval": {
+    "passed": true,
+    "failed_profiles": [],
+    "profiles": [
+      {
+        "profile": "rag_strategy_noisy.json",
+        "config_path": "eval_configs\\rag_strategy_noisy.json",
+        "best_strategy": "binary-overlap",
+        "best_accepted_strategy": "binary-overlap",
+        "quality_gate_status": "passed",
+        "quality_gate": {
+          "enabled_gates": [
+            "regression",
+            "improvement"
+          ],
+          "failed_gates": [],
+          "passed": true
+        },
+        "artifacts": {
+          "comparison_json": "eval_suite_artifacts\\retrieval\\rag_strategy_noisy\\comparison.json",
+          "report_markdown": "eval_suite_artifacts\\retrieval\\rag_strategy_noisy\\report.md"
+        }
+      }
+    ]
+  },
+  "answer": {
+    "passed": true,
+    "answer_accuracy": 1.0,
+    "passed_cases": 2,
+    "failed_cases": 0,
+    "total_cases": 2,
+    "quality_gate": {
+      "min_answer_accuracy": 1.0,
+      "actual_answer_accuracy": 1.0,
+      "passed": true
+    }
+  }
+}

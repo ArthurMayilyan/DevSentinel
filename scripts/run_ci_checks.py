@@ -27,11 +27,11 @@ def main() -> None:
     run_command(
         [
             sys.executable,
-            "run_rag_eval_profiles.py",
-            "--config-dir",
-            "./eval_configs",
+            "run_eval_suite.py",
+            "--config",
+            "./eval_suites/default.json",
             "--artifacts-dir",
-            "./rag_eval_artifacts",
+            "./eval_suite_artifacts",
             "--github-step-summary",
             "--fail-on-quality-gate",
         ]

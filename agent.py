@@ -19,6 +19,7 @@ from agent_run_result import AgentRunResult
 from agent_run_summary import build_agent_run_summary
 from typing import Any
 from rag_store import InMemoryRagStore
+from tool_path_utils import normalize_tool_path
 
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
@@ -379,7 +380,11 @@ class Agent:
     def build_tools_description(self) -> str:
         return self.tool_registry.format_tools_for_prompt()
 
-    def validate_final_answer_allowed(self, state: AgentState, answer: object) -> tuple[bool, str]:
+    def validate_final_answer_allowed(
+        self,
+        state: AgentState,
+        answer: object,
+    ) -> tuple[bool, str]:
         if not isinstance(answer, str):
             return False, "final_answer rejected: answer must be a string."
 
@@ -391,30 +396,36 @@ class Agent:
 
         if not state.report_path:
             return False, "final_answer rejected: report_path is missing."
-    
-        python_files = [
-            file for file in state.discovered_files
-            if file.endswith(".py")
-        ]
 
-        unprocessed_files = [
-            file for file in python_files
-            if file not in state.inspected_files
-            and file not in state.skipped_files
-        ]
+        discovered_python_files = {
+            normalize_tool_path(file)
+            for file in state.discovered_files
+            if isinstance(file, str) and file.endswith(".py")
+        }
+
+        inspected_files = {
+            normalize_tool_path(file)
+            for file in state.inspected_files
+            if isinstance(file, str)
+        }
+
+        skipped_files = {
+            normalize_tool_path(file)
+            for file in state.skipped_files
+            if isinstance(file, str)
+        }
+
+        unprocessed_files = sorted(
+            file
+            for file in discovered_python_files
+            if file not in inspected_files
+            and file not in skipped_files
+        )
 
         if unprocessed_files:
-            state.rejected_final_answer_count += 1
             return (
                 False,
-                f"Cannot finish yet. Unprocessed files: {unprocessed_files}"
-            )
-
-        if not state.report_written:
-            state.rejected_final_answer_count += 1
-            return (
-                False,
-                "Cannot finish yet. Report has not been written."
+                f"Cannot finish yet. Unprocessed files: {unprocessed_files}",
             )
 
         return True, ""

@@ -266,3 +266,29 @@ def test_run_from_args_writes_output_and_report(tmp_path):
     assert report_output_path.read_text(
         encoding="utf-8",
     ).startswith("# RAG Answer Eval Report")
+
+def test_run_from_args_creates_output_parent_directories(tmp_path):
+    knowledge_path, cases_path = create_answer_eval_fixture(
+        tmp_path,
+    )
+
+    output_path = tmp_path / "artifacts" / "answer" / "result.json"
+    report_output_path = tmp_path / "artifacts" / "answer" / "report.md"
+
+    run_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--cases",
+            str(cases_path),
+            "--top-k",
+            "1",
+            "--output",
+            str(output_path),
+            "--report-output",
+            str(report_output_path),
+        ]
+    )
+
+    assert output_path.is_file()
+    assert report_output_path.is_file()    
