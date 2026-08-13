@@ -2,6 +2,11 @@ import ast
 import json
 from typing import Any
 
+from rag_qa_answer_guardrail import (
+    INSUFFICIENT_EVIDENCE_ANSWER,
+    build_evidence_fallback_answer,
+    validate_rag_qa_answer,
+)
 
 class OpenAIRagQaLLM:
     def __init__(
@@ -42,7 +47,7 @@ class OpenAIRagQaLLM:
         if not evidence:
             return {
                 "type": "final_answer",
-                "answer": "I do not have enough evidence to answer.",
+                "answer": INSUFFICIENT_EVIDENCE_ANSWER,
             }
 
         answer = self.generate_grounded_answer(
@@ -52,11 +57,15 @@ class OpenAIRagQaLLM:
             evidence=evidence,
         )
 
-        if not answer.strip():
-            return {
-                "type": "final_answer",
-                "answer": "I do not have enough evidence to answer.",
-            }
+        validation_result = validate_rag_qa_answer(
+            answer=answer,
+            evidence=evidence,
+        )
+
+        if not validation_result.passed:
+            answer = build_evidence_fallback_answer(
+                evidence=evidence,
+            )
 
         return {
             "type": "final_answer",

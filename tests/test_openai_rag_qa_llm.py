@@ -3,6 +3,24 @@ import pytest
 from openai_rag_qa_llm import OpenAIRagQaLLM
 
 
+class FakeInvalidOpenAIResponse:
+    output_text = "Tokens expire after 24 hours."
+
+
+class FakeInvalidResponsesClient:
+    def create(
+        self,
+        *,
+        model,
+        input,
+    ):
+        return FakeInvalidOpenAIResponse()
+
+
+class FakeInvalidOpenAIClient:
+    def __init__(self):
+        self.responses = FakeInvalidResponsesClient()
+
 class FakeOpenAIResponse:
     def __init__(
         self,
@@ -153,3 +171,91 @@ def test_openai_rag_qa_llm_formats_multiple_evidence_items():
     assert "Security text." in formatted
     assert "[2] Source: coding.md" in formatted
     assert "Coding text." in formatted
+
+def test_openai_rag_qa_llm_falls_back_when_generated_answer_fails_guardrail():
+    llm = OpenAIRagQaLLM(
+        model="gpt-5",
+        client=FakeInvalidOpenAIClient(),
+    )
+    llm.call_count = 1
+
+    output = llm.complete(
+        [
+            {
+                "role": "user",
+                "content": "token expiration",
+            },
+            {
+                "role": "tool",
+                "content": [
+                    {
+                        "source": "security.md",
+                        "text": "Token expiration policy: tokens must be signed and must expire.",
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert output == {
+        "type": "final_answer",
+        "answer": (
+            "Token expiration policy: tokens must be signed and must expire.\n\n"
+            "Source: security.md"
+        ),
+    }
+
+
+class FakeBracketSourceResponse:
+    output_text = (
+        "Tokens must be signed and must expire. "
+        "[Source: security.md]"
+    )
+
+
+class FakeBracketSourceResponsesClient:
+    def create(
+        self,
+        *,
+        model,
+        input,
+    ):
+        return FakeBracketSourceResponse()
+
+
+class FakeBracketSourceOpenAIClient:
+    def __init__(self):
+        self.responses = FakeBracketSourceResponsesClient()
+
+
+def test_openai_rag_qa_llm_accepts_bracket_source_style():
+    llm = OpenAIRagQaLLM(
+        model="gpt-5",
+        client=FakeBracketSourceOpenAIClient(),
+    )
+    llm.call_count = 1
+
+    output = llm.complete(
+        [
+            {
+                "role": "user",
+                "content": "token expiration",
+            },
+            {
+                "role": "tool",
+                "content": [
+                    {
+                        "source": "security.md",
+                        "text": "Token expiration policy: tokens must be signed and must expire.",
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert output == {
+        "type": "final_answer",
+        "answer": "Tokens must be signed and must expire. [Source: security.md]",
+    }
+
+            
