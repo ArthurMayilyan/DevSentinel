@@ -2,6 +2,8 @@ import ast
 import json
 from typing import Any
 
+from rag_answer_composer import compose_rag_answer
+
 
 class DeterministicRagQaLLM:
     def __init__(self):
@@ -35,28 +37,17 @@ class DeterministicRagQaLLM:
                 "answer": "I do not have enough evidence to answer.",
             }
 
-        first_item = evidence[0]
-
-        text = self.get_evidence_text(
-            first_item,
+        composed_answer = compose_rag_answer(
+            query=self.extract_user_query(
+                messages,
+            ),
+            evidence=evidence,
+            max_sentences=1,
         )
-
-        source = self.get_evidence_source(
-            first_item,
-        )
-
-        if not text or not source:
-            return {
-                "type": "final_answer",
-                "answer": "I do not have enough evidence to answer.",
-            }
 
         return {
             "type": "final_answer",
-            "answer": (
-                f"{text}\n\n"
-                f"Source: {source}"
-            ),
+            "answer": composed_answer.answer,
         }
 
     def extract_user_query(

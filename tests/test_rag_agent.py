@@ -54,3 +54,29 @@ def test_rag_qa_agent_accepts_strategy_wrapped_search_engine():
 
     assert "Token expiration policy" in answer
     assert "Source: security.md" in answer    
+
+def test_rag_qa_agent_returns_short_query_relevant_answer_from_noisy_evidence():
+    store = InMemoryRagStore()
+
+    store.add_document(
+        source="security.md",
+        text=(
+            "# Security Policy\n\n"
+            "Token expiration policy: tokens must be signed and must expire.\n"
+            "Credentials must not be hardcoded in source code.\n"
+            "Debug mode must be disabled in production."
+        ),
+    )
+
+    agent = build_rag_qa_agent(
+        rag_store=store,
+    )
+
+    answer = agent.run(
+        "token expiration",
+    )
+
+    assert "Token expiration policy" in answer
+    assert "Credentials must not be hardcoded" not in answer
+    assert "Debug mode must be disabled" not in answer
+    assert "Source: security.md" in answer    

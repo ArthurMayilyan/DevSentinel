@@ -76,6 +76,9 @@ class OpenAIRagQaLLM:
         if not validation_result.passed:
             answer = build_evidence_fallback_answer(
                 evidence=evidence,
+                query=self.extract_user_query(
+                    messages,
+                ),
             )
             self.last_fallback_used = True
 

@@ -19,7 +19,7 @@
         "name": "agent token expiration answer",
         "query": "token expiration",
         "passed": true,
-        "answer": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production.\n\nSource: knowledge_base_noisy\\security.md",
+        "answer": "Token expiration policy: tokens must be signed and must expire.\n\nSource: knowledge_base_noisy\\security.md",
         "search_knowledge_called": true,
         "sources": [
           "knowledge_base_noisy\\security.md",
@@ -33,7 +33,7 @@
         "name": "agent small function answer",
         "query": "small function",
         "passed": true,
-        "answer": "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function.\n\nSource: knowledge_base_noisy\\coding.md",
+        "answer": "Small function guidelines: functions should be small and readable.\n\nSource: knowledge_base_noisy\\coding.md",
         "search_knowledge_called": true,
         "sources": [
           "knowledge_base_noisy\\coding.md",

@@ -10,7 +10,9 @@
     "forbidden_answer_contains": [
       "24 hours",
       "OAuth",
-      "refresh token"
+      "refresh token",
+      "Credentials must not be hardcoded",
+      "Debug mode must be disabled"
     ]
   },
   {
