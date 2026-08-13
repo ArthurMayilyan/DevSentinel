@@ -129,3 +129,40 @@ def test_rag_qa_llm_accepts_content_field_as_evidence_text():
             "content": "Token expiration policy.",
         }
     ]        
+
+def test_rag_qa_llm_composes_short_answer_from_noisy_evidence():
+    llm = DeterministicRagQaLLM()
+    llm.call_count = 1
+
+    output = llm.complete(
+        [
+            {
+                "role": "user",
+                "content": "token expiration",
+            },
+            {
+                "role": "tool",
+                "content": [
+                    {
+                        "source": "security.md",
+                        "text": (
+                            "# Security Policy\n\n"
+                            "Token expiration policy: tokens must be signed and must expire.\n"
+                            "Credentials must not be hardcoded in source code.\n"
+                            "Debug mode must be disabled in production."
+                        ),
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert output == {
+        "type": "final_answer",
+        "answer": (
+            "Token expiration policy: tokens must be signed and must expire.\n\n"
+            "Source: security.md"
+        ),
+    }
+
+        

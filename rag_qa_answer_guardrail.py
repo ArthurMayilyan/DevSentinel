@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
+from rag_answer_composer import compose_rag_answer
+
 
 INSUFFICIENT_EVIDENCE_ANSWER = "I do not have enough evidence to answer."
 
@@ -294,24 +296,15 @@ def validate_rag_qa_answer(
 def build_evidence_fallback_answer(
     *,
     evidence: list[dict[str, Any]],
+    query: str = "answer",
 ) -> str:
     if not evidence:
         return INSUFFICIENT_EVIDENCE_ANSWER
 
-    first_item = evidence[0]
-
-    text = get_evidence_text(
-        first_item,
+    composed_answer = compose_rag_answer(
+        query=query,
+        evidence=evidence,
+        max_sentences=1,
     )
 
-    source = get_evidence_source(
-        first_item,
-    )
-
-    if not text or not source:
-        return INSUFFICIENT_EVIDENCE_ANSWER
-
-    return (
-        f"{text}\n\n"
-        f"Source: {source}"
-    )
+    return composed_answer.answer

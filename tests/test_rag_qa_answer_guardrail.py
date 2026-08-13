@@ -135,4 +135,26 @@ def test_build_evidence_fallback_answer_returns_insufficient_evidence_when_empty
         evidence=[],
     ) == INSUFFICIENT_EVIDENCE_ANSWER
 
-    
+
+
+def test_build_evidence_fallback_answer_uses_query_relevant_sentence():
+    answer = build_evidence_fallback_answer(
+        query="token expiration",
+        evidence=[
+            {
+                "source": "security.md",
+                "text": (
+                    "# Security Policy\n\n"
+                    "Token expiration policy: tokens must be signed and must expire.\n"
+                    "Credentials must not be hardcoded in source code.\n"
+                    "Debug mode must be disabled in production."
+                ),
+            }
+        ],
+    )
+
+    assert answer == (
+        "Token expiration policy: tokens must be signed and must expire.\n\n"
+        "Source: security.md"
+    )
+        
