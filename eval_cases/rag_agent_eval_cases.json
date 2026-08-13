@@ -1,0 +1,27 @@
+[
+  {
+    "name": "agent token expiration answer",
+    "query": "token expiration",
+    "expected_answer_contains": [
+      "Token expiration policy",
+      "tokens must be signed",
+      "must expire"
+    ],
+    "forbidden_answer_contains": [
+      "24 hours",
+      "OAuth",
+      "refresh token"
+    ]
+  },
+  {
+    "name": "agent small function answer",
+    "query": "small function",
+    "expected_answer_contains": [
+      "Small function"
+    ],
+    "forbidden_answer_contains": [
+      "maximum 10 lines",
+      "cyclomatic complexity"
+    ]
+  }
+]

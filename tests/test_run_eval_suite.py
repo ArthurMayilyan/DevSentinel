@@ -139,6 +139,37 @@ def create_eval_suite_fixture(
         encoding="utf-8",
     )
 
+    agent_cases_path = tmp_path / "rag_agent_eval_cases.json"
+    agent_cases_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "agent token expiration answer",
+                    "query": "token expiration",
+                    "expected_answer_contains": [
+                        "Token expiration policy",
+                        "tokens must be signed",
+                        "must expire",
+                    ],
+                    "forbidden_answer_contains": [
+                        "24 hours",
+                    ],
+                },
+                {
+                    "name": "agent small function answer",
+                    "query": "small function",
+                    "expected_answer_contains": [
+                        "Small function",
+                    ],
+                    "forbidden_answer_contains": [
+                        "maximum 10 lines",
+                    ],
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )    
+
     suite_config_path = tmp_path / "eval_suite.json"
     suite_config_path.write_text(
         json.dumps(
@@ -160,6 +191,13 @@ def create_eval_suite_fixture(
                     "strategy": "binary-overlap",
                     "min_grounding_accuracy": 1.0,
                 },
+                "agent": {
+                    "knowledge_path": str(knowledge_path),
+                    "cases": str(agent_cases_path),
+                    "strategy": "binary-overlap",
+                    "max_steps": 4,
+                    "min_agent_answer_accuracy": 1.0,
+                },                
             }
         ),
         encoding="utf-8",
@@ -190,6 +228,13 @@ def test_load_eval_suite_config_loads_config(tmp_path):
                     "strategy": "binary-overlap",
                     "min_grounding_accuracy": 1.0,
                 },                
+                "agent": {
+                    "knowledge_path": "./knowledge_base_noisy",
+                    "cases": "./eval_cases/rag_agent_eval_cases.json",
+                    "strategy": "binary-overlap",
+                    "max_steps": 4,
+                    "min_agent_answer_accuracy": 1.0,
+                },                
             }
         ),
         encoding="utf-8",
@@ -206,10 +251,14 @@ def test_load_eval_suite_config_loads_config(tmp_path):
     assert config["grounding"]["knowledge_path"] == "./knowledge_base_noisy"
     assert config["grounding"]["top_k"] == 1
     assert config["grounding"]["strategy"] == "binary-overlap"
+    assert config["agent"]["knowledge_path"] == "./knowledge_base_noisy"
+    assert config["agent"]["strategy"] == "binary-overlap"
+    assert config["agent"]["max_steps"] == 4    
+
 
 def test_load_eval_suite_config_rejects_unknown_top_level_keys(tmp_path):
-    suite_config_path = tmp_path / "eval_suite.json"
-    suite_config_path.write_text(
+    config_path = tmp_path / "suite.json"
+    config_path.write_text(
         json.dumps(
             {
                 "retrieval": {
@@ -218,21 +267,38 @@ def test_load_eval_suite_config_rejects_unknown_top_level_keys(tmp_path):
                 "answer": {
                     "knowledge_path": "./knowledge_base_noisy",
                     "cases": "./eval_cases/rag_answer_eval_cases.json",
+                    "top_k": 1,
+                    "strategy": "binary-overlap",
+                    "min_answer_accuracy": 1.0,
                 },
                 "grounding": {
                     "knowledge_path": "./knowledge_base_noisy",
                     "cases": "./eval_cases/rag_grounding_eval_cases.json",
-                },                
-                "extra": True,
+                    "top_k": 1,
+                    "strategy": "binary-overlap",
+                    "min_grounding_accuracy": 1.0,
+                },
+                "agent": {
+                    "knowledge_path": "./knowledge_base_noisy",
+                    "cases": "./eval_cases/rag_agent_eval_cases.json",
+                    "strategy": "binary-overlap",
+                    "max_steps": 4,
+                    "min_agent_answer_accuracy": 1.0,
+                },
+                "unexpected": {},
             }
         ),
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="suite config contains unsupported keys: unexpected",
+    ):
         load_eval_suite_config(
-            str(suite_config_path),
+            str(config_path),
         )
+
 
 
 def test_build_eval_suite_summary_passes_when_both_layers_pass():
@@ -265,7 +331,19 @@ def test_build_eval_suite_summary_passes_when_both_layers_pass():
                 "failed_cases": 0,
                 "total_cases": 2,
             },
-        },        
+        }, 
+        agent_output={
+            "strategy": "binary-overlap",
+            "quality_gate": {
+                "passed": True,
+            },
+            "summary": {
+                "agent_answer_accuracy": 1.0,
+                "passed_cases": 2,
+                "failed_cases": 0,
+                "total_cases": 2,
+            },
+        },               
     )
 
     assert summary["answer"]["strategy"] == "binary-overlap"
@@ -274,6 +352,8 @@ def test_build_eval_suite_summary_passes_when_both_layers_pass():
     assert summary["answer"]["passed"] is True
     assert summary["grounding"]["passed"] is True
     assert summary["grounding"]["strategy"] == "binary-overlap"
+    assert summary["agent"]["passed"] is True
+    assert summary["agent"]["strategy"] == "binary-overlap"    
 
 def test_build_eval_suite_summary_fails_when_answer_fails():
     summary = build_eval_suite_summary(
@@ -305,7 +385,19 @@ def test_build_eval_suite_summary_fails_when_answer_fails():
                 "failed_cases": 0,
                 "total_cases": 2,
             },
-        },        
+        },  
+        agent_output={
+            "strategy": "binary-overlap",
+            "quality_gate": {
+                "passed": True,
+            },
+            "summary": {
+                "agent_answer_accuracy": 1.0,
+                "passed_cases": 2,
+                "failed_cases": 0,
+                "total_cases": 2,
+            },
+        },              
     )
 
     assert summary["answer"]["strategy"] == "binary-overlap"
@@ -313,7 +405,8 @@ def test_build_eval_suite_summary_fails_when_answer_fails():
     assert summary["retrieval"]["passed"] is True
     assert summary["answer"]["passed"] is False
     assert summary["grounding"]["passed"] is True
-
+    assert summary["agent"]["passed"] is True
+    assert summary["agent"]["strategy"] == "binary-overlap"
 
 def test_format_eval_suite_summary_formats_text():
     summary = {
@@ -330,10 +423,17 @@ def test_format_eval_suite_summary_formats_text():
             "passed": True,
             "strategy": "binary-overlap",
             "grounding_accuracy": 1.0,
-        },        
+        },
+        "agent": {
+            "passed": True,
+            "strategy": "binary-overlap",
+            "agent_answer_accuracy": 1.0,
+        },
     }
 
-    assert format_eval_suite_summary(summary) == "\n".join(
+    assert format_eval_suite_summary(
+        summary,
+    ) == "\n".join(
         [
             "Eval suite",
             "overall: passed",
@@ -344,6 +444,9 @@ def test_format_eval_suite_summary_formats_text():
             "grounding: passed",
             "grounding_strategy: binary-overlap",
             "grounding_accuracy: 1.00",
+            "agent: passed",
+            "agent_strategy: binary-overlap",
+            "agent_answer_accuracy: 1.00",
         ]
     )
 
@@ -356,7 +459,7 @@ def test_format_eval_suite_markdown_summary_formats_markdown():
             "failed_profiles": [],
             "profiles": [
                 {
-                    "profile": "rag_strategy_noisy.json",
+                    "profile": "rag_strategy_noisy",
                     "quality_gate_status": "passed",
                     "best_accepted_strategy": "binary-overlap",
                 }
@@ -378,7 +481,14 @@ def test_format_eval_suite_markdown_summary_formats_markdown():
             "failed_cases": 0,
             "total_cases": 2,
         },
-
+        "agent": {
+            "passed": True,
+            "strategy": "binary-overlap",
+            "agent_answer_accuracy": 1.0,
+            "passed_cases": 2,
+            "failed_cases": 0,
+            "total_cases": 2,
+        },
     }
 
     markdown = format_eval_suite_markdown_summary(
@@ -386,12 +496,13 @@ def test_format_eval_suite_markdown_summary_formats_markdown():
     )
 
     assert markdown.startswith("# Eval Suite Summary")
-    assert "Overall: **passed**" in markdown
-    assert "| rag_strategy_noisy.json | passed | binary-overlap |" in markdown
-    assert "Strategy: **binary-overlap**" in markdown
-    assert "Answer accuracy: **1.00**" in markdown
+    assert "## Retrieval eval" in markdown
+    assert "## Answer eval" in markdown
     assert "## Grounding eval" in markdown
-    assert "Grounding accuracy: **1.00**" in markdown    
+    assert "## Agent eval" in markdown
+    assert "Answer accuracy: **1.00**" in markdown
+    assert "Grounding accuracy: **1.00**" in markdown
+    assert "Agent answer accuracy: **1.00**" in markdown
 
 
 def test_should_fail_due_to_eval_suite_quality_gate_returns_true_when_enabled_and_failed():
@@ -445,6 +556,14 @@ def test_write_github_step_summary_writes_summary_file(tmp_path):
                 "failed_cases": 0,
                 "total_cases": 2,
             },
+            "agent": {
+                "passed": True,
+                "strategy": "binary-overlap",
+                "agent_answer_accuracy": 1.0,
+                "passed_cases": 2,
+                "failed_cases": 0,
+                "total_cases": 2,
+            },
         },
         env={
             "GITHUB_STEP_SUMMARY": str(summary_path),
@@ -459,8 +578,9 @@ def test_write_github_step_summary_writes_summary_file(tmp_path):
     )
 
     assert content.startswith("# Eval Suite Summary")
-    assert "## Grounding eval" in content
-    assert "Grounding accuracy: **1.00**" in content
+    assert "## Agent eval" in content
+    assert "Agent answer accuracy: **1.00**" in content
+
 
 def test_run_from_args_runs_full_eval_suite_and_writes_artifacts(tmp_path):
     suite_config_path = create_eval_suite_fixture(
@@ -484,6 +604,8 @@ def test_run_from_args_runs_full_eval_suite_and_writes_artifacts(tmp_path):
     assert summary["answer"]["strategy"] == "binary-overlap"
     assert summary["grounding"]["passed"] is True
     assert summary["grounding"]["strategy"] == "binary-overlap"    
+    assert summary["agent"]["passed"] is True
+    assert summary["agent"]["strategy"] == "binary-overlap"    
 
     assert (artifacts_dir / "suite_summary.json").is_file()
     assert (artifacts_dir / "suite_summary.md").is_file()
@@ -511,6 +633,9 @@ def test_run_from_args_runs_full_eval_suite_and_writes_artifacts(tmp_path):
 
     assert (artifacts_dir / "grounding" / "result.json").is_file()
     assert (artifacts_dir / "grounding" / "report.md").is_file()    
+
+    assert (artifacts_dir / "agent" / "result.json").is_file()
+    assert (artifacts_dir / "agent" / "report.md").is_file()
 
 
 def test_build_eval_suite_summary_fails_when_grounding_fails():
@@ -544,11 +669,77 @@ def test_build_eval_suite_summary_fails_when_grounding_fails():
                 "total_cases": 2,
             },
         },
+        agent_output={
+            "strategy": "binary-overlap",
+            "quality_gate": {
+                "passed": True,
+            },
+            "summary": {
+                "agent_answer_accuracy": 1.0,
+                "passed_cases": 2,
+                "failed_cases": 0,
+                "total_cases": 2,
+            },
+        },        
     )
 
     assert summary["passed"] is False
     assert summary["retrieval"]["passed"] is True
     assert summary["answer"]["passed"] is True
     assert summary["grounding"]["passed"] is False
+    assert summary["agent"]["passed"] is True
+    assert summary["agent"]["strategy"] == "binary-overlap"
 
-        
+
+def test_build_eval_suite_summary_fails_when_agent_fails():
+    summary = build_eval_suite_summary(
+        retrieval_summary={
+            "passed": True,
+            "failed_profiles": [],
+            "profiles": [],
+        },
+        answer_output={
+            "strategy": "binary-overlap",
+            "quality_gate": {
+                "passed": True,
+            },
+            "summary": {
+                "answer_accuracy": 1.0,
+                "passed_cases": 2,
+                "failed_cases": 0,
+                "total_cases": 2,
+            },
+        },
+        grounding_output={
+            "strategy": "binary-overlap",
+            "quality_gate": {
+                "passed": True,
+            },
+            "summary": {
+                "grounding_accuracy": 1.0,
+                "passed_cases": 2,
+                "failed_cases": 0,
+                "total_cases": 2,
+            },
+        },
+        agent_output={
+            "strategy": "binary-overlap",
+            "quality_gate": {
+                "passed": False,
+            },
+            "summary": {
+                "agent_answer_accuracy": 0.5,
+                "passed_cases": 1,
+                "failed_cases": 1,
+                "total_cases": 2,
+            },
+        },
+    )
+
+    assert summary["passed"] is False
+    assert summary["retrieval"]["passed"] is True
+    assert summary["answer"]["passed"] is True
+    assert summary["grounding"]["passed"] is True
+    assert summary["agent"]["passed"] is False
+
+            

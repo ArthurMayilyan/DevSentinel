@@ -1,0 +1,36 @@
+{
+  "knowledge_path": "./knowledge_base_noisy",
+  "cases": "./eval_cases/rag_agent_eval_cases.json",
+  "strategy": "binary-overlap",
+  "max_steps": 4,
+  "min_agent_answer_accuracy": 1.0,
+  "summary": {
+    "total_cases": 2,
+    "passed_cases": 2,
+    "failed_cases": 0,
+    "agent_answer_accuracy": 1.0,
+    "results": [
+      {
+        "name": "agent token expiration answer",
+        "query": "token expiration",
+        "passed": true,
+        "answer": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production.\n\nSource: knowledge_base_noisy\\security.md",
+        "search_knowledge_called": true,
+        "failure_reasons": []
+      },
+      {
+        "name": "agent small function answer",
+        "query": "small function",
+        "passed": true,
+        "answer": "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function.\n\nSource: knowledge_base_noisy\\coding.md",
+        "search_knowledge_called": true,
+        "failure_reasons": []
+      }
+    ]
+  },
+  "quality_gate": {
+    "min_agent_answer_accuracy": 1.0,
+    "actual_agent_answer_accuracy": 1.0,
+    "passed": true
+  }
+}
