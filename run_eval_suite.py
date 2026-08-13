@@ -7,6 +7,7 @@ from typing import Any
 
 from run_rag_answer_eval import run_from_args as run_answer_eval_from_args
 from run_rag_grounding_eval import run_from_args as run_grounding_eval_from_args
+from run_rag_agent_eval import run_from_args as run_agent_eval_from_args
 from run_rag_eval_profiles import (
     discover_profile_configs,
     run_profile_configs,
@@ -21,6 +22,7 @@ ALLOWED_SUITE_CONFIG_KEYS = {
     "retrieval",
     "answer",
     "grounding",
+    "agent",
 }
 
 ALLOWED_GROUNDING_CONFIG_KEYS = {
@@ -41,6 +43,14 @@ ALLOWED_ANSWER_CONFIG_KEYS = {
     "top_k",
     "strategy",
     "min_answer_accuracy",
+}
+
+ALLOWED_AGENT_CONFIG_KEYS = {
+    "knowledge_path",
+    "cases",
+    "strategy",
+    "max_steps",
+    "min_agent_answer_accuracy",
 }
 
 
@@ -111,6 +121,9 @@ def load_eval_suite_config(
 
     if "grounding" not in config:
         raise ValueError("suite config must contain grounding section.")
+
+    if "agent" not in config:
+        raise ValueError("suite config must contain agent section.")
     
     validate_retrieval_suite_config(
         config["retrieval"],
@@ -118,6 +131,10 @@ def load_eval_suite_config(
 
     validate_grounding_suite_config(
         config["grounding"],
+    )
+
+    validate_agent_suite_config(
+        config["agent"],
     )
 
     validate_answer_suite_config(
@@ -204,6 +221,63 @@ def validate_grounding_suite_config(
     if min_grounding_accuracy < 0 or min_grounding_accuracy > 1:
         raise ValueError("min_grounding_accuracy must be between 0 and 1.")
 
+
+def validate_agent_suite_config(
+    config: Any,
+) -> None:
+    if not isinstance(config, dict):
+        raise ValueError("agent config must be an object.")
+
+    unknown_keys = sorted(
+        set(config.keys()) - ALLOWED_AGENT_CONFIG_KEYS
+    )
+
+    if unknown_keys:
+        raise ValueError(
+            "agent config contains unsupported keys: "
+            + ", ".join(unknown_keys)
+        )
+
+    if not config.get("knowledge_path"):
+        raise ValueError("agent config must contain knowledge_path.")
+
+    if not config.get("cases"):
+        raise ValueError("agent config must contain cases.")
+
+    strategy = config.get(
+        "strategy",
+        RETRIEVAL_STRATEGY_DEFAULT,
+    )
+
+    validate_retrieval_strategy(
+        strategy,
+    )
+
+    max_steps = config.get(
+        "max_steps",
+        4,
+    )
+
+    if type(max_steps) is not int:
+        raise ValueError("agent max_steps must be an integer.")
+
+    if max_steps <= 0:
+        raise ValueError("agent max_steps must be greater than 0.")
+
+    min_agent_answer_accuracy = config.get(
+        "min_agent_answer_accuracy",
+        1.0,
+    )
+
+    if type(min_agent_answer_accuracy) not in {
+        int,
+        float,
+    }:
+        raise ValueError("min_agent_answer_accuracy must be a number.")
+
+    if min_agent_answer_accuracy < 0 or min_agent_answer_accuracy > 1:
+        raise ValueError("min_agent_answer_accuracy must be between 0 and 1.")
+    
 
 def validate_answer_suite_config(
     config: Any,
@@ -369,18 +443,68 @@ def run_grounding_suite(
     )
 
 
+def run_agent_suite(
+    *,
+    config: dict[str, Any],
+    artifacts_dir: Path,
+) -> dict[str, Any]:
+    output_path = artifacts_dir / "result.json"
+    report_output_path = artifacts_dir / "report.md"
+
+    raw_args = [
+        "--knowledge-path",
+        config["knowledge_path"],
+        "--cases",
+        config["cases"],
+        "--strategy",
+        config.get(
+            "strategy",
+            RETRIEVAL_STRATEGY_DEFAULT,
+        ),
+        "--max-steps",
+        str(
+            config.get(
+                "max_steps",
+                4,
+            )
+        ),
+        "--min-agent-answer-accuracy",
+        str(
+            config.get(
+                "min_agent_answer_accuracy",
+                1.0,
+            )
+        ),
+        "--output",
+        str(output_path),
+        "--report-output",
+        str(report_output_path),
+    ]
+
+    return run_agent_eval_from_args(
+        raw_args,
+    )
+
+
 def build_eval_suite_summary(
     *,
     retrieval_summary: dict[str, Any],
     answer_output: dict[str, Any],
     grounding_output: dict[str, Any],
+    agent_output: dict[str, Any],
 ) -> dict[str, Any]:
     retrieval_passed = retrieval_summary["passed"]
     answer_passed = answer_output["quality_gate"]["passed"]
     grounding_passed = grounding_output["quality_gate"]["passed"]
+    agent_passed = agent_output["quality_gate"]["passed"]
 
     return {
-        "passed": retrieval_passed and answer_passed and grounding_passed,
+        "passed": (
+            retrieval_passed
+            and answer_passed
+            and grounding_passed
+            and agent_passed
+        ),
         "retrieval": {
             "passed": retrieval_passed,
             "failed_profiles": retrieval_summary["failed_profiles"],
@@ -404,6 +528,15 @@ def build_eval_suite_summary(
             "total_cases": grounding_output["summary"]["total_cases"],
             "quality_gate": grounding_output["quality_gate"],
         },
+        "agent": {
+            "passed": agent_passed,
+            "strategy": agent_output["strategy"],
+            "agent_answer_accuracy": agent_output["summary"]["agent_answer_accuracy"],
+            "passed_cases": agent_output["summary"]["passed_cases"],
+            "failed_cases": agent_output["summary"]["failed_cases"],
+            "total_cases": agent_output["summary"]["total_cases"],
+            "quality_gate": agent_output["quality_gate"],
+        },
     }
 
 
@@ -421,6 +554,9 @@ def format_eval_suite_summary(
             f"grounding: {'passed' if summary['grounding']['passed'] else 'failed'}",
             f"grounding_strategy: {summary['grounding']['strategy']}",
             f"grounding_accuracy: {summary['grounding']['grounding_accuracy']:.2f}",
+            f"agent: {'passed' if summary['agent']['passed'] else 'failed'}",
+            f"agent_strategy: {summary['agent']['strategy']}",
+            f"agent_answer_accuracy: {summary['agent']['agent_answer_accuracy']:.2f}",
         ]
     )
 
@@ -476,7 +612,21 @@ def format_eval_suite_markdown_summary(
             f"Grounding accuracy: **{summary['grounding']['grounding_accuracy']:.2f}**",
             "",
         ]
-    )    
+    )   
+
+    lines.extend(
+        [
+            "## Agent eval",
+            "",
+            f"Passed: **{str(summary['agent']['passed']).lower()}**",
+            f"Strategy: **{summary['agent']['strategy']}**",
+            f"Total cases: **{summary['agent']['total_cases']}**",
+            f"Passed cases: **{summary['agent']['passed_cases']}**",
+            f"Failed cases: **{summary['agent']['failed_cases']}**",
+            f"Agent answer accuracy: **{summary['agent']['agent_answer_accuracy']:.2f}**",
+            "",
+        ]
+    )     
 
     if summary["retrieval"]["failed_profiles"]:
         lines.extend(
@@ -575,6 +725,7 @@ def run_from_args(
     retrieval_artifacts_dir = artifacts_dir / "retrieval"
     answer_artifacts_dir = artifacts_dir / "answer"
     grounding_artifacts_dir = artifacts_dir / "grounding"
+    agent_artifacts_dir = artifacts_dir / "agent"
 
     retrieval_summary = run_retrieval_suite(
         config=config["retrieval"],
@@ -591,10 +742,16 @@ def run_from_args(
         artifacts_dir=grounding_artifacts_dir,
     )
 
+    agent_output = run_agent_suite(
+        config=config["agent"],
+        artifacts_dir=agent_artifacts_dir,
+    )    
+
     summary = build_eval_suite_summary(
         retrieval_summary=retrieval_summary,
         answer_output=answer_output,
         grounding_output=grounding_output,
+        agent_output=agent_output,
     )
 
     write_eval_suite_artifacts(

@@ -15,5 +15,12 @@
     "top_k": 1,
     "strategy": "binary-overlap",
     "min_grounding_accuracy": 1.0
+  },
+  "agent": {
+    "knowledge_path": "./knowledge_base_noisy",
+    "cases": "./eval_cases/rag_agent_eval_cases.json",
+    "strategy": "binary-overlap",
+    "max_steps": 4,
+    "min_agent_answer_accuracy": 1.0
   }
 }

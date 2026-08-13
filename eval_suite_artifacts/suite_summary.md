@@ -27,3 +27,12 @@ Total cases: **2**
 Passed cases: **2**
 Failed cases: **0**
 Grounding accuracy: **1.00**
+
+## Agent eval
+
+Passed: **true**
+Strategy: **binary-overlap**
+Total cases: **2**
+Passed cases: **2**
+Failed cases: **0**
+Agent answer accuracy: **1.00**
