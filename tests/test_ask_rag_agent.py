@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from ask_rag_agent import (
@@ -92,3 +93,43 @@ def test_run_from_args_accepts_explicit_deterministic_llm(tmp_path):
 
     assert "Token expiration policy" in answer
     assert "Source:" in answer    
+
+def test_run_from_args_writes_json_and_markdown_outputs(tmp_path):
+    knowledge_path = create_knowledge_fixture(
+        tmp_path,
+    )
+
+    output_path = tmp_path / "result.json"
+    report_output_path = tmp_path / "report.md"
+
+    answer = run_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--query",
+            "token expiration",
+            "--strategy",
+            "binary-overlap",
+            "--output",
+            str(output_path),
+            "--report-output",
+            str(report_output_path),
+        ]
+    )
+
+    assert "Token expiration policy" in answer
+    assert output_path.is_file()
+    assert report_output_path.is_file()
+
+    payload = json.loads(
+        output_path.read_text(
+            encoding="utf-8",
+        )
+    )
+
+    assert payload["query"] == "token expiration"
+    assert payload["strategy"] == "binary-overlap"
+    assert "Token expiration policy" in payload["answer"]
+    assert report_output_path.read_text(
+        encoding="utf-8",
+    ).startswith("# RAG Agent Run Report")    
