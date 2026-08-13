@@ -1,0 +1,129 @@
+{
+  "query": "token expiration",
+  "answer": "Tokens must be signed and must expire. [Source: knowledge_base_noisy\\security.md]",
+  "knowledge_path": "./knowledge_base_noisy",
+  "strategy": "binary-overlap",
+  "llm": "openai",
+  "model": "gpt-5",
+  "max_steps": 4,
+  "sources": [
+    "knowledge_base_noisy\\security.md",
+    "knowledge_base_noisy\\noise_tokens.md"
+  ],
+  "evidence": [
+    {
+      "source": "knowledge_base_noisy\\security.md",
+      "chunk_index": 0,
+      "text": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production.",
+      "score": 2
+    },
+    {
+      "source": "knowledge_base_noisy\\noise_tokens.md",
+      "chunk_index": 0,
+      "text": "# Token Noise\n\ntoken token token token token token token token",
+      "score": 1
+    }
+  ],
+  "trace_steps": [
+    {
+      "step": 1,
+      "llm_output": {
+        "type": "tool_call",
+        "tool": "search_knowledge",
+        "arguments": {
+          "query": "token expiration"
+        }
+      },
+      "tool_result": [
+        {
+          "source": "knowledge_base_noisy\\security.md",
+          "chunk_index": 0,
+          "text": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production.",
+          "score": 2
+        },
+        {
+          "source": "knowledge_base_noisy\\noise_tokens.md",
+          "chunk_index": 0,
+          "text": "# Token Noise\n\ntoken token token token token token token token",
+          "score": 1
+        }
+      ],
+      "error": null,
+      "state_before": {
+        "discovered_files": [],
+        "inspected_files": [],
+        "skipped_files": {},
+        "failed_files": {},
+        "tools_used": [],
+        "report_written": false,
+        "report_path": null,
+        "findings": [],
+        "errors": [],
+        "rejected_final_answer_count": 0,
+        "rejected_tool_call_count": 0,
+        "invalid_llm_output_count": 0
+      },
+      "state_after": {
+        "discovered_files": [],
+        "inspected_files": [],
+        "skipped_files": {},
+        "failed_files": {},
+        "tools_used": [
+          "search_knowledge"
+        ],
+        "report_written": false,
+        "report_path": null,
+        "findings": [],
+        "errors": [],
+        "rejected_final_answer_count": 0,
+        "rejected_tool_call_count": 0,
+        "invalid_llm_output_count": 0
+      }
+    },
+    {
+      "step": 2,
+      "llm_output": {
+        "type": "final_answer",
+        "answer": "Tokens must be signed and must expire. [Source: knowledge_base_noisy\\security.md]"
+      },
+      "tool_result": null,
+      "error": null,
+      "state_before": {
+        "discovered_files": [],
+        "inspected_files": [],
+        "skipped_files": {},
+        "failed_files": {},
+        "tools_used": [
+          "search_knowledge"
+        ],
+        "report_written": false,
+        "report_path": null,
+        "findings": [],
+        "errors": [],
+        "rejected_final_answer_count": 0,
+        "rejected_tool_call_count": 0,
+        "invalid_llm_output_count": 0
+      },
+      "final_answer": "Tokens must be signed and must expire. [Source: knowledge_base_noisy\\security.md]",
+      "state_after": {
+        "discovered_files": [],
+        "inspected_files": [],
+        "skipped_files": {},
+        "failed_files": {},
+        "tools_used": [
+          "search_knowledge"
+        ],
+        "report_written": false,
+        "report_path": null,
+        "findings": [],
+        "errors": [],
+        "rejected_final_answer_count": 0,
+        "rejected_tool_call_count": 0,
+        "invalid_llm_output_count": 0
+      }
+    }
+  ],
+  "guardrail_passed": true,
+  "guardrail_failure_reasons": [],
+  "fallback_used": false
+}

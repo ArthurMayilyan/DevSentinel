@@ -21,6 +21,9 @@ class OpenAIRagQaLLM:
         self.model = model
         self.client = client
         self.call_count = 0
+        self.last_guardrail_passed = None
+        self.last_guardrail_failure_reasons = []
+        self.last_fallback_used = False
 
     def complete(
         self,
@@ -45,6 +48,10 @@ class OpenAIRagQaLLM:
         )
 
         if not evidence:
+            self.last_guardrail_passed = True
+            self.last_guardrail_failure_reasons = []
+            self.last_fallback_used = False
+
             return {
                 "type": "final_answer",
                 "answer": INSUFFICIENT_EVIDENCE_ANSWER,
@@ -62,10 +69,15 @@ class OpenAIRagQaLLM:
             evidence=evidence,
         )
 
+        self.last_guardrail_passed = validation_result.passed
+        self.last_guardrail_failure_reasons = validation_result.failure_reasons
+        self.last_fallback_used = False
+
         if not validation_result.passed:
             answer = build_evidence_fallback_answer(
                 evidence=evidence,
             )
+            self.last_fallback_used = True
 
         return {
             "type": "final_answer",
@@ -105,7 +117,10 @@ class OpenAIRagQaLLM:
         if self.client is not None:
             return self.client
 
+        from dotenv import load_dotenv
         from openai import OpenAI
+
+        load_dotenv()
 
         self.client = OpenAI()
         return self.client

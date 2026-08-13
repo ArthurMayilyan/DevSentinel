@@ -1,18 +1,19 @@
 import argparse
 
-from rag_agent import build_rag_qa_agent
-from rag_loader import load_rag_store_from_path
-from rag_strategy_factory import (
-    RETRIEVAL_STRATEGY_DEFAULT,
-    SUPPORTED_RETRIEVAL_STRATEGIES,
-    build_rag_search_engine_for_strategy,
+from rag_agent_runtime import (
+    format_rag_agent_markdown_report,
+    run_rag_agent,
+    write_rag_agent_markdown_report,
+    write_rag_agent_result_json,
 )
 from rag_qa_llm_factory import (
     RAG_QA_LLM_DETERMINISTIC,
     SUPPORTED_RAG_QA_LLMS,
-    build_rag_qa_llm,
 )
-
+from rag_strategy_factory import (
+    RETRIEVAL_STRATEGY_DEFAULT,
+    SUPPORTED_RETRIEVAL_STRATEGIES,
+)
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -36,12 +37,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--max-steps",
-        type=int,
-        default=4,
-    )
-
-    parser.add_argument(
         "--llm",
         choices=sorted(SUPPORTED_RAG_QA_LLMS),
         default=RAG_QA_LLM_DETERMINISTIC,
@@ -50,6 +45,24 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model",
         default="gpt-5",
+    )
+
+    parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=4,
+    )
+
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Optional path to write structured JSON result.",
+    )
+
+    parser.add_argument(
+        "--report-output",
+        default=None,
+        help="Optional path to write a Markdown run report.",
     )
 
     return parser
@@ -75,29 +88,28 @@ def run_from_args(
         raw_args,
     )
 
-    store = load_rag_store_from_path(
-        path=args.knowledge_path,
-    )
-
-    search_engine = build_rag_search_engine_for_strategy(
-        store=store,
+    result = run_rag_agent(
+        knowledge_path=args.knowledge_path,
+        query=args.query,
         strategy=args.strategy,
-    )
-
-    llm = build_rag_qa_llm(
-        name=args.llm,
+        llm_name=args.llm,
         model=args.model,
-    )    
-
-    agent = build_rag_qa_agent(
-        rag_store=search_engine,
         max_steps=args.max_steps,
-        llm=llm,
     )
 
-    return agent.run(
-        args.query,
-    )
+    if args.output:
+        write_rag_agent_result_json(
+            result=result,
+            output_path=args.output,
+        )
+
+    if args.report_output:
+        write_rag_agent_markdown_report(
+            result=result,
+            output_path=args.report_output,
+        )
+
+    return result.answer
 
 
 def main() -> None:
