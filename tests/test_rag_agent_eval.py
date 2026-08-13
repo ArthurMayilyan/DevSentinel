@@ -11,6 +11,7 @@ from rag_agent_eval import (
     load_rag_agent_eval_cases_from_json_file,
     trace_has_search_knowledge_call,
 )
+from rag_agent_eval import evaluate_rag_agent_run_results
 
 
 def test_answer_contains_all_expected_text_detects_all_expected_items():
@@ -254,6 +255,9 @@ def test_evaluate_rag_agent_cases_summarizes_results():
     assert summary.passed_cases == 1
     assert summary.failed_cases == 0
     assert summary.agent_answer_accuracy == 1.0
+    assert summary.guardrail_checked_cases == 0
+    assert summary.guardrail_passed_cases == 0
+    assert summary.fallback_used_cases == 0
 
 
 def test_evaluate_rag_agent_cases_rejects_empty_cases():
@@ -319,3 +323,62 @@ def test_load_rag_agent_eval_cases_from_json_file_loads_cases(tmp_path):
     assert cases[0].forbidden_answer_contains == [
         "24 hours",
     ]
+
+class FakeRagAgentRunResult:
+    def __init__(
+        self,
+        *,
+        answer: str,
+        trace_steps,
+        sources,
+        guardrail_passed,
+        fallback_used,
+    ):
+        self.answer = answer
+        self.trace_steps = trace_steps
+        self.sources = sources
+        self.guardrail_passed = guardrail_passed
+        self.fallback_used = fallback_used
+
+
+def test_evaluate_rag_agent_run_results_includes_guardrail_and_fallback_metrics():
+    case = RagAgentEvalCase(
+        name="agent token expiration answer",
+        query="token expiration",
+        expected_answer_contains=[
+            "Token expiration policy",
+        ],
+        forbidden_answer_contains=[],
+    )
+
+    summary = evaluate_rag_agent_run_results(
+        cases=[
+            case,
+        ],
+        run_results_by_case_name={
+            "agent token expiration answer": FakeRagAgentRunResult(
+                answer="Token expiration policy.\n\nSource: security.md",
+                trace_steps=[
+                    {
+                        "tool": "search_knowledge",
+                    }
+                ],
+                sources=[
+                    "security.md",
+                ],
+                guardrail_passed=True,
+                fallback_used=False,
+            ),
+        },
+    )
+
+    assert summary.total_cases == 1
+    assert summary.passed_cases == 1
+    assert summary.guardrail_checked_cases == 1
+    assert summary.guardrail_passed_cases == 1
+    assert summary.fallback_used_cases == 0
+    assert summary.results[0].sources == [
+        "security.md",
+    ]
+    assert summary.results[0].guardrail_passed is True
+    assert summary.results[0].fallback_used is False            

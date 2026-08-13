@@ -2,6 +2,8 @@
   "knowledge_path": "./knowledge_base_noisy",
   "cases": "./eval_cases/rag_agent_eval_cases.json",
   "strategy": "binary-overlap",
+  "llm": "deterministic",
+  "model": "gpt-5",
   "max_steps": 4,
   "min_agent_answer_accuracy": 1.0,
   "summary": {
@@ -9,6 +11,9 @@
     "passed_cases": 2,
     "failed_cases": 0,
     "agent_answer_accuracy": 1.0,
+    "guardrail_checked_cases": 0,
+    "guardrail_passed_cases": 0,
+    "fallback_used_cases": 0,
     "results": [
       {
         "name": "agent token expiration answer",
@@ -16,6 +21,12 @@
         "passed": true,
         "answer": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production.\n\nSource: knowledge_base_noisy\\security.md",
         "search_knowledge_called": true,
+        "sources": [
+          "knowledge_base_noisy\\security.md",
+          "knowledge_base_noisy\\noise_tokens.md"
+        ],
+        "guardrail_passed": null,
+        "fallback_used": false,
         "failure_reasons": []
       },
       {
@@ -24,6 +35,12 @@
         "passed": true,
         "answer": "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function.\n\nSource: knowledge_base_noisy\\coding.md",
         "search_knowledge_called": true,
+        "sources": [
+          "knowledge_base_noisy\\coding.md",
+          "knowledge_base_noisy\\noise_functions.md"
+        ],
+        "guardrail_passed": null,
+        "fallback_used": false,
         "failure_reasons": []
       }
     ]

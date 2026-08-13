@@ -17,6 +17,9 @@ class RagAgentEvalResult:
     passed: bool
     answer: str
     search_knowledge_called: bool
+    sources: list[str]
+    guardrail_passed: bool | None
+    fallback_used: bool
     failure_reasons: list[str]
 
 
@@ -26,6 +29,9 @@ class RagAgentEvalSummary:
     passed_cases: int
     failed_cases: int
     agent_answer_accuracy: float
+    guardrail_checked_cases: int
+    guardrail_passed_cases: int
+    fallback_used_cases: int
     results: list[RagAgentEvalResult]
 
 
@@ -118,12 +124,17 @@ def evaluate_rag_agent_case(
     case: RagAgentEvalCase,
     answer: str,
     trace_steps: list[dict[str, Any]],
+    sources: list[str] | None = None,
+    guardrail_passed: bool | None = None,
+    fallback_used: bool = False,
 ) -> RagAgentEvalResult:
     validate_rag_agent_eval_case(
         case,
     )
 
     failure_reasons = []
+    if sources is None:
+        sources = []    
 
     search_knowledge_called = trace_has_search_knowledge_call(
         trace_steps,
@@ -170,9 +181,74 @@ def evaluate_rag_agent_case(
         passed=not failure_reasons,
         answer=answer,
         search_knowledge_called=search_knowledge_called,
+        sources=sources,
+        guardrail_passed=guardrail_passed,
+        fallback_used=fallback_used,
         failure_reasons=failure_reasons,
     )
 
+def count_guardrail_checked_cases(
+    results: list[RagAgentEvalResult],
+) -> int:
+    return sum(
+        1
+        for result in results
+        if result.guardrail_passed is not None
+    )
+
+
+def count_guardrail_passed_cases(
+    results: list[RagAgentEvalResult],
+) -> int:
+    return sum(
+        1
+        for result in results
+        if result.guardrail_passed is True
+    )
+
+
+def count_fallback_used_cases(
+    results: list[RagAgentEvalResult],
+) -> int:
+    return sum(
+        1
+        for result in results
+        if result.fallback_used
+    )
+
+
+def build_rag_agent_eval_summary_from_results(
+    results: list[RagAgentEvalResult],
+) -> RagAgentEvalSummary:
+    if not results:
+        raise ValueError("RAG agent eval results must not be empty.")
+
+    total_cases = len(
+        results,
+    )
+
+    passed_cases = sum(
+        1
+        for result in results
+        if result.passed
+    )
+
+    return RagAgentEvalSummary(
+        total_cases=total_cases,
+        passed_cases=passed_cases,
+        failed_cases=total_cases - passed_cases,
+        agent_answer_accuracy=passed_cases / total_cases,
+        guardrail_checked_cases=count_guardrail_checked_cases(
+            results,
+        ),
+        guardrail_passed_cases=count_guardrail_passed_cases(
+            results,
+        ),
+        fallback_used_cases=count_fallback_used_cases(
+            results,
+        ),
+        results=results,
+    )
 
 def evaluate_rag_agent_cases(
     *,
@@ -200,24 +276,40 @@ def evaluate_rag_agent_cases(
             )
         )
 
-    total_cases = len(
+    return build_rag_agent_eval_summary_from_results(
         results,
     )
 
-    passed_cases = sum(
-        1
-        for result in results
-        if result.passed
-    )
+def evaluate_rag_agent_run_results(
+    *,
+    cases: list[RagAgentEvalCase],
+    run_results_by_case_name: dict[str, Any],
+) -> RagAgentEvalSummary:
+    if not cases:
+        raise ValueError("RAG agent eval cases must not be empty.")
 
-    return RagAgentEvalSummary(
-        total_cases=total_cases,
-        passed_cases=passed_cases,
-        failed_cases=total_cases - passed_cases,
-        agent_answer_accuracy=passed_cases / total_cases,
-        results=results,
-    )
+    results = []
 
+    for case in cases:
+        if case.name not in run_results_by_case_name:
+            raise ValueError(f"missing run result for case: {case.name}")
+
+        run_result = run_results_by_case_name[case.name]
+
+        results.append(
+            evaluate_rag_agent_case(
+                case=case,
+                answer=run_result.answer,
+                trace_steps=run_result.trace_steps,
+                sources=run_result.sources,
+                guardrail_passed=run_result.guardrail_passed,
+                fallback_used=run_result.fallback_used,
+            )
+        )
+
+    return build_rag_agent_eval_summary_from_results(
+        results,
+    )
 
 def rag_agent_eval_summary_to_dict(
     summary: RagAgentEvalSummary,
