@@ -95,11 +95,16 @@ def test_build_agent_quality_gate_fails_when_accuracy_below_threshold():
 def test_format_rag_agent_eval_summary_formats_text():
     output = {
         "strategy": "binary-overlap",
+        "llm": "deterministic",
+        "model": "gpt-5",
         "summary": {
             "total_cases": 2,
             "passed_cases": 2,
             "failed_cases": 0,
             "agent_answer_accuracy": 1.0,
+            "guardrail_checked_cases": 0,
+            "guardrail_passed_cases": 0,
+            "fallback_used_cases": 0,
         },
         "quality_gate": {
             "passed": True,
@@ -112,10 +117,15 @@ def test_format_rag_agent_eval_summary_formats_text():
         [
             "RAG agent eval",
             "strategy: binary-overlap",
+            "llm: deterministic",
+            "model: gpt-5",
             "cases: 2",
             "passed: 2",
             "failed: 0",
             "agent_answer_accuracy: 1.00",
+            "guardrail_checked_cases: 0",
+            "guardrail_passed_cases: 0",
+            "fallback_used_cases: 0",
             "quality_gate: passed",
         ]
     )
@@ -126,18 +136,28 @@ def test_format_rag_agent_eval_markdown_report_formats_report():
         "knowledge_path": "./knowledge_base_noisy",
         "cases": "./eval_cases/rag_agent_eval_cases.json",
         "strategy": "binary-overlap",
+        "llm": "deterministic",
+        "model": "gpt-5",        
         "max_steps": 4,
         "min_agent_answer_accuracy": 1.0,
         "summary": {
             "agent_answer_accuracy": 1.0,
             "passed_cases": 1,
             "failed_cases": 0,
+            "guardrail_checked_cases": 0,
+            "guardrail_passed_cases": 0,
+            "fallback_used_cases": 0,            
             "results": [
                 {
                     "name": "agent token expiration answer",
                     "passed": True,
                     "search_knowledge_called": True,
                     "failure_reasons": [],
+                    "sources": [
+                        "security.md",
+                    ],
+                    "guardrail_passed": None,
+                    "fallback_used": False,                    
                 }
             ],
         },
@@ -150,7 +170,10 @@ def test_format_rag_agent_eval_markdown_report_formats_report():
     assert report.startswith("# RAG Agent Eval Report")
     assert "Strategy: `binary-overlap`" in report
     assert "Agent answer accuracy: **1.00**" in report
-    assert "| agent token expiration answer | true | true |" in report
+    assert "| agent token expiration answer | true | true | none | false |" in report
+    assert "LLM: `deterministic`" in report
+    assert "Model: `gpt-5`" in report
+    assert "Fallback used cases: **0**" in report
 
 
 def test_should_fail_due_to_agent_quality_gate_returns_true_when_enabled_and_failed():
@@ -202,6 +225,10 @@ def test_run_from_args_returns_agent_eval_output(tmp_path):
     assert output["summary"]["passed_cases"] == 2
     assert output["summary"]["agent_answer_accuracy"] == 1.0
     assert output["quality_gate"]["passed"] is True
+    assert output["llm"] == "deterministic"
+    assert output["model"] == "gpt-5"
+    assert output["summary"]["guardrail_checked_cases"] == 0
+    assert output["summary"]["fallback_used_cases"] == 0
 
 
 def test_run_from_args_writes_output_and_report(tmp_path):
@@ -241,3 +268,89 @@ def test_run_from_args_writes_output_and_report(tmp_path):
     assert report_output_path.read_text(
         encoding="utf-8",
     ).startswith("# RAG Agent Eval Report")
+    assert output["llm"] == "deterministic"
+    assert output["model"] == "gpt-5"    
+
+
+def test_run_from_args_supports_openai_llm_mode_with_guardrail_metrics(
+    tmp_path,
+    monkeypatch,
+):
+    _, cases_path = create_agent_eval_fixture(
+        tmp_path,
+    )
+
+    class FakeRunResult:
+        def __init__(
+            self,
+            *,
+            answer: str,
+        ):
+            self.answer = answer
+            self.trace_steps = [
+                {
+                    "tool": "search_knowledge",
+                }
+            ]
+            self.sources = [
+                "security.md",
+            ]
+            self.guardrail_passed = True
+            self.fallback_used = False
+
+    def fake_run_rag_agent(
+        *,
+        knowledge_path,
+        query,
+        strategy,
+        llm_name,
+        model,
+        max_steps,
+    ):
+        assert llm_name == "openai"
+        assert model == "gpt-5"
+
+        if query == "small function":
+            return FakeRunResult(
+                answer=(
+                    "Small function guidelines: functions should be small "
+                    "and readable.\n\nSource: coding.md"
+                ),
+            )
+
+        return FakeRunResult(
+            answer=(
+                "Token expiration policy: tokens must be signed "
+                "and must expire.\n\nSource: security.md"
+            ),
+        )
+
+    monkeypatch.setattr(
+        "run_rag_agent_eval.run_rag_agent",
+        fake_run_rag_agent,
+    )
+
+    output = run_from_args(
+        [
+            "--knowledge-path",
+            "./knowledge_base_noisy",
+            "--cases",
+            str(cases_path),
+            "--strategy",
+            "binary-overlap",
+            "--llm",
+            "openai",
+            "--model",
+            "gpt-5",
+        ]
+    )
+
+    assert output["llm"] == "openai"
+    assert output["model"] == "gpt-5"
+    assert output["summary"]["total_cases"] == 2
+    assert output["summary"]["passed_cases"] == 2
+    assert output["summary"]["agent_answer_accuracy"] == 1.0
+    assert output["summary"]["guardrail_checked_cases"] == 2
+    assert output["summary"]["guardrail_passed_cases"] == 2
+    assert output["summary"]["fallback_used_cases"] == 0
+    assert output["quality_gate"]["passed"] is True

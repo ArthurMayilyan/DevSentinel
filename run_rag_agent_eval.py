@@ -4,19 +4,22 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from rag_agent import build_rag_qa_agent
-from rag_agent_eval import (
-    evaluate_rag_agent_cases,
-    load_rag_agent_eval_cases_from_json_file,
-    rag_agent_eval_summary_to_dict,
+from rag_agent_runtime import run_rag_agent
+from rag_qa_llm_factory import (
+    RAG_QA_LLM_DETERMINISTIC,
+    SUPPORTED_RAG_QA_LLMS,
 )
-from rag_loader import load_rag_store_from_path
 from rag_strategy_factory import (
     RETRIEVAL_STRATEGY_DEFAULT,
     SUPPORTED_RETRIEVAL_STRATEGIES,
-    build_rag_search_engine_for_strategy,
 )
-from trace import TraceRecorder
+from rag_agent_eval import (
+    evaluate_rag_agent_cases,
+    evaluate_rag_agent_run_results,
+    load_rag_agent_eval_cases_from_json_file,
+    rag_agent_eval_summary_to_dict,
+)
+
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -38,6 +41,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--strategy",
         choices=sorted(SUPPORTED_RETRIEVAL_STRATEGIES),
         default=RETRIEVAL_STRATEGY_DEFAULT,
+    )
+
+    parser.add_argument(
+        "--llm",
+        choices=sorted(SUPPORTED_RAG_QA_LLMS),
+        default=RAG_QA_LLM_DETERMINISTIC,
+    )
+
+    parser.add_argument(
+        "--model",
+        default="gpt-5",
     )
 
     parser.add_argument(
@@ -97,6 +111,8 @@ def build_output(
     knowledge_path: str,
     cases_path: str,
     strategy: str,
+    llm: str,
+    model: str,
     max_steps: int,
     min_agent_answer_accuracy: float,
     summary: dict[str, Any],
@@ -105,6 +121,8 @@ def build_output(
         "knowledge_path": knowledge_path,
         "cases": cases_path,
         "strategy": strategy,
+        "llm": llm,
+        "model": model,
         "max_steps": max_steps,
         "min_agent_answer_accuracy": min_agent_answer_accuracy,
         "summary": summary,
@@ -125,14 +143,18 @@ def format_rag_agent_eval_summary(
         [
             "RAG agent eval",
             f"strategy: {output['strategy']}",
+            f"llm: {output['llm']}",
+            f"model: {output['model']}",
             f"cases: {summary['total_cases']}",
             f"passed: {summary['passed_cases']}",
             f"failed: {summary['failed_cases']}",
             f"agent_answer_accuracy: {summary['agent_answer_accuracy']:.2f}",
+            f"guardrail_checked_cases: {summary['guardrail_checked_cases']}",
+            f"guardrail_passed_cases: {summary['guardrail_passed_cases']}",
+            f"fallback_used_cases: {summary['fallback_used_cases']}",
             f"quality_gate: {'passed' if quality_gate['passed'] else 'failed'}",
         ]
     )
-
 
 def format_rag_agent_eval_markdown_report(
     output: dict[str, Any],
@@ -147,19 +169,24 @@ def format_rag_agent_eval_markdown_report(
         f"Knowledge path: `{output['knowledge_path']}`",
         f"Cases path: `{output['cases']}`",
         f"Strategy: `{output['strategy']}`",
+        f"LLM: `{output['llm']}`",
+        f"Model: `{output['model']}`",
         f"Max steps: `{output['max_steps']}`",
         f"Min agent answer accuracy: `{output['min_agent_answer_accuracy']}`",
         "",
         "## Summary",
         "",
         f"Agent answer accuracy: **{summary['agent_answer_accuracy']:.2f}**",
+        f"Guardrail checked cases: **{summary['guardrail_checked_cases']}**",
+        f"Guardrail passed cases: **{summary['guardrail_passed_cases']}**",
+        f"Fallback used cases: **{summary['fallback_used_cases']}**",        
         f"Passed cases: **{summary['passed_cases']}**",
         f"Failed cases: **{summary['failed_cases']}**",
         "",
         "## Cases",
         "",
-        "| Case | Passed | search_knowledge called | Failures |",
-        "|---|---:|---:|---|",
+        "| Case | Passed | search_knowledge called | Guardrail passed | Fallback used | Failures |",
+        "|---|---:|---:|---:|---:|---|",
     ]
 
     for result in summary["results"]:
@@ -172,6 +199,8 @@ def format_rag_agent_eval_markdown_report(
             f"{result['name']} | "
             f"{str(result['passed']).lower()} | "
             f"{str(result['search_knowledge_called']).lower()} | "
+            f"{str(result['guardrail_passed']).lower()} | "
+            f"{str(result['fallback_used']).lower()} | "
             f"{failures} |"
         )
 
@@ -199,42 +228,26 @@ def run_from_args(
         raw_args,
     )
 
-    store = load_rag_store_from_path(
-        path=args.knowledge_path,
-    )
-
-    search_engine = build_rag_search_engine_for_strategy(
-        store=store,
-        strategy=args.strategy,
-    )
-
     cases = load_rag_agent_eval_cases_from_json_file(
         path=args.cases,
     )
 
-    answers_by_case_name = {}
-    trace_steps_by_case_name = {}
+    run_results_by_case_name = {}
 
     for case in cases:
-        trace_recorder = TraceRecorder()
-
-        agent = build_rag_qa_agent(
-            rag_store=search_engine,
+        run_results_by_case_name[case.name] = run_rag_agent(
+            knowledge_path=args.knowledge_path,
+            query=case.query,
+            strategy=args.strategy,
+            llm_name=args.llm,
+            model=args.model,
             max_steps=args.max_steps,
-            trace_recorder=trace_recorder,
         )
-
-        answers_by_case_name[case.name] = agent.run(
-            case.query,
-        )
-
-        trace_steps_by_case_name[case.name] = trace_recorder.read_steps()
 
     summary = rag_agent_eval_summary_to_dict(
-        evaluate_rag_agent_cases(
+        evaluate_rag_agent_run_results(
             cases=cases,
-            answers_by_case_name=answers_by_case_name,
-            trace_steps_by_case_name=trace_steps_by_case_name,
+            run_results_by_case_name=run_results_by_case_name,
         )
     )
 
@@ -242,6 +255,8 @@ def run_from_args(
         knowledge_path=args.knowledge_path,
         cases_path=args.cases,
         strategy=args.strategy,
+        llm=args.llm,
+        model=args.model,
         max_steps=args.max_steps,
         min_agent_answer_accuracy=args.min_agent_answer_accuracy,
         summary=summary,
@@ -292,6 +307,10 @@ def main() -> None:
         args.cases,
         "--strategy",
         args.strategy,
+        "--llm",
+        args.llm,
+        "--model",
+        args.model,
         "--max-steps",
         str(args.max_steps),
         "--min-agent-answer-accuracy",
