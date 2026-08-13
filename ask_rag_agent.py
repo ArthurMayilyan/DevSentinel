@@ -7,6 +7,11 @@ from rag_strategy_factory import (
     SUPPORTED_RETRIEVAL_STRATEGIES,
     build_rag_search_engine_for_strategy,
 )
+from rag_qa_llm_factory import (
+    RAG_QA_LLM_DETERMINISTIC,
+    SUPPORTED_RAG_QA_LLMS,
+    build_rag_qa_llm,
+)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -34,6 +39,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--max-steps",
         type=int,
         default=4,
+    )
+
+    parser.add_argument(
+        "--llm",
+        choices=sorted(SUPPORTED_RAG_QA_LLMS),
+        default=RAG_QA_LLM_DETERMINISTIC,
+    )
+
+    parser.add_argument(
+        "--model",
+        default="gpt-5",
     )
 
     return parser
@@ -68,9 +84,15 @@ def run_from_args(
         strategy=args.strategy,
     )
 
+    llm = build_rag_qa_llm(
+        name=args.llm,
+        model=args.model,
+    )    
+
     agent = build_rag_qa_agent(
         rag_store=search_engine,
         max_steps=args.max_steps,
+        llm=llm,
     )
 
     return agent.run(
