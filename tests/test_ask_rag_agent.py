@@ -52,3 +52,43 @@ def test_run_from_args_returns_agent_rag_answer(tmp_path):
 
     assert "Token expiration policy" in answer
     assert "Source:" in answer
+
+def test_run_from_args_uses_deterministic_llm_by_default(tmp_path):
+    knowledge_path = create_knowledge_fixture(
+        tmp_path,
+    )
+
+    answer = run_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--query",
+            "token expiration",
+            "--strategy",
+            "binary-overlap",
+        ]
+    )
+
+    assert "Token expiration policy" in answer
+    assert "Source:" in answer    
+
+def test_run_from_args_accepts_explicit_deterministic_llm(tmp_path):
+    knowledge_path = create_knowledge_fixture(
+        tmp_path,
+    )
+
+    answer = run_from_args(
+        [
+            "--knowledge-path",
+            str(knowledge_path),
+            "--query",
+            "token expiration",
+            "--strategy",
+            "binary-overlap",
+            "--llm",
+            "deterministic",
+        ]
+    )
+
+    assert "Token expiration policy" in answer
+    assert "Source:" in answer    

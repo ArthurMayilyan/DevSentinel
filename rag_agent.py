@@ -10,12 +10,16 @@ def build_rag_qa_agent(
     rag_store,
     max_steps: int = 4,
     trace_recorder: TraceRecorder | None = None,
+    llm=None,
 ) -> Agent:
     if trace_recorder is None:
         trace_recorder = TraceRecorder()
 
+    if llm is None:
+        llm = DeterministicRagQaLLM()
+
     return Agent(
-        llm=DeterministicRagQaLLM(),
+        llm=llm,
         trace_recorder=trace_recorder,
         rag_store=rag_store,
         config=AgentConfig(
