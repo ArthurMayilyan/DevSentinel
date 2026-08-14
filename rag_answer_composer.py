@@ -64,6 +64,34 @@ def tokenize(
     }
 
 
+def get_evidence_subquery(
+    item: dict[str, Any],
+) -> str:
+    value = item.get(
+        "subquery",
+        "",
+    )
+
+    if isinstance(value, str):
+        return value
+
+    return ""
+
+
+def get_evidence_subquery_index(
+    item: dict[str, Any],
+) -> int:
+    value = item.get(
+        "subquery_index",
+        -1,
+    )
+
+    if isinstance(value, int):
+        return value
+
+    return -1
+
+
 def get_evidence_source(
     item: dict[str, Any],
 ) -> str:
@@ -185,7 +213,7 @@ def collect_ranked_sentences(
     *,
     query: str,
     evidence: list[dict[str, Any]],
-) -> list[tuple[int, int, str, str]]:
+) -> list[tuple[int, int, int, str, str, str]]:
     query_tokens = tokenize(
         query,
     )
@@ -201,24 +229,37 @@ def collect_ranked_sentences(
         text = get_evidence_text(
             item,
         )
+        subquery = get_evidence_subquery(
+            item,
+        )
+        subquery_index = get_evidence_subquery_index(
+            item,
+        )
 
         if not source or not text:
             continue
+
+        effective_query = subquery if subquery else query
+        effective_query_tokens = tokenize(
+            effective_query,
+        )
 
         for sentence in split_into_sentences(
             text,
         ):
             score = score_sentence(
-                query_tokens=query_tokens,
+                query_tokens=effective_query_tokens,
                 sentence=sentence,
             )
 
             ranked.append(
                 (
                     score,
+                    subquery_index,
                     evidence_index,
                     source,
                     sentence,
+                    subquery,
                 )
             )
 
@@ -227,6 +268,7 @@ def collect_ranked_sentences(
         key=lambda item: (
             item[0],
             -item[1],
+            -item[2],
         ),
         reverse=True,
     )
@@ -236,7 +278,7 @@ def select_relevant_sentences(
     *,
     query: str,
     evidence: list[dict[str, Any]],
-    max_sentences: int = 2,
+    max_sentences: int = 1,
 ) -> list[tuple[int, str, str]]:
     if max_sentences <= 0:
         raise ValueError("max_sentences must be greater than 0.")
@@ -248,8 +290,17 @@ def select_relevant_sentences(
 
     selected = []
     seen_sentences = set()
+    seen_subquery_indexes = set()
 
-    for score, evidence_index, source, sentence in ranked:
+    has_subquery_context = any(
+        get_evidence_subquery_index(
+            item,
+        )
+        >= 0
+        for item in evidence
+    )
+
+    for score, subquery_index, evidence_index, source, sentence, _ in ranked:
         if score <= 0:
             continue
 
@@ -260,6 +311,13 @@ def select_relevant_sentences(
         if normalized_sentence in seen_sentences:
             continue
 
+        if (
+            has_subquery_context
+            and subquery_index >= 0
+            and subquery_index in seen_subquery_indexes
+        ):
+            continue
+
         selected.append(
             (
                 evidence_index,
@@ -267,9 +325,15 @@ def select_relevant_sentences(
                 sentence,
             )
         )
+
         seen_sentences.add(
             normalized_sentence,
         )
+
+        if has_subquery_context and subquery_index >= 0:
+            seen_subquery_indexes.add(
+                subquery_index,
+            )
 
         if len(
             selected,
@@ -278,7 +342,16 @@ def select_relevant_sentences(
 
     return sorted(
         selected,
-        key=lambda item: item[0],
+        key=lambda item: (
+            get_evidence_subquery_index(
+                evidence[item[0]],
+            )
+            if item[0] < len(
+                evidence,
+            )
+            else -1,
+            item[0],
+        ),
     )
 
 

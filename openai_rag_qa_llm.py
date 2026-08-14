@@ -8,7 +8,9 @@ from rag_qa_answer_guardrail import (
     validate_rag_qa_answer,
 )
 from rag_evidence_extractor import (
+    add_missing_subquery_context,
     extract_all_evidence,
+    extract_all_evidence_with_provenance,
     extract_evidence_from_value,
     extract_latest_evidence,
     get_evidence_source,
@@ -66,9 +68,13 @@ class OpenAIRagQaLLM:
                 },
             }
 
-        evidence = self.extract_all_evidence(
+        evidence = self.extract_all_evidence_with_provenance(
             messages,
         )
+        evidence = add_missing_subquery_context(
+            evidence=evidence,
+            subqueries=self.subqueries,
+        )        
 
         if not evidence:
             self.last_guardrail_passed = True
@@ -116,6 +122,14 @@ class OpenAIRagQaLLM:
             "type": "final_answer",
             "answer": answer,
         }
+
+    def extract_all_evidence_with_provenance(
+        self,
+        messages,
+    ) -> list[dict[str, Any]]:
+        return extract_all_evidence_with_provenance(
+            messages,
+        )
 
     def generate_grounded_answer(
         self,

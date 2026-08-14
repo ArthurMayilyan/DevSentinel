@@ -2,6 +2,7 @@ from rag_evidence_extractor import (
     extract_all_evidence,
     extract_latest_evidence,
 )
+from rag_evidence_extractor import extract_all_evidence_with_provenance
 
 
 def test_extract_latest_evidence_returns_latest_tool_result():
@@ -99,3 +100,59 @@ def test_extract_all_evidence_deduplicates_repeated_tool_results():
             "text": "Security text.",
         }
     ]
+
+def test_extract_all_evidence_with_provenance_reads_query_from_observation_text():
+    evidence = extract_all_evidence_with_provenance(
+        [
+            (
+                "Observation from tool `search_knowledge` with arguments "
+                "{'query': 'credentials production'}:\n"
+                "[{'source': 'security.md', "
+                "'text': 'Credentials must not be hardcoded.'}]"
+            )
+        ],
+        strategy="binary-overlap",
+    )
+
+    assert evidence == [
+        {
+            "source": "security.md",
+            "chunk_index": None,
+            "text": "Credentials must not be hardcoded.",
+            "score": None,
+            "subquery": "credentials production",
+            "subquery_index": 0,
+            "strategy": "binary-overlap",
+        }
+    ]
+
+
+def test_extract_all_evidence_with_provenance_keeps_same_chunk_for_different_subqueries():
+    evidence = extract_all_evidence_with_provenance(
+        [
+            (
+                "Observation from tool `search_knowledge` with arguments "
+                "{'query': 'credentials production'}:\n"
+                "[{'source': 'security.md', "
+                "'chunk_index': 0, "
+                "'text': 'Credentials must not be hardcoded. Debug mode must be disabled.'}]"
+            ),
+            (
+                "Observation from tool `search_knowledge` with arguments "
+                "{'query': 'debug mode production'}:\n"
+                "[{'source': 'security.md', "
+                "'chunk_index': 0, "
+                "'text': 'Credentials must not be hardcoded. Debug mode must be disabled.'}]"
+            ),
+        ],
+        strategy="binary-overlap",
+    )
+
+    assert len(
+        evidence,
+    ) == 2
+
+    assert evidence[0]["subquery"] == "credentials production"
+    assert evidence[0]["subquery_index"] == 0
+    assert evidence[1]["subquery"] == "debug mode production"
+    assert evidence[1]["subquery_index"] == 1    

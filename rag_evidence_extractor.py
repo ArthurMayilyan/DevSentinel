@@ -1,6 +1,14 @@
 import ast
 import json
 from typing import Any
+import re
+
+from rag_evidence import (
+    RagEvidenceItem,
+    deduplicate_evidence_items,
+    evidence_item_from_dict,
+    evidence_items_to_dicts,
+)
 
 
 def get_evidence_source(
@@ -298,3 +306,218 @@ def extract_all_evidence(
     return deduplicate_evidence(
         evidence,
     )
+
+def extract_query_from_observation_text(
+    text: str,
+) -> str:
+    match = re.search(
+        r"arguments\s+(\{.*?\})",
+        text,
+        flags=re.DOTALL,
+    )
+
+    if match is None:
+        return ""
+
+    parsed = try_parse_json_or_python_literal(
+        match.group(
+            1,
+        )
+    )
+
+    if not isinstance(parsed, dict):
+        return ""
+
+    query = parsed.get(
+        "query",
+        "",
+    )
+
+    if not isinstance(query, str):
+        return ""
+
+    return query
+
+
+def annotate_evidence_with_subquery(
+    *,
+    evidence: list[dict[str, Any]],
+    subquery: str,
+    subquery_index: int,
+    strategy: str = "",
+) -> list[dict[str, Any]]:
+    annotated = []
+
+    for item in evidence:
+        if not isinstance(item, dict):
+            continue
+
+        copied_item = dict(
+            item,
+        )
+        copied_item["subquery"] = subquery
+        copied_item["subquery_index"] = subquery_index
+        copied_item["strategy"] = strategy
+
+        annotated.append(
+            copied_item,
+        )
+
+    return annotated
+
+
+def extract_all_evidence_items(
+    values,
+    *,
+    strategy: str = "",
+) -> list[RagEvidenceItem]:
+    items = []
+    subquery_indexes = {}
+
+    for value in values:
+        subquery = ""
+
+        if isinstance(value, dict):
+            arguments = value.get(
+                "arguments",
+            )
+
+            if isinstance(arguments, dict):
+                maybe_query = arguments.get(
+                    "query",
+                )
+
+                if isinstance(maybe_query, str):
+                    subquery = maybe_query
+
+            content = value.get(
+                "content",
+            )
+
+            if isinstance(content, str) and not subquery:
+                subquery = extract_query_from_observation_text(
+                    content,
+                )
+
+        if isinstance(value, str):
+            subquery = extract_query_from_observation_text(
+                value,
+            )
+
+        evidence = extract_evidence_from_value(
+            value,
+        )
+
+        if not evidence:
+            continue
+
+        if subquery not in subquery_indexes:
+            subquery_indexes[subquery] = len(
+                subquery_indexes,
+            )
+
+        subquery_index = subquery_indexes[
+            subquery
+        ]
+
+        for item in annotate_evidence_with_subquery(
+            evidence=evidence,
+            subquery=subquery,
+            subquery_index=subquery_index,
+            strategy=strategy,
+        ):
+            evidence_item = evidence_item_from_dict(
+                value=item,
+                subquery=subquery,
+                subquery_index=subquery_index,
+                strategy=strategy,
+            )
+
+            if evidence_item.source and evidence_item.text:
+                items.append(
+                    evidence_item,
+                )
+
+    return deduplicate_evidence_items(
+        items,
+        keep_subquery_context=True,
+    )
+
+
+def extract_all_evidence_with_provenance(
+    values,
+    *,
+    strategy: str = "",
+) -> list[dict[str, Any]]:
+    return evidence_items_to_dicts(
+        extract_all_evidence_items(
+            values,
+            strategy=strategy,
+        )
+    )
+
+def add_missing_subquery_context(
+    *,
+    evidence: list[dict[str, Any]],
+    subqueries: list[str],
+    strategy: str = "",
+) -> list[dict[str, Any]]:
+    if not subqueries:
+        return evidence
+
+    updated = []
+
+    for index, item in enumerate(
+        evidence,
+    ):
+        copied_item = dict(
+            item,
+        )
+
+        current_subquery = copied_item.get(
+            "subquery",
+            "",
+        )
+
+        current_subquery_index = copied_item.get(
+            "subquery_index",
+            -1,
+        )
+
+        missing_subquery = not isinstance(
+            current_subquery,
+            str,
+        ) or not current_subquery.strip()
+
+        missing_subquery_index = (
+            not isinstance(
+                current_subquery_index,
+                int,
+            )
+            or current_subquery_index < 0
+        )
+
+        if missing_subquery or missing_subquery_index:
+            fallback_index = min(
+                index,
+                len(
+                    subqueries,
+                )
+                - 1,
+            )
+
+            copied_item["subquery_index"] = fallback_index
+            copied_item["subquery"] = subqueries[
+                fallback_index
+            ]
+
+        if strategy and not copied_item.get(
+            "strategy",
+        ):
+            copied_item["strategy"] = strategy
+
+        updated.append(
+            copied_item,
+        )
+
+    return updated

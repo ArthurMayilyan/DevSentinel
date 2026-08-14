@@ -47,7 +47,7 @@
         "name": "agent credentials and debug production answer",
         "query": "How should credentials and debug mode be handled in production?",
         "passed": true,
-        "answer": "Debug mode must be disabled in production.\nCredentials must not be hardcoded in source code.\n\nSource: knowledge_base_noisy\\security.md",
+        "answer": "Credentials must not be hardcoded in source code.\nDebug mode must be disabled in production.\n\nSource: knowledge_base_noisy\\security.md",
         "search_knowledge_called": true,
         "sources": [
           "knowledge_base_noisy\\security.md"

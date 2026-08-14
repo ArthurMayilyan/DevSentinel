@@ -65,6 +65,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Optional path to write a Markdown run report.",
     )
 
+    parser.add_argument(
+        "--index-path",
+        default="",
+    )    
+
     return parser
 
 
@@ -90,6 +95,7 @@ def run_from_args(
 
     result = run_rag_agent(
         knowledge_path=args.knowledge_path,
+        index_path=args.index_path,
         query=args.query,
         strategy=args.strategy,
         llm_name=args.llm,
