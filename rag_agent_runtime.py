@@ -223,6 +223,7 @@ def format_rag_agent_markdown_report(
         "## Configuration",
         "",
         f"Knowledge path: `{result.knowledge_path}`",
+        f"Index path: `{result.index_path}`",
         f"Strategy: `{result.strategy}`",
         f"LLM: `{result.llm}`",
         f"Model: `{result.model}`",
