@@ -1,0 +1,23 @@
+{
+  "status": "completed",
+  "answer": "Review complete. Report written to report.md.",
+  "stop_reason": null,
+  "stop_reason_code": null,
+  "trace_path": "traces\\trace_20260814_164013_221957_01d1eb18.json",
+  "summary_path": "run_summaries\\trace_20260814_164013_221957_01d1eb18_summary.json",
+  "run": {
+    "llm": "demo",
+    "model": null,
+    "preset": "code-review",
+    "path": "./sample_project",
+    "knowledge_path": null,
+    "max_findings": 5,
+    "max_steps": 20,
+    "max_rejected_final_answers": 3,
+    "max_rejected_tool_calls": 5,
+    "max_invalid_llm_outputs": 3,
+    "task": "Review ./sample_project only.\nStart with list_files path ./sample_project.\nRead all Python files.\nAdd up to 5 distinct findings.\nDo not merge unrelated issues into one finding.\nGroup issues only when they have the same root cause and the same recommended fix.\nThen call write_report.\nThen return final_answer.\nReturn exactly one JSON object per response.",
+    "max_output_tokens": null,
+    "request_timeout_seconds": null
+  }
+}

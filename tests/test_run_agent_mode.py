@@ -141,3 +141,81 @@ def test_run_from_args_requires_task_for_normal_run(tmp_path):
                 ),
             ]
         )
+
+
+def test_run_from_args_lists_code_review_mode():
+    output = run_from_args(
+        [
+            "--list-modes",
+        ]
+    )
+
+    assert "code_review" in output
+    assert "rag_qa" in output
+
+
+def test_run_from_args_runs_code_review_mode():
+    output = run_from_args(
+        [
+            "--mode",
+            "code_review",
+            "--preset",
+            "code-review",
+            "--path",
+            "./sample_project",
+            "--llm",
+            "demo",
+            "--max-steps",
+            "20",
+        ]
+    )
+
+    assert "Review complete. Report written to report.md." in output
+
+
+def test_run_from_args_runs_code_review_mode_with_default_demo_llm():
+    output = run_from_args(
+        [
+            "--mode",
+            "code_review",
+            "--preset",
+            "code-review",
+            "--path",
+            "./sample_project",
+            "--max-steps",
+            "20",
+        ]
+    )
+
+    assert "Review complete. Report written to report.md." in output
+
+
+def test_run_from_args_writes_code_review_artifacts(tmp_path):
+    artifacts_dir = tmp_path / "code_review_artifacts"
+
+    output = run_from_args(
+        [
+            "--mode",
+            "code_review",
+            "--preset",
+            "code-review",
+            "--path",
+            "./sample_project",
+            "--llm",
+            "demo",
+            "--max-steps",
+            "20",
+            "--artifacts-dir",
+            str(
+                artifacts_dir,
+            ),
+        ]
+    )
+
+    assert "Review complete. Report written to report.md." in output
+    assert (
+        artifacts_dir / "result.json"
+    ).exists()
+    assert (
+        artifacts_dir / "report.md"
+    ).exists()        

@@ -2,10 +2,13 @@ import argparse
 import json
 
 from agent_modes import (
+    AGENT_MODE_CODE_REVIEW,
     AGENT_MODE_RAG_QA,
     SUPPORTED_AGENT_MODES,
     list_agent_modes,
 )
+from code_review_runtime import SUPPORTED_CODE_REVIEW_LLMS
+from task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS, SUPPORTED_TASK_PRESETS
 from agent_runtime import (
     AgentRuntimeRequest,
     agent_runtime_result_to_dict,
@@ -41,6 +44,25 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--preset",
+        choices=sorted(
+            SUPPORTED_TASK_PRESETS,
+        ),
+        default="",
+    )
+
+    parser.add_argument(
+        "--path",
+        default="",
+    )
+
+    parser.add_argument(
+        "--max-findings",
+        type=int,
+        default=DEFAULT_CODE_REVIEW_MAX_FINDINGS,
+    )
+
+    parser.add_argument(
         "--knowledge-path",
         default="",
     )
@@ -61,9 +83,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--llm",
         choices=sorted(
-            SUPPORTED_RAG_QA_LLMS,
+            SUPPORTED_RAG_QA_LLMS | SUPPORTED_CODE_REVIEW_LLMS,
         ),
-        default=RAG_QA_LLM_DETERMINISTIC,
+        default="",
     )
 
     parser.add_argument(
@@ -125,6 +147,9 @@ def run_from_args(
     request = AgentRuntimeRequest(
         mode=args.mode,
         task=args.task,
+        preset=args.preset,
+        path=args.path,
+        max_findings=args.max_findings,
         knowledge_path=args.knowledge_path,
         index_path=args.index_path,
         strategy=args.strategy,

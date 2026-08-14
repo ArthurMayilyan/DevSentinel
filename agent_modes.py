@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 
 
+AGENT_MODE_CODE_REVIEW = "code_review"
 AGENT_MODE_RAG_QA = "rag_qa"
 
 SUPPORTED_AGENT_MODES = {
+    AGENT_MODE_CODE_REVIEW,
     AGENT_MODE_RAG_QA,
 }
 
@@ -20,6 +22,14 @@ class AgentModeSpec:
 
 def get_agent_mode_specs() -> dict[str, AgentModeSpec]:
     return {
+        AGENT_MODE_CODE_REVIEW: AgentModeSpec(
+            name=AGENT_MODE_CODE_REVIEW,
+            description="Code review agent over a local project path.",
+            requires_knowledge_path=False,
+            supports_index_path=False,
+            supports_strategy=False,
+            supports_llm=True,
+        ),
         AGENT_MODE_RAG_QA: AgentModeSpec(
             name=AGENT_MODE_RAG_QA,
             description="Question-answering over a local RAG knowledge base.",
