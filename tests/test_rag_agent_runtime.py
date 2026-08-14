@@ -96,6 +96,8 @@ def test_run_rag_agent_returns_structured_result(tmp_path):
 
     assert result.query == "token expiration"
     assert "Token expiration policy" in result.answer
+    assert result.knowledge_path == str(knowledge_path)
+    assert result.index_path == ""
     assert result.strategy == "binary-overlap"
     assert result.llm == "deterministic"
     assert result.model == "gpt-5"
@@ -130,6 +132,8 @@ def test_format_rag_agent_markdown_report_includes_runtime_details(tmp_path):
     )
 
     assert report.startswith("# RAG Agent Run Report")
+    assert "Knowledge path:" in report
+    assert "Index path:" in report
     assert "Strategy: `binary-overlap`" in report
     assert "LLM: `deterministic`" in report
     assert "## Answer" in report
@@ -165,6 +169,8 @@ def test_write_rag_agent_result_json_writes_file(tmp_path):
 
     assert payload["query"] == "token expiration"
     assert "Token expiration policy" in payload["answer"]
+    assert payload["knowledge_path"] == str(knowledge_path)
+    assert payload["index_path"] == ""
     assert payload["strategy"] == "binary-overlap"
 
 
@@ -266,6 +272,7 @@ def test_run_rag_agent_can_use_persistent_index(tmp_path):
     )
 
     assert "Token expiration policy" in result.answer
+    assert result.index_path == str(index_path)
     assert result.index_path == str(
         index_path,
     )
