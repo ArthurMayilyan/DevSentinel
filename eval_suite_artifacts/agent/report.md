@@ -16,7 +16,7 @@ Agent answer accuracy: **1.00**
 Guardrail checked cases: **0**
 Guardrail passed cases: **0**
 Fallback used cases: **0**
-Passed cases: **2**
+Passed cases: **3**
 Failed cases: **0**
 
 ## Cases
@@ -25,3 +25,4 @@ Failed cases: **0**
 |---|---:|---:|---:|---:|---|
 | agent token expiration answer | true | true | none | false |  |
 | agent small function answer | true | true | none | false |  |
+| agent credentials and debug production answer | true | true | none | false |  |

@@ -5,7 +5,7 @@ from typing import Any
 
 from rag_agent import build_rag_qa_agent
 from rag_loader import load_rag_store_from_path
-from rag_qa_llm import DeterministicRagQaLLM
+from rag_evidence_extractor import extract_all_evidence
 from rag_qa_llm_factory import (
     RAG_QA_LLM_DETERMINISTIC,
     build_rag_qa_llm,
@@ -73,12 +73,19 @@ def extract_sources_from_evidence(
 def extract_latest_evidence_from_trace_steps(
     trace_steps: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    parser = DeterministicRagQaLLM()
+    from rag_evidence_extractor import extract_latest_evidence
 
-    return parser.extract_latest_evidence(
+    return extract_latest_evidence(
         trace_steps,
     )
 
+
+def extract_all_evidence_from_trace_steps(
+    trace_steps: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return extract_all_evidence(
+        trace_steps,
+    )
 
 def rag_agent_run_result_to_dict(
     result: RagAgentRunResult,
@@ -126,7 +133,7 @@ def run_rag_agent(
 
     trace_steps = trace_recorder.read_steps()
 
-    evidence = extract_latest_evidence_from_trace_steps(
+    evidence = extract_all_evidence_from_trace_steps(
         trace_steps,
     )
 

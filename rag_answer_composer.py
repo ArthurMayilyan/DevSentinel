@@ -276,7 +276,10 @@ def select_relevant_sentences(
         ) >= max_sentences:
             break
 
-    return selected
+    return sorted(
+        selected,
+        key=lambda item: item[0],
+    )
 
 
 def select_first_available_sentence(
@@ -358,19 +361,38 @@ def compose_rag_answer(
     ]
 
     used_evidence_indexes = []
+    sources = []
 
-    for evidence_index, _, _ in selected:
+    for evidence_index, selected_source, _ in selected:
         if evidence_index not in used_evidence_indexes:
             used_evidence_indexes.append(
                 evidence_index,
             )
+
+        if selected_source not in sources:
+            sources.append(
+                selected_source,
+            )
+
+    if len(sources) == 1:
+        source_block = f"Source: {sources[0]}"
+    else:
+        source_block = "\n".join(
+            [
+                "Sources:",
+                *[
+                    f"- {item}"
+                    for item in sources
+                ],
+            ]
+        )
 
     answer = (
         "\n".join(
             selected_sentences,
         )
         + "\n\n"
-        + f"Source: {source}"
+        + source_block
     )
 
     return RagComposedAnswer(

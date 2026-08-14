@@ -25,5 +25,18 @@
       "maximum 10 lines",
       "cyclomatic complexity"
     ]
-  }
+  },
+  {
+    "name": "agent credentials and debug production answer",
+    "query": "How should credentials and debug mode be handled in production?",
+    "expected_answer_contains": [
+      "Credentials must not be hardcoded",
+      "Debug mode must be disabled"
+    ],
+    "forbidden_answer_contains": [
+      "24 hours",
+      "OAuth",
+      "refresh token"
+    ]
+  }  
 ]

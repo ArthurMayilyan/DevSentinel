@@ -3,11 +3,21 @@ import json
 from typing import Any
 
 from rag_answer_composer import compose_rag_answer
+from rag_evidence_extractor import (
+    extract_all_evidence,
+    extract_evidence_from_value,
+    extract_latest_evidence,
+    get_evidence_source,
+    get_evidence_text,
+)
+from rag_query_planner import plan_rag_subqueries
 
 
 class DeterministicRagQaLLM:
     def __init__(self):
         self.call_count = 0
+        self.subqueries = []
+        self.original_query = ""
 
     def complete(
         self,
@@ -16,18 +26,30 @@ class DeterministicRagQaLLM:
     ):
         self.call_count += 1
 
-        if self.call_count == 1:
+        if not self.original_query:
+            self.original_query = self.extract_user_query(
+                messages,
+            )
+
+        user_query = self.original_query
+
+        if not self.subqueries:
+            self.subqueries = plan_rag_subqueries(
+                query=user_query,
+            ).subqueries
+
+        if self.call_count <= len(
+            self.subqueries,
+        ):
             return {
                 "type": "tool_call",
                 "tool": "search_knowledge",
                 "arguments": {
-                    "query": self.extract_user_query(
-                        messages,
-                    ),
+                    "query": self.subqueries[self.call_count - 1],
                 },
             }
 
-        evidence = self.extract_latest_evidence(
+        evidence = self.extract_all_evidence(
             messages,
         )
 
@@ -38,11 +60,17 @@ class DeterministicRagQaLLM:
             }
 
         composed_answer = compose_rag_answer(
-            query=self.extract_user_query(
-                messages,
-            ),
+            query=user_query,
             evidence=evidence,
-            max_sentences=1,
+            max_sentences=max(
+                1,
+                min(
+                    len(
+                        self.subqueries,
+                    ),
+                    3,
+                ),
+            ),
         )
 
         return {
@@ -54,100 +82,45 @@ class DeterministicRagQaLLM:
         self,
         messages,
     ) -> str:
-        for message in reversed(messages):
+        for message in messages:
             if not isinstance(message, dict):
                 continue
 
-            if message.get("role") == "user":
-                content = message.get(
-                    "content",
-                    "",
-                )
+            if message.get("role") != "user":
+                continue
 
-                if isinstance(content, str):
-                    return content
+            content = message.get(
+                "content",
+                "",
+            )
+
+            if not isinstance(content, str):
+                continue
+
+            stripped_content = content.strip()
+
+            if not stripped_content:
+                continue
+
+            if stripped_content.startswith(
+                "Observation from tool"
+            ):
+                continue
+
+            if stripped_content.startswith(
+                "Observation:"
+            ):
+                continue
+
+            if "Choose the next valid JSON action" in stripped_content:
+                continue
+
+            return stripped_content
 
         return ""
 
-    def extract_latest_evidence(
-        self,
-        messages,
-    ) -> list[dict[str, Any]]:
-        for message in reversed(messages):
-            evidence = self.extract_evidence_from_value(
-                message,
-            )
 
-            if evidence:
-                return evidence
 
-        return []
-
-    def extract_evidence_from_value(
-        self,
-        value,
-    ) -> list[dict[str, Any]]:
-        if isinstance(value, list):
-            if self.is_evidence_list(
-                value,
-            ):
-                return value
-
-            for item in reversed(value):
-                evidence = self.extract_evidence_from_value(
-                    item,
-                )
-
-                if evidence:
-                    return evidence
-
-            return []
-
-        if isinstance(value, dict):
-            if self.is_evidence_item(
-                value,
-            ):
-                return [
-                    value,
-                ]
-
-            for key in [
-                "content",
-                "result",
-                "tool_result",
-                "observation",
-                "output",
-                "data",
-                "message",
-            ]:
-                if key not in value:
-                    continue
-
-                evidence = self.extract_evidence_from_value(
-                    value[key],
-                )
-
-                if evidence:
-                    return evidence
-
-            return []
-
-        if isinstance(value, str):
-            parsed_values = self.parse_possible_structured_values(
-                value,
-            )
-
-            for parsed_value in parsed_values:
-                evidence = self.extract_evidence_from_value(
-                    parsed_value,
-                )
-
-                if evidence:
-                    return evidence
-
-            return []
-
-        return []
 
     def parse_possible_structured_values(
         self,
@@ -276,39 +249,46 @@ class DeterministicRagQaLLM:
 
         return bool(source) and bool(text)
 
+    def extract_latest_evidence(
+        self,
+        messages,
+    ) -> list[dict[str, Any]]:
+        return extract_latest_evidence(
+            messages,
+        )
+
+
+    def extract_all_evidence(
+        self,
+        messages,
+    ) -> list[dict[str, Any]]:
+        return extract_all_evidence(
+            messages,
+        )
+
+
+    def extract_evidence_from_value(
+        self,
+        value,
+    ) -> list[dict[str, Any]]:
+        return extract_evidence_from_value(
+            value,
+        )
+
+
     def get_evidence_source(
         self,
         value: dict[str, Any],
     ) -> str:
-        for key in [
-            "source",
-            "file",
-            "path",
-        ]:
-            item = value.get(
-                key,
-            )
+        return get_evidence_source(
+            value,
+        )
 
-            if isinstance(item, str) and item.strip():
-                return item
-
-        return ""
 
     def get_evidence_text(
         self,
         value: dict[str, Any],
     ) -> str:
-        for key in [
-            "text",
-            "content",
-            "chunk_text",
-            "snippet",
-        ]:
-            item = value.get(
-                key,
-            )
-
-            if isinstance(item, str) and item.strip():
-                return item
-
-        return ""
+        return get_evidence_text(
+            value,
+        )

@@ -32,7 +32,7 @@ Grounding accuracy: **1.00**
 
 Passed: **true**
 Strategy: **binary-overlap**
-Total cases: **2**
-Passed cases: **2**
+Total cases: **3**
+Passed cases: **3**
 Failed cases: **0**
 Agent answer accuracy: **1.00**
