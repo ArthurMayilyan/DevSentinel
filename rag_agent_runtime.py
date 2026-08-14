@@ -14,6 +14,11 @@ from rag_strategy_factory import (
     RETRIEVAL_STRATEGY_DEFAULT,
     build_rag_search_engine_for_strategy,
 )
+from rag_evidence_extractor import (
+    extract_all_evidence,
+    extract_all_evidence_with_provenance,
+)
+from rag_index import build_store_from_rag_index, load_rag_index
 from trace import TraceRecorder
 
 
@@ -22,6 +27,7 @@ class RagAgentRunResult:
     query: str
     answer: str
     knowledge_path: str
+    index_path: str
     strategy: str
     llm: str
     model: str
@@ -82,9 +88,12 @@ def extract_latest_evidence_from_trace_steps(
 
 def extract_all_evidence_from_trace_steps(
     trace_steps: list[dict[str, Any]],
+    *,
+    strategy: str = "",
 ) -> list[dict[str, Any]]:
-    return extract_all_evidence(
+    return extract_all_evidence_with_provenance(
         trace_steps,
+        strategy=strategy,
     )
 
 def rag_agent_run_result_to_dict(
@@ -103,10 +112,18 @@ def run_rag_agent(
     llm_name: str = RAG_QA_LLM_DETERMINISTIC,
     model: str = "gpt-5",
     max_steps: int = 4,
+    index_path: str = "",
 ) -> RagAgentRunResult:
-    store = load_rag_store_from_path(
-        path=knowledge_path,
-    )
+    if index_path:
+        store = build_store_from_rag_index(
+            index=load_rag_index(
+                path=index_path,
+            )
+        )
+    else:
+        store = load_rag_store_from_path(
+            path=knowledge_path,
+        )
 
     search_engine = build_rag_search_engine_for_strategy(
         store=store,
@@ -135,6 +152,7 @@ def run_rag_agent(
 
     evidence = extract_all_evidence_from_trace_steps(
         trace_steps,
+        strategy=strategy,
     )
 
     sources = extract_sources_from_evidence(
@@ -145,6 +163,7 @@ def run_rag_agent(
         query=query,
         answer=answer,
         knowledge_path=knowledge_path,
+        index_path=index_path,
         strategy=strategy,
         llm=llm_name,
         model=model,

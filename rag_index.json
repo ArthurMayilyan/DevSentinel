@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "chunks": [
+    {
+      "source": "knowledge_base_noisy\\coding.md",
+      "chunk_index": 0,
+      "text": "# Coding Guidelines\n\nSmall function guidelines: functions should be small and readable.\nUse clear names.\nAvoid mixing unrelated responsibilities in one function."
+    },
+    {
+      "source": "knowledge_base_noisy\\noise_functions.md",
+      "chunk_index": 0,
+      "text": "# Function Noise\n\nfunction function function function function function"
+    },
+    {
+      "source": "knowledge_base_noisy\\noise_tokens.md",
+      "chunk_index": 0,
+      "text": "# Token Noise\n\ntoken token token token token token token token"
+    },
+    {
+      "source": "knowledge_base_noisy\\security.md",
+      "chunk_index": 0,
+      "text": "# Security Policy\n\nToken expiration policy: tokens must be signed and must expire.\nCredentials must not be hardcoded in source code.\nDebug mode must be disabled in production."
+    }
+  ]
+}

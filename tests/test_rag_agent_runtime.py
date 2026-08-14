@@ -9,6 +9,7 @@ from rag_agent_runtime import (
     write_rag_agent_markdown_report,
     write_rag_agent_result_json,
 )
+from rag_index import build_rag_index_from_path, save_rag_index
 
 
 def normalize_path(
@@ -205,7 +206,9 @@ def test_run_rag_agent_collects_evidence_from_multiple_search_steps(tmp_path):
     )
 
     result = run_rag_agent(
-        knowledge_path=str(knowledge_path),
+        knowledge_path=str(
+            knowledge_path,
+        ),
         query="How should credentials and debug mode be handled in production?",
         strategy="binary-overlap",
         llm_name="deterministic",
@@ -213,8 +216,58 @@ def test_run_rag_agent_collects_evidence_from_multiple_search_steps(tmp_path):
         max_steps=4,
     )
 
-    assert "Credentials must not be hardcoded" in result.answer
-    assert "Debug mode must be disabled" in result.answer
-    assert len(result.trace_steps) == 3
-    assert len(result.evidence) >= 1
+    answer = result.answer
+
+    assert "Credentials must not be hardcoded" in answer
+    assert "Debug mode must be disabled" in answer
+    assert answer.index(
+        "Credentials must not be hardcoded"
+    ) < answer.index(
+        "Debug mode must be disabled"
+    )
+    assert len(
+        result.trace_steps,
+    ) == 3
+    assert len(
+        result.evidence,
+    ) >= 1
     assert result.sources
+
+def test_run_rag_agent_can_use_persistent_index(tmp_path):
+    knowledge_path = create_knowledge_fixture(
+        tmp_path,
+    )
+
+    index_path = tmp_path / "rag_index.json"
+
+    save_rag_index(
+        index=build_rag_index_from_path(
+            path=str(
+                knowledge_path,
+            )
+        ),
+        path=str(
+            index_path,
+        ),
+    )
+
+    result = run_rag_agent(
+        knowledge_path=str(
+            knowledge_path,
+        ),
+        index_path=str(
+            index_path,
+        ),
+        query="token expiration",
+        strategy="binary-overlap",
+        llm_name="deterministic",
+        model="gpt-5",
+        max_steps=4,
+    )
+
+    assert "Token expiration policy" in result.answer
+    assert result.index_path == str(
+        index_path,
+    )
+
+        

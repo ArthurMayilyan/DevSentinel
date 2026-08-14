@@ -100,3 +100,40 @@ def test_compose_rag_answer_rejects_empty_query():
             query="",
             evidence=build_security_evidence(),
         )
+
+
+def test_compose_rag_answer_orders_sentences_by_subquery_index():
+    composed = compose_rag_answer(
+        query="How should credentials and debug mode be handled in production?",
+        evidence=[
+            {
+                "source": "security.md",
+                "chunk_index": 0,
+                "text": (
+                    "Credentials must not be hardcoded in source code. "
+                    "Debug mode must be disabled in production."
+                ),
+                "subquery": "debug mode production",
+                "subquery_index": 1,
+            },
+            {
+                "source": "security.md",
+                "chunk_index": 0,
+                "text": (
+                    "Credentials must not be hardcoded in source code. "
+                    "Debug mode must be disabled in production."
+                ),
+                "subquery": "credentials production",
+                "subquery_index": 0,
+            },
+        ],
+        max_sentences=2,
+    )
+
+    assert composed.answer == (
+        "Credentials must not be hardcoded in source code.\n"
+        "Debug mode must be disabled in production.\n\n"
+        "Source: security.md"
+    )
+
+            
