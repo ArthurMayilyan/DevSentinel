@@ -18,6 +18,7 @@ class AgentModeSpec:
     supports_index_path: bool
     supports_strategy: bool
     supports_llm: bool
+    mcp_tools: list[str]
 
 
 def get_agent_mode_specs() -> dict[str, AgentModeSpec]:
@@ -29,6 +30,14 @@ def get_agent_mode_specs() -> dict[str, AgentModeSpec]:
             supports_index_path=False,
             supports_strategy=False,
             supports_llm=True,
+            mcp_tools=[
+                "list_files",
+                "read_file",
+                "search_in_files",
+                "add_finding",
+                "write_report",
+                "search_knowledge",
+            ],
         ),
         AGENT_MODE_RAG_QA: AgentModeSpec(
             name=AGENT_MODE_RAG_QA,
@@ -37,6 +46,9 @@ def get_agent_mode_specs() -> dict[str, AgentModeSpec]:
             supports_index_path=True,
             supports_strategy=True,
             supports_llm=True,
+            mcp_tools=[
+                "search_knowledge",
+            ],
         ),
     }
 

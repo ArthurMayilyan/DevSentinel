@@ -31,6 +31,9 @@ def test_get_agent_mode_spec_returns_rag_qa_spec():
     assert spec.supports_index_path is True
     assert spec.supports_strategy is True
     assert spec.supports_llm is True
+    assert spec.mcp_tools == [
+        "search_knowledge",
+    ]
 
 
 def test_list_agent_modes_includes_registered_modes():
@@ -55,6 +58,14 @@ def test_get_agent_mode_spec_returns_code_review_spec():
     assert spec.supports_index_path is False
     assert spec.supports_strategy is False
     assert spec.supports_llm is True
+    assert spec.mcp_tools == [
+        "list_files",
+        "read_file",
+        "search_in_files",
+        "add_finding",
+        "write_report",
+        "search_knowledge",
+    ]
 
 
 def test_list_agent_modes_includes_registered_modes():
