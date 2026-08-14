@@ -297,6 +297,7 @@ def build_evidence_fallback_answer(
     *,
     evidence: list[dict[str, Any]],
     query: str = "answer",
+    max_sentences: int = 1,
 ) -> str:
     if not evidence:
         return INSUFFICIENT_EVIDENCE_ANSWER
@@ -304,7 +305,7 @@ def build_evidence_fallback_answer(
     composed_answer = compose_rag_answer(
         query=query,
         evidence=evidence,
-        max_sentences=1,
+        max_sentences=max_sentences,
     )
 
     return composed_answer.answer

@@ -165,4 +165,91 @@ def test_rag_qa_llm_composes_short_answer_from_noisy_evidence():
         ),
     }
 
-        
+
+def test_rag_qa_llm_uses_multiple_searches_for_multi_part_query():
+    llm = DeterministicRagQaLLM()
+
+    first_output = llm.complete(
+        [
+            {
+                "role": "user",
+                "content": "How should credentials and debug mode be handled in production?",
+            }
+        ]
+    )
+
+    assert first_output == {
+        "type": "tool_call",
+        "tool": "search_knowledge",
+        "arguments": {
+            "query": "credentials production",
+        },
+    }
+
+    second_output = llm.complete(
+        [
+            {
+                "role": "user",
+                "content": "How should credentials and debug mode be handled in production?",
+            },
+            {
+                "tool_result": [
+                    {
+                        "source": "security.md",
+                        "text": "Credentials must not be hardcoded in source code.",
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert second_output == {
+        "type": "tool_call",
+        "tool": "search_knowledge",
+        "arguments": {
+            "query": "debug mode production",
+        },
+    }
+
+
+def test_rag_qa_llm_combines_evidence_from_multiple_searches():
+    llm = DeterministicRagQaLLM()
+    llm.call_count = 2
+    llm.subqueries = [
+        "credentials production",
+        "debug mode production",
+    ]
+
+    output = llm.complete(
+        [
+            {
+                "role": "user",
+                "content": "How should credentials and debug mode be handled in production?",
+            },
+            {
+                "tool_result": [
+                    {
+                        "source": "security.md",
+                        "text": "Credentials must not be hardcoded in source code.",
+                    }
+                ],
+            },
+            {
+                "tool_result": [
+                    {
+                        "source": "security.md",
+                        "text": "Debug mode must be disabled in production.",
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert output == {
+        "type": "final_answer",
+        "answer": (
+            "Credentials must not be hardcoded in source code.\n"
+            "Debug mode must be disabled in production.\n\n"
+            "Source: security.md"
+        ),
+    }        

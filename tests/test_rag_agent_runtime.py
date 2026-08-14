@@ -189,3 +189,32 @@ def test_write_rag_agent_markdown_report_writes_file(tmp_path):
     assert output_path.read_text(
         encoding="utf-8",
     ).startswith("# RAG Agent Run Report")
+
+
+def test_run_rag_agent_collects_evidence_from_multiple_search_steps(tmp_path):
+    knowledge_path = create_knowledge_fixture(
+        tmp_path,
+    )
+
+    security = knowledge_path / "security.md"
+    security.write_text(
+        "# Security Policy\n\n"
+        "Credentials must not be hardcoded in source code.\n"
+        "Debug mode must be disabled in production.",
+        encoding="utf-8",
+    )
+
+    result = run_rag_agent(
+        knowledge_path=str(knowledge_path),
+        query="How should credentials and debug mode be handled in production?",
+        strategy="binary-overlap",
+        llm_name="deterministic",
+        model="gpt-5",
+        max_steps=4,
+    )
+
+    assert "Credentials must not be hardcoded" in result.answer
+    assert "Debug mode must be disabled" in result.answer
+    assert len(result.trace_steps) == 3
+    assert len(result.evidence) >= 1
+    assert result.sources

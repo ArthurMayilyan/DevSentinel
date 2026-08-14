@@ -7,8 +7,8 @@
   "max_steps": 4,
   "min_agent_answer_accuracy": 1.0,
   "summary": {
-    "total_cases": 2,
-    "passed_cases": 2,
+    "total_cases": 3,
+    "passed_cases": 3,
     "failed_cases": 0,
     "agent_answer_accuracy": 1.0,
     "guardrail_checked_cases": 0,
@@ -38,6 +38,19 @@
         "sources": [
           "knowledge_base_noisy\\coding.md",
           "knowledge_base_noisy\\noise_functions.md"
+        ],
+        "guardrail_passed": null,
+        "fallback_used": false,
+        "failure_reasons": []
+      },
+      {
+        "name": "agent credentials and debug production answer",
+        "query": "How should credentials and debug mode be handled in production?",
+        "passed": true,
+        "answer": "Debug mode must be disabled in production.\nCredentials must not be hardcoded in source code.\n\nSource: knowledge_base_noisy\\security.md",
+        "search_knowledge_called": true,
+        "sources": [
+          "knowledge_base_noisy\\security.md"
         ],
         "guardrail_passed": null,
         "fallback_used": false,

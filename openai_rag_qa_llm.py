@@ -7,6 +7,15 @@ from rag_qa_answer_guardrail import (
     build_evidence_fallback_answer,
     validate_rag_qa_answer,
 )
+from rag_evidence_extractor import (
+    extract_all_evidence,
+    extract_evidence_from_value,
+    extract_latest_evidence,
+    get_evidence_source,
+    get_evidence_text,
+)
+from rag_query_planner import plan_rag_subqueries
+
 
 class OpenAIRagQaLLM:
     def __init__(
@@ -21,6 +30,8 @@ class OpenAIRagQaLLM:
         self.model = model
         self.client = client
         self.call_count = 0
+        self.subqueries = []
+        self.original_query = ""
         self.last_guardrail_passed = None
         self.last_guardrail_failure_reasons = []
         self.last_fallback_used = False
@@ -32,18 +43,30 @@ class OpenAIRagQaLLM:
     ):
         self.call_count += 1
 
-        if self.call_count == 1:
+        if not self.original_query:
+            self.original_query = self.extract_user_query(
+                messages,
+            )
+
+        user_query = self.original_query
+
+        if not self.subqueries:
+            self.subqueries = plan_rag_subqueries(
+                query=user_query,
+            ).subqueries
+
+        if self.call_count <= len(
+            self.subqueries,
+        ):
             return {
                 "type": "tool_call",
                 "tool": "search_knowledge",
                 "arguments": {
-                    "query": self.extract_user_query(
-                        messages,
-                    ),
+                    "query": self.subqueries[self.call_count - 1],
                 },
             }
 
-        evidence = self.extract_latest_evidence(
+        evidence = self.extract_all_evidence(
             messages,
         )
 
@@ -76,8 +99,15 @@ class OpenAIRagQaLLM:
         if not validation_result.passed:
             answer = build_evidence_fallback_answer(
                 evidence=evidence,
-                query=self.extract_user_query(
-                    messages,
+                query=user_query,
+                max_sentences=max(
+                    1,
+                    min(
+                        len(
+                            self.subqueries,
+                        ),
+                        3,
+                    ),
                 ),
             )
             self.last_fallback_used = True
@@ -193,18 +223,40 @@ class OpenAIRagQaLLM:
         self,
         messages,
     ) -> str:
-        for message in reversed(messages):
+        for message in messages:
             if not isinstance(message, dict):
                 continue
 
-            if message.get("role") == "user":
-                content = message.get(
-                    "content",
-                    "",
-                )
+            if message.get("role") != "user":
+                continue
 
-                if isinstance(content, str):
-                    return content
+            content = message.get(
+                "content",
+                "",
+            )
+
+            if not isinstance(content, str):
+                continue
+
+            stripped_content = content.strip()
+
+            if not stripped_content:
+                continue
+
+            if stripped_content.startswith(
+                "Observation from tool"
+            ):
+                continue
+
+            if stripped_content.startswith(
+                "Observation:"
+            ):
+                continue
+
+            if "Choose the next valid JSON action" in stripped_content:
+                continue
+
+            return stripped_content
 
         return ""
 
@@ -221,6 +273,16 @@ class OpenAIRagQaLLM:
                 return evidence
 
         return []
+
+
+
+    def extract_all_evidence(
+        self,
+        messages,
+    ) -> list[dict[str, Any]]:
+        return extract_all_evidence(
+            messages,
+        )    
 
     def extract_evidence_from_value(
         self,
