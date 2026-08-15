@@ -121,14 +121,21 @@ def build_add_finding_tool_spec() -> McpToolSpec:
                         "LOW",
                         "MEDIUM",
                         "HIGH",
+                        "CRITICAL",
                     ],
                 },
                 "category": {
                     "type": "string",
                     "description": "Finding category.",
+                    "enum": [
+                        "SECURITY",
+                        "MAINTAINABILITY",
+                        "RELIABILITY",
+                        "PERFORMANCE",
+                    ],
                 },
-                "title": string_property(
-                    "Short finding title.",
+                "issue": string_property(
+                    "Short issue description.",
                 ),
                 "evidence": string_property(
                     "Evidence supporting the finding.",
@@ -141,7 +148,7 @@ def build_add_finding_tool_spec() -> McpToolSpec:
                 "file",
                 "severity",
                 "category",
-                "title",
+                "issue",
                 "evidence",
                 "recommendation",
             ],
@@ -153,16 +160,10 @@ def build_add_finding_tool_spec() -> McpToolSpec:
 def build_write_report_tool_spec() -> McpToolSpec:
     return McpToolSpec(
         name="write_report",
-        description="Write the final code review report in Markdown.",
+        description="Generate and write the final code review report from current agent state.",
         input_schema=object_schema(
-            properties={
-                "markdown": string_property(
-                    "Complete Markdown report content.",
-                ),
-            },
-            required=[
-                "markdown",
-            ],
+            properties={},
+            required=[],
         ),
         output_schema=generic_output_schema(),
     )
