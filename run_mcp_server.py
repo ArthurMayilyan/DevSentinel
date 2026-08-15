@@ -89,13 +89,13 @@ def run_from_args(
 
     if args.transport == "stdio":
         mcp.run()
-        return "MCP stdio server stopped."
+        return ""
 
     if args.transport == "streamable-http":
         mcp.run(
             "streamable-http",
         )
-        return "MCP streamable-http server stopped."
+        return ""
 
     raise ValueError(
         f"unsupported MCP transport: {args.transport}"

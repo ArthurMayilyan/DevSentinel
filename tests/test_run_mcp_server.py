@@ -58,4 +58,52 @@ def test_build_arg_parser_rejects_unknown_transport():
             ]
         )
 
+
+def test_run_from_args_server_mode_is_silent(monkeypatch):
+    class FakeMcpServer:
+        def run(self, *args):
+            return None
+
+    monkeypatch.setattr(
+        "run_mcp_server.create_agent_loop_mcp_server",
+        lambda context: FakeMcpServer(),
+    )
+
+    output = run_from_args(
+        [
+            "--transport",
+            "stdio",
+        ]
+    )
+
+    assert output == ""
+
+def test_run_from_args_streamable_http_mode_is_silent(monkeypatch):
+    class FakeMcpServer:
+        def __init__(self):
+            self.args = None
+
+        def run(self, *args):
+            self.args = args
+            return None
+
+    fake_server = FakeMcpServer()
+
+    monkeypatch.setattr(
+        "run_mcp_server.create_agent_loop_mcp_server",
+        lambda context: fake_server,
+    )
+
+    output = run_from_args(
+        [
+            "--transport",
+            "streamable-http",
+        ]
+    )
+
+    assert output == ""
+    assert fake_server.args == (
+        "streamable-http",
+    )
+
         
