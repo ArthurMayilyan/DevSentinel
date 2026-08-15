@@ -1,0 +1,236 @@
+import argparse
+import asyncio
+import json
+from pathlib import Path
+from typing import Any
+
+from mcp import Client
+
+from agent_loop_mcp_server import create_agent_loop_mcp_server
+from mcp_server_context import build_agent_loop_mcp_context
+
+
+def serialize_tool_result(
+    value: Any,
+) -> Any:
+    if hasattr(
+        value,
+        "model_dump",
+    ):
+        return value.model_dump(
+            mode="json",
+        )
+
+    if isinstance(
+        value,
+        list,
+    ):
+        return [
+            serialize_tool_result(
+                item,
+            )
+            for item in value
+        ]
+
+    if isinstance(
+        value,
+        dict,
+    ):
+        return {
+            key: serialize_tool_result(
+                item,
+            )
+            for key, item in value.items()
+        }
+
+    return value
+
+
+async def run_mcp_client_smoke(
+    *,
+    project_path: str,
+    knowledge_path: str = "",
+    index_path: str = "",
+    report_path: str = "mcp_client_smoke_report.md",
+) -> dict[str, Any]:
+    context = build_agent_loop_mcp_context(
+        knowledge_path=knowledge_path,
+        index_path=index_path,
+        report_path=report_path,
+    )
+
+    mcp = create_agent_loop_mcp_server(
+        context=context,
+    )
+
+    async with Client(
+        mcp,
+    ) as client:
+        tools_result = await client.list_tools()
+
+        tool_names = [
+            tool.name
+            for tool in tools_result.tools
+        ]
+
+        list_files_result = await client.call_tool(
+            "list_files",
+            {
+                "path": project_path,
+            },
+        )
+
+        read_file_result = await client.call_tool(
+            "read_file",
+            {
+                "path": str(
+                    Path(
+                        project_path,
+                    )
+                    / "app.py"
+                ),
+            },
+        )
+
+        add_finding_result = await client.call_tool(
+            "add_finding",
+            {
+                "file": str(
+                    Path(
+                        project_path,
+                    )
+                    / "app.py"
+                ),
+                "severity": "HIGH",
+                "category": "SECURITY",
+                "issue": "Hardcoded credential risk.",
+                "evidence": "A sensitive value appears directly in source code.",
+                "recommendation": "Move sensitive values to secure configuration.",
+            },
+        )
+
+        write_report_result = await client.call_tool(
+            "write_report",
+            {},
+        )
+
+        search_knowledge_payload = None
+
+        if knowledge_path or index_path:
+            search_knowledge_result = await client.call_tool(
+                "search_knowledge",
+                {
+                    "query": "credentials production",
+                },
+            )
+
+            search_knowledge_payload = serialize_tool_result(
+                search_knowledge_result.structured_content,
+            )
+
+        return {
+            "tools": tool_names,
+            "list_files": serialize_tool_result(
+                list_files_result.structured_content,
+            ),
+            "read_file_is_error": read_file_result.is_error,
+            "add_finding": serialize_tool_result(
+                add_finding_result.structured_content,
+            ),
+            "write_report": serialize_tool_result(
+                write_report_result.structured_content,
+            ),
+            "search_knowledge": search_knowledge_payload,
+            "report_path": report_path,
+        }
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Run an in-process MCP client smoke test."
+    )
+
+    parser.add_argument(
+        "--project-path",
+        default="./sample_project",
+    )
+
+    parser.add_argument(
+        "--knowledge-path",
+        default="",
+    )
+
+    parser.add_argument(
+        "--index-path",
+        default="",
+    )
+
+    parser.add_argument(
+        "--report-path",
+        default="mcp_client_smoke_report.md",
+    )
+
+    parser.add_argument(
+        "--json",
+        action="store_true",
+    )
+
+    return parser
+
+
+def run_from_args(
+    raw_args=None,
+) -> str:
+    parser = build_arg_parser()
+    args = parser.parse_args(
+        raw_args,
+    )
+
+    result = asyncio.run(
+        run_mcp_client_smoke(
+            project_path=args.project_path,
+            knowledge_path=args.knowledge_path,
+            index_path=args.index_path,
+            report_path=args.report_path,
+        )
+    )
+
+    if args.json:
+        return json.dumps(
+            result,
+            indent=2,
+        )
+
+    lines = [
+        "MCP client smoke test passed",
+        "",
+        "Tools:",
+    ]
+
+    for tool_name in result["tools"]:
+        lines.append(
+            f"- {tool_name}"
+        )
+
+    lines.extend(
+        [
+            "",
+            f"Report path: {result['report_path']}",
+        ]
+    )
+
+    return "\n".join(
+        lines,
+    )
+
+
+def main() -> None:
+    print(
+        run_from_args()
+    )
+
+
+if __name__ == "__main__":
+    main()
+
+    
