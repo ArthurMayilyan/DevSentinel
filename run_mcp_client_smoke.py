@@ -68,6 +68,32 @@ async def run_mcp_client_smoke(
     ) as client:
         tools_result = await client.list_tools()
 
+        resources_result = await client.list_resources()
+        prompts_result = await client.list_prompts()
+
+        resource_uris = [
+            str(
+                resource.uri,
+            )
+            for resource in resources_result.resources
+        ]
+
+        prompt_names = [
+            prompt.name
+            for prompt in prompts_result.prompts
+        ]
+
+        project_guide_result = await client.read_resource(
+            "agentloop://project-guide",
+        )
+
+        review_project_prompt = await client.get_prompt(
+            "review_project",
+            {
+                "project_path": project_path,
+            },
+        )
+
         tool_names = [
             tool.name
             for tool in tools_result.tools
@@ -130,6 +156,14 @@ async def run_mcp_client_smoke(
 
         return {
             "tools": tool_names,
+            "resources": resource_uris,
+            "prompts": prompt_names,
+            "project_guide": serialize_tool_result(
+                project_guide_result.contents,
+            ),
+            "review_project_prompt": serialize_tool_result(
+                review_project_prompt.messages,
+            ),            
             "list_files": serialize_tool_result(
                 list_files_result.structured_content,
             ),
@@ -215,6 +249,30 @@ def run_from_args(
     lines.extend(
         [
             "",
+            "Resources:",
+        ]
+    )
+
+    for resource_uri in result["resources"]:
+        lines.append(
+            f"- {resource_uri}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Prompts:",
+        ]
+    )
+
+    for prompt_name in result["prompts"]:
+        lines.append(
+            f"- {prompt_name}"
+        )
+
+    lines.extend(
+        [
+            "",
             f"Report path: {result['report_path']}",
         ]
     )
@@ -233,4 +291,3 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-    
