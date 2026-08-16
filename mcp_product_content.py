@@ -12,6 +12,7 @@ Main capabilities:
 - MCP tool server
 - MCP client smoke tests
 - VS Code MCP host integration
+- product-level project review workflow
 
 Main MCP tools:
 - list_files
@@ -20,13 +21,22 @@ Main MCP tools:
 - search_knowledge
 - add_finding
 - write_report
+- review_project
 """
 
 
 def build_available_workflows_resource() -> str:
     return """# AgentLoop Available Workflows
 
-## 1. Review local project
+## 1. Product-level project review
+
+Use review_project to run the full review workflow with one tool call.
+
+Example:
+- project_path: ./sample_project
+- profile: security
+
+## 2. Manual local project review
 
 Use tools in this order:
 1. list_files
@@ -35,11 +45,11 @@ Use tools in this order:
 4. add_finding
 5. write_report
 
-## 2. Ask policy question
+## 3. Ask policy question
 
 Use search_knowledge to answer questions from the attached knowledge base.
 
-## 3. Generate final report
+## 4. Generate final report
 
 Use add_finding for each issue, then call write_report.
 """
@@ -114,7 +124,13 @@ def build_review_project_prompt(
 
 {project_path}
 
-Workflow:
+Preferred workflow:
+1. Call review_project with:
+   - project_path: {project_path}
+   - profile: security
+2. Return the summary and report path from review_project.
+
+Fallback manual workflow if review_project is unavailable:
 1. Use list_files to discover files under the project path.
 2. Use read_file to inspect relevant source files.
 3. Use search_knowledge with the query "credentials production security" to check the attached security policy.
@@ -125,7 +141,7 @@ Rules:
 - Do not invent findings.
 - Every finding must include concrete file-level evidence.
 - Prefer SECURITY category for credential, secret, authentication, or access-control issues.
-- Use HIGH severity for hardcoded credentials.
+- Use HIGH or CRITICAL severity for hardcoded credentials.
 """
 
 

@@ -46,6 +46,47 @@ def serialize_tool_result(
     return value
 
 
+def extract_mcp_tool_payload(
+    tool_result,
+) -> Any:
+    if getattr(
+        tool_result,
+        "structured_content",
+        None,
+    ) is not None:
+        return serialize_tool_result(
+            tool_result.structured_content,
+        )
+
+    content = getattr(
+        tool_result,
+        "content",
+        None,
+    )
+
+    if not content:
+        return None
+
+    first_item = content[0]
+    text = getattr(
+        first_item,
+        "text",
+        None,
+    )
+
+    if text is None:
+        return serialize_tool_result(
+            content,
+        )
+
+    try:
+        return json.loads(
+            text,
+        )
+    except json.JSONDecodeError:
+        return text
+
+
 async def run_mcp_client_smoke(
     *,
     project_path: str,
@@ -140,6 +181,15 @@ async def run_mcp_client_smoke(
             {},
         )
 
+        review_project_result = await client.call_tool(
+            "review_project",
+            {
+                "project_path": project_path,
+                "profile": "security",
+                "report_path": report_path,
+            },
+        )
+
         search_knowledge_payload = None
 
         if knowledge_path or index_path:
@@ -150,8 +200,8 @@ async def run_mcp_client_smoke(
                 },
             )
 
-            search_knowledge_payload = serialize_tool_result(
-                search_knowledge_result.structured_content,
+            search_knowledge_payload = extract_mcp_tool_payload(
+                search_knowledge_result,
             )
 
         return {
@@ -163,16 +213,19 @@ async def run_mcp_client_smoke(
             ),
             "review_project_prompt": serialize_tool_result(
                 review_project_prompt.messages,
-            ),            
-            "list_files": serialize_tool_result(
-                list_files_result.structured_content,
+            ),
+            "list_files": extract_mcp_tool_payload(
+                list_files_result,
             ),
             "read_file_is_error": read_file_result.is_error,
-            "add_finding": serialize_tool_result(
-                add_finding_result.structured_content,
+            "add_finding": extract_mcp_tool_payload(
+                add_finding_result,
             ),
-            "write_report": serialize_tool_result(
-                write_report_result.structured_content,
+            "write_report": extract_mcp_tool_payload(
+                write_report_result,
+            ),
+            "review_project": extract_mcp_tool_payload(
+                review_project_result,
             ),
             "search_knowledge": search_knowledge_payload,
             "report_path": report_path,
@@ -269,6 +322,14 @@ def run_from_args(
         lines.append(
             f"- {prompt_name}"
         )
+
+    lines.extend(
+        [
+            "",
+            "Product workflow:",
+            "- review_project",
+        ]
+    )
 
     lines.extend(
         [

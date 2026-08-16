@@ -10,9 +10,10 @@ def test_run_from_args_lists_all_tools():
         "list_files",
         "read_file",
         "search_in_files",
+        "search_knowledge",
         "add_finding",
         "write_report",
-        "search_knowledge",
+        "review_project",
     ]
 
 
@@ -41,9 +42,10 @@ def test_run_from_args_lists_code_review_tools():
         "list_files",
         "read_file",
         "search_in_files",
+        "search_knowledge",
         "add_finding",
         "write_report",
-        "search_knowledge",
+        "review_project",
     ]
 
 

@@ -11,6 +11,10 @@ from tools import (
     search_in_files as search_project_files,
 )
 
+from review_project_workflow import review_project_result_to_dict, review_project
+
+
+
 
 def append_unique(
     values: list[str],
@@ -173,4 +177,22 @@ def mcp_write_report(
 
     return str(
         report_path,
+    )
+
+def mcp_review_project(
+    *,
+    context: AgentLoopMcpContext,
+    project_path: str,
+    profile: str = "security",
+    report_path: str = "",
+) -> dict[str, Any]:
+    result = review_project(
+        context=context,
+        project_path=project_path,
+        profile=profile,
+        report_path=report_path,
+    )
+
+    return review_project_result_to_dict(
+        result,
     )

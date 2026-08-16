@@ -19,9 +19,10 @@ def test_list_mcp_tool_specs_for_all_tools():
         "list_files",
         "read_file",
         "search_in_files",
+        "search_knowledge",
         "add_finding",
         "write_report",
-        "search_knowledge",
+        "review_project",
     ]
 
 
@@ -48,9 +49,10 @@ def test_list_mcp_tool_specs_for_code_review_mode():
         "list_files",
         "read_file",
         "search_in_files",
+        "search_knowledge",
         "add_finding",
         "write_report",
-        "search_knowledge",
+        "review_project",
     ]
 
 
@@ -102,4 +104,24 @@ def test_write_report_spec_has_no_llm_supplied_markdown():
     assert spec.input_schema["properties"] == {}
     assert spec.input_schema["required"] == []
 
-        
+
+def test_review_project_spec_has_profile_input():
+    specs = list_mcp_tool_specs_for_mode(
+        "code_review",
+    )
+
+    spec = next(
+        item
+        for item in specs
+        if item.name == "review_project"
+    )
+
+    assert "project_path" in spec.input_schema["properties"]
+    assert "profile" in spec.input_schema["properties"]
+    assert "project_path" in spec.input_schema["required"]
+    assert spec.input_schema["properties"]["profile"]["enum"] == [
+        "security",
+        "reliability",
+        "maintainability",
+        "full",
+    ]        

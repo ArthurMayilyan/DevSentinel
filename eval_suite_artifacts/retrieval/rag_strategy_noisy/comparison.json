@@ -1,6 +1,6 @@
 {
   "run_metadata": {
-    "created_at_utc": "2026-08-14T15:51:10.020849+00:00",
+    "created_at_utc": "2026-08-16T10:35:39.826589+00:00",
     "knowledge_path": "./knowledge_base_noisy",
     "cases": "./eval_cases/noisy_rag_eval_cases.json",
     "top_k": 3,

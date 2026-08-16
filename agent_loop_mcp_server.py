@@ -3,6 +3,7 @@ from mcp_server_handlers import (
     mcp_add_finding,
     mcp_list_files,
     mcp_read_file,
+    mcp_review_project,
     mcp_search_in_files,
     mcp_search_knowledge,
     mcp_write_report,
@@ -113,6 +114,19 @@ def create_agent_loop_mcp_server(
             context=context,
         )
 
+    @mcp.tool()
+    def review_project(
+        project_path: str,
+        profile: str = "security",
+        report_path: str = "",
+    ) -> dict:
+        """Run a full project review workflow and write a report."""
+        return mcp_review_project(
+            context=context,
+            project_path=project_path,
+            profile=profile,
+            report_path=report_path,
+        )
 
     @mcp.resource(
         "agentloop://project-guide",

@@ -34,9 +34,10 @@ def get_agent_mode_specs() -> dict[str, AgentModeSpec]:
                 "list_files",
                 "read_file",
                 "search_in_files",
+                "search_knowledge",
                 "add_finding",
                 "write_report",
-                "search_knowledge",
+                "review_project",
             ],
         ),
         AGENT_MODE_RAG_QA: AgentModeSpec(
