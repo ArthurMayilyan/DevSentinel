@@ -30,9 +30,10 @@ def test_format_server_description_lists_tools():
         "- list_files",
         "- read_file",
         "- search_in_files",
+        "- search_knowledge",
         "- add_finding",
         "- write_report",
-        "- search_knowledge",
+        "- review_project",
     ]
 
 

@@ -30,6 +30,8 @@ def test_run_from_args_runs_mcp_client_smoke(tmp_path):
     assert "Hardcoded credential risk." in report
     assert "HIGH" in report
     assert "SECURITY" in report
+    assert "Product workflow:" in output
+    assert "- review_project" in output    
 
 
 def test_run_from_args_returns_json(tmp_path):
@@ -59,6 +61,15 @@ def test_run_from_args_returns_json(tmp_path):
     assert payload["report_path"] == str(
         report_path,
     )
+    assert "review_project" in payload["tools"]
+    assert payload["review_project"] is not None
+
+    serialized_review = json.dumps(
+        payload["review_project"],
+    )
+
+    assert "completed" in serialized_review
+    assert "report_path" in serialized_review    
 
 
 def test_run_from_args_can_call_search_knowledge(tmp_path):

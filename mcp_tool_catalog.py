@@ -47,6 +47,37 @@ def generic_output_schema() -> dict[str, Any]:
     }
 
 
+def build_review_project_tool_spec() -> McpToolSpec:
+    return McpToolSpec(
+        name="review_project",
+        description="Run a full project review workflow and write a report.",
+        input_schema=object_schema(
+            properties={
+                "project_path": string_property(
+                    "Local project directory to review.",
+                ),
+                "profile": {
+                    "type": "string",
+                    "description": "Review profile.",
+                    "enum": [
+                        "security",
+                        "reliability",
+                        "maintainability",
+                        "full",
+                    ],
+                },
+                "report_path": string_property(
+                    "Optional report output path.",
+                ),
+            },
+            required=[
+                "project_path",
+            ],
+        ),
+        output_schema=generic_output_schema(),
+    )
+
+
 def build_list_files_tool_spec() -> McpToolSpec:
     return McpToolSpec(
         name="list_files",
@@ -195,9 +226,10 @@ def build_all_mcp_tool_specs() -> list[McpToolSpec]:
         build_list_files_tool_spec(),
         build_read_file_tool_spec(),
         build_search_in_files_tool_spec(),
+        build_search_knowledge_tool_spec(),
         build_add_finding_tool_spec(),
         build_write_report_tool_spec(),
-        build_search_knowledge_tool_spec(),
+        build_review_project_tool_spec(),
     ]
 
 
@@ -206,9 +238,10 @@ def build_code_review_mcp_tool_specs() -> list[McpToolSpec]:
         build_list_files_tool_spec(),
         build_read_file_tool_spec(),
         build_search_in_files_tool_spec(),
+        build_search_knowledge_tool_spec(),
         build_add_finding_tool_spec(),
         build_write_report_tool_spec(),
-        build_search_knowledge_tool_spec(),
+        build_review_project_tool_spec(),
     ]
 
 

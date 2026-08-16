@@ -62,9 +62,10 @@ def test_get_agent_mode_spec_returns_code_review_spec():
         "list_files",
         "read_file",
         "search_in_files",
+        "search_knowledge",
         "add_finding",
         "write_report",
-        "search_knowledge",
+        "review_project",
     ]
 
 
