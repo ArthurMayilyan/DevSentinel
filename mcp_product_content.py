@@ -128,6 +128,9 @@ Preferred workflow:
 1. Call review_project with:
    - project_path: {project_path}
    - profile: security
+   - include_globs: **/*.py
+   - max_files: 200
+   - max_file_size_bytes: 200000
 2. Return the summary and report path from review_project.
 
 Fallback manual workflow if review_project is unavailable:

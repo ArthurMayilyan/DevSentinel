@@ -135,3 +135,46 @@ def test_review_project_result_to_dict_serializes_result(tmp_path):
     assert payload["report_path"] == str(
         report_path,
     )
+
+
+def test_review_project_supports_report_dir_and_scope_options(tmp_path):
+    project_path = create_security_project(
+        tmp_path,
+    )
+
+    report_dir = tmp_path / "reviews"
+
+    context = build_agent_loop_mcp_context()
+
+    result = review_project(
+        context=context,
+        project_path=str(
+            project_path,
+        ),
+        profile="security",
+        report_dir=str(
+            report_dir,
+        ),
+        allowed_root=str(
+            tmp_path,
+        ),
+        include_globs="**/*.py",
+        max_files=2,
+        max_file_size_bytes=200_000,
+    )
+
+    assert result.status == "completed"
+    assert result.selected_files_count == 2
+    assert result.skipped_files_count >= 1
+    assert result.scope["include_globs"] == [
+        "**/*.py",
+    ]
+    assert result.scope["max_files"] == 2
+    assert result.report_path.startswith(
+        str(
+            report_dir.resolve(),
+        )
+    )
+    assert result.report_path.endswith(
+        ".md",
+    )    

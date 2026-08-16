@@ -64,3 +64,28 @@ def test_select_project_files_includes_supported_files_and_skips_ignored_dirs(tm
     assert str(
         ignored_file.resolve(),
     ) in result.skipped_files
+
+
+
+def test_select_project_files_include_glob_matches_root_level_files(tmp_path):
+    project_path = tmp_path / "project"
+    project_path.mkdir()
+
+    app_path = project_path / "app.py"
+    app_path.write_text(
+        "print('hello')",
+        encoding="utf-8",
+    )
+
+    result = select_project_files(
+        project_path=str(
+            project_path,
+        ),
+        include_globs="**/*.py",
+    )
+
+    assert result.files == [
+        str(
+            app_path.resolve(),
+        )
+    ]    

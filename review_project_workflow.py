@@ -1,6 +1,7 @@
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+from datetime import datetime
 
 from mcp_server_context import AgentLoopMcpContext
 from project_path_safety import select_project_files
@@ -21,10 +22,13 @@ class ReviewProjectResult:
     profile: str
     project_path: str
     inspected_files_count: int
+    selected_files_count: int
+    skipped_files_count: int
     findings_count: int
     severity_counts: dict[str, int]
     report_path: str
     summary: str
+    scope: dict[str, Any]
     findings: list[dict[str, Any]]
 
 
@@ -33,6 +37,34 @@ def review_project_result_to_dict(
 ) -> dict[str, Any]:
     return asdict(
         result,
+    )
+
+
+def build_generated_report_path(
+    *,
+    project_path: str,
+    report_dir: str,
+    profile: str,
+) -> str:
+    project_name = Path(
+        project_path,
+    ).name or "project"
+
+    timestamp = datetime.now().strftime(
+        "%Y%m%d_%H%M%S",
+    )
+
+    directory = Path(
+        report_dir,
+    ).expanduser().resolve()
+
+    directory.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    return str(
+        directory / f"{project_name}_{profile}_review_{timestamp}.md"
     )
 
 
@@ -217,10 +249,16 @@ def build_review_summary(
     *,
     result: ReviewProjectResult,
 ) -> str:
+    scope_part = (
+        f"Selected {result.selected_files_count} file(s), "
+        f"skipped {result.skipped_files_count} file(s)."
+    )
+
     if not result.findings_count:
         return (
             f"{result.profile} review completed. "
             f"Inspected {result.inspected_files_count} file(s). "
+            f"{scope_part} "
             "No findings were detected. "
             f"Report: {result.report_path}"
         )
@@ -235,6 +273,7 @@ def build_review_summary(
     return (
         f"{result.profile} review completed. "
         f"Inspected {result.inspected_files_count} file(s). "
+        f"{scope_part} "
         f"Found {result.findings_count} issue(s) "
         f"({', '.join(severity_parts)}). "
         f"Report: {result.report_path}"
@@ -416,17 +455,34 @@ def review_project(
     project_path: str,
     profile: str = REVIEW_PROFILE_SECURITY,
     report_path: str = "",
+    report_dir: str = "",
+    allowed_root: str = "",
+    include_globs: str | list[str] | None = None,
+    exclude_globs: str | list[str] | None = None,
+    max_files: int = 200,
+    max_file_size_bytes: int = 200_000,
 ) -> ReviewProjectResult:
     review_profile = get_review_profile(
         profile,
     )
 
-    if report_path:
-        context.report_path = report_path
-
     selected_files = select_project_files(
         project_path=project_path,
+        allowed_root=allowed_root,
+        include_globs=include_globs,
+        exclude_globs=exclude_globs,
+        max_files=max_files,
+        max_file_size_bytes=max_file_size_bytes,
     )
+
+    if report_path:
+        context.report_path = report_path
+    elif report_dir:
+        context.report_path = build_generated_report_path(
+            project_path=selected_files.project_path,
+            report_dir=report_dir,
+            profile=review_profile.name,
+        )
 
     warm_up_knowledge_context(
         context=context,
@@ -455,12 +511,31 @@ def review_project(
         context=context,
     )
 
+    scope = {
+        "selected_files_count": len(
+            selected_files.files,
+        ),
+        "skipped_files_count": len(
+            selected_files.skipped_files,
+        ),
+        "include_globs": selected_files.include_globs,
+        "exclude_globs": selected_files.exclude_globs,
+        "max_files": selected_files.max_files,
+        "max_file_size_bytes": selected_files.max_file_size_bytes,
+    }
+
     result_without_summary = ReviewProjectResult(
         status="completed",
         profile=review_profile.name,
         project_path=selected_files.project_path,
         inspected_files_count=len(
             context.state.inspected_files,
+        ),
+        selected_files_count=len(
+            selected_files.files,
+        ),
+        skipped_files_count=len(
+            selected_files.skipped_files,
         ),
         findings_count=len(
             context.state.findings,
@@ -470,6 +545,7 @@ def review_project(
         ),
         report_path=written_report_path,
         summary="",
+        scope=scope,
         findings=list(
             context.state.findings,
         ),
@@ -484,9 +560,12 @@ def review_project(
         profile=result_without_summary.profile,
         project_path=result_without_summary.project_path,
         inspected_files_count=result_without_summary.inspected_files_count,
+        selected_files_count=result_without_summary.selected_files_count,
+        skipped_files_count=result_without_summary.skipped_files_count,
         findings_count=result_without_summary.findings_count,
         severity_counts=result_without_summary.severity_counts,
         report_path=result_without_summary.report_path,
         summary=summary,
+        scope=result_without_summary.scope,
         findings=result_without_summary.findings,
     )

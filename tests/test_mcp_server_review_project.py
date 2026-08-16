@@ -102,7 +102,12 @@ async def call_review_project(
                     project_path,
                 ),
                 "profile": "security",
-            },
+                "allowed_root": str(
+                    project_path.parent,
+                ),
+                "include_globs": "**/*.py",
+                "max_files": 200,
+            }
         )
 
         return extract_mcp_tool_payload(
@@ -130,6 +135,8 @@ def test_mcp_server_review_project_tool_runs_workflow(tmp_path):
 
     assert "completed" in serialized
     assert "security" in serialized
+    assert "selected_files_count" in serialized
+    assert "scope" in serialized    
     assert report_path.exists()
 
     report = report_path.read_text(
