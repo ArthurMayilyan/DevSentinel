@@ -2,7 +2,7 @@
 
 ## Run metadata
 
-Created at UTC: `2026-08-16T10:35:39.826589+00:00`
+Created at UTC: `2026-08-16T11:29:39.038873+00:00`
 Knowledge path: `./knowledge_base_noisy`
 Cases path: `./eval_cases/noisy_rag_eval_cases.json`
 Top K: `3`

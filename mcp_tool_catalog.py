@@ -67,7 +67,25 @@ def build_review_project_tool_spec() -> McpToolSpec:
                     ],
                 },
                 "report_path": string_property(
-                    "Optional report output path.",
+                    "Optional exact report output path.",
+                ),
+                "report_dir": string_property(
+                    "Optional directory where a timestamped report should be created.",
+                ),
+                "allowed_root": string_property(
+                    "Optional root directory boundary. project_path must be inside it.",
+                ),
+                "include_globs": string_property(
+                    "Optional comma-separated include globs, for example: **/*.py,**/*.ts.",
+                ),
+                "exclude_globs": string_property(
+                    "Optional comma-separated exclude globs, for example: tests/**,docs/**.",
+                ),
+                "max_files": integer_property(
+                    "Maximum number of files to inspect.",
+                ),
+                "max_file_size_bytes": integer_property(
+                    "Maximum size of each inspected file in bytes.",
                 ),
             },
             required=[

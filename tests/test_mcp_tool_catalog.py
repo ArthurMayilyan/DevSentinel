@@ -124,4 +124,10 @@ def test_review_project_spec_has_profile_input():
         "reliability",
         "maintainability",
         "full",
-    ]        
+    ]  
+    assert "allowed_root" in spec.input_schema["properties"]
+    assert "include_globs" in spec.input_schema["properties"]
+    assert "exclude_globs" in spec.input_schema["properties"]
+    assert "max_files" in spec.input_schema["properties"]
+    assert "max_file_size_bytes" in spec.input_schema["properties"]
+    assert "report_dir" in spec.input_schema["properties"]          
