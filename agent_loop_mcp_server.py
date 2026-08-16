@@ -7,6 +7,16 @@ from mcp_server_handlers import (
     mcp_search_knowledge,
     mcp_write_report,
 )
+from mcp_product_content import (
+    build_answer_policy_question_prompt,
+    build_available_workflows_resource,
+    build_code_review_policy_resource,
+    build_current_state_resource,
+    build_project_guide_resource,
+    build_review_file_prompt,
+    build_review_project_prompt,
+    build_write_security_report_prompt,
+)
 from rag_tool import DEFAULT_RAG_TOP_K
 
 
@@ -102,6 +112,77 @@ def create_agent_loop_mcp_server(
         return mcp_write_report(
             context=context,
         )
+
+
+    @mcp.resource(
+        "agentloop://project-guide",
+    )
+    def project_guide() -> str:
+        """AgentLoop project guide."""
+        return build_project_guide_resource()
+
+    @mcp.resource(
+        "agentloop://available-workflows",
+    )
+    def available_workflows() -> str:
+        """AgentLoop available workflows."""
+        return build_available_workflows_resource()
+
+    @mcp.resource(
+        "agentloop://code-review-policy",
+    )
+    def code_review_policy() -> str:
+        """AgentLoop code review policy."""
+        return build_code_review_policy_resource()
+
+    @mcp.resource(
+        "agentloop://current-state",
+    )
+    def current_state() -> str:
+        """Current AgentLoop MCP server state."""
+        return build_current_state_resource(
+            context,
+        )
+
+    @mcp.prompt(
+        title="Review Project",
+    )
+    def review_project(
+        project_path: str = "./sample_project",
+    ) -> str:
+        """Review a local project using AgentLoop MCP tools."""
+        return build_review_project_prompt(
+            project_path=project_path,
+        )
+
+    @mcp.prompt(
+        title="Review File",
+    )
+    def review_file(
+        file_path: str,
+    ) -> str:
+        """Review one file using AgentLoop MCP tools."""
+        return build_review_file_prompt(
+            file_path=file_path,
+        )
+
+    @mcp.prompt(
+        title="Answer Policy Question",
+    )
+    def answer_policy_question(
+        question: str,
+    ) -> str:
+        """Answer a policy question using AgentLoop knowledge search."""
+        return build_answer_policy_question_prompt(
+            question=question,
+        )
+
+    @mcp.prompt(
+        title="Write Security Report",
+    )
+    def write_security_report() -> str:
+        """Write the final AgentLoop security report."""
+        return build_write_security_report_prompt()    
 
     return mcp
 
