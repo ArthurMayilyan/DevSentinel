@@ -1,12 +1,5 @@
-from mcp_server_context import AgentLoopMcpContext, build_agent_loop_mcp_context
-from mcp_server_handlers import (
-    mcp_add_finding,
-    mcp_list_files,
-    mcp_read_file,
-    mcp_review_project,
-    mcp_search_in_files,
-    mcp_search_knowledge,
-    mcp_write_report,
+from mcp_compare_review_runs import (
+    mcp_compare_review_runs,
 )
 from mcp_product_content import (
     build_answer_policy_question_prompt,
@@ -18,14 +11,42 @@ from mcp_product_content import (
     build_review_project_prompt,
     build_write_security_report_prompt,
 )
-from rag_tool import DEFAULT_RAG_TOP_K
-from mcp_compare_review_runs import mcp_compare_review_runs
-from mcp_review_workspace import mcp_review_workspace
+from mcp_review_workspace import (
+    mcp_review_workspace,
+)
+from mcp_server_context import (
+    AgentLoopMcpContext,
+    build_agent_loop_mcp_context,
+)
+from mcp_server_handlers import (
+    mcp_add_finding,
+    mcp_list_files,
+    mcp_read_file,
+    mcp_review_project,
+    mcp_search_in_files,
+    mcp_search_knowledge,
+    mcp_write_report,
+)
+from project_path_safety import (
+    DEFAULT_MAX_FILES,
+    DEFAULT_MAX_FILE_SIZE_BYTES,
+)
+from rag_defaults import (
+    DEFAULT_RAG_TOP_K,
+)
+from reviewer_config import (
+    DEFAULT_OPENAI_REVIEW_MODEL,
+    DEFAULT_REVIEWER,
+)
+from workspace_review_presets import (
+    WORKSPACE_PRESET_PYTHON_SECURITY,
+)
 
 
 def import_mcp_server_class():
     try:
         from mcp.server import MCPServer
+
     except ImportError as exc:
         raise RuntimeError(
             "MCP SDK is not installed. Install it with: "
@@ -44,6 +65,10 @@ def create_agent_loop_mcp_server(
     mcp = MCPServer(
         "AgentLoop",
     )
+
+    # ---------------------------------------------------------
+    # Low-level MCP tools
+    # ---------------------------------------------------------
 
     @mcp.tool()
     def list_files(
@@ -116,6 +141,10 @@ def create_agent_loop_mcp_server(
             context=context,
         )
 
+    # ---------------------------------------------------------
+    # High-level review tools
+    # ---------------------------------------------------------
+
     @mcp.tool()
     def review_project(
         project_path: str,
@@ -126,10 +155,12 @@ def create_agent_loop_mcp_server(
         allowed_root: str = "",
         include_globs: str = "",
         exclude_globs: str = "",
-        max_files: int = 200,
-        max_file_size_bytes: int = 200_000,
-        reviewer: str = "deterministic",
-        model: str = "gpt-5.6-luna",
+        max_files: int = DEFAULT_MAX_FILES,
+        max_file_size_bytes: int = (
+            DEFAULT_MAX_FILE_SIZE_BYTES
+        ),
+        reviewer: str = DEFAULT_REVIEWER,
+        model: str = DEFAULT_OPENAI_REVIEW_MODEL,
     ) -> dict:
         """Run a full project review workflow and write a report."""
         return mcp_review_project(
@@ -151,9 +182,11 @@ def create_agent_loop_mcp_server(
     @mcp.tool()
     def review_workspace(
         workspace_path: str,
-        preset: str = "python-security",
-        reviewer: str = "deterministic",
-        model: str = "gpt-5.6-luna",
+        preset: str = (
+            WORKSPACE_PRESET_PYTHON_SECURITY
+        ),
+        reviewer: str = DEFAULT_REVIEWER,
+        model: str = DEFAULT_OPENAI_REVIEW_MODEL,
         reviews_dir: str = "",
     ) -> dict:
         """Review a workspace using a predefined AgentLoop review preset."""
@@ -164,7 +197,7 @@ def create_agent_loop_mcp_server(
             reviewer=reviewer,
             model=model,
             reviews_dir=reviews_dir,
-        )    
+        )
 
     @mcp.tool()
     def compare_review_runs(
@@ -179,6 +212,9 @@ def create_agent_loop_mcp_server(
             comparisons_dir=comparisons_dir,
         )
 
+    # ---------------------------------------------------------
+    # MCP resources
+    # ---------------------------------------------------------
 
     @mcp.resource(
         "agentloop://project-guide",
@@ -209,6 +245,15 @@ def create_agent_loop_mcp_server(
         return build_current_state_resource(
             context,
         )
+
+    # ---------------------------------------------------------
+    # MCP prompts
+    #
+    # IMPORTANT:
+    # review_project below is a PROMPT, not another tool.
+    # The MCP tool named review_project above and this prompt
+    # intentionally share the same public name.
+    # ---------------------------------------------------------
 
     @mcp.prompt(
         title="Review Project",
@@ -248,7 +293,7 @@ def create_agent_loop_mcp_server(
     )
     def write_security_report() -> str:
         """Write the final AgentLoop security report."""
-        return build_write_security_report_prompt()    
+        return build_write_security_report_prompt()
 
     return mcp
 

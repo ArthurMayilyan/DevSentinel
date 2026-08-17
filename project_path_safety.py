@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
 
+from app_settings import get_app_settings
+
 
 DEFAULT_IGNORED_DIRS = {
     ".git",
@@ -36,8 +38,15 @@ DEFAULT_REVIEW_EXTENSIONS = {
     ".txt",
 }
 
-DEFAULT_MAX_FILE_SIZE_BYTES = 200_000
-DEFAULT_MAX_FILES = 200
+_SETTINGS = get_app_settings()
+
+DEFAULT_MAX_FILE_SIZE_BYTES = (
+    _SETTINGS.review.max_file_size_bytes
+)
+
+DEFAULT_MAX_FILES = (
+    _SETTINGS.review.max_files
+)
 
 
 @dataclass(frozen=True)

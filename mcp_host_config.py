@@ -4,6 +4,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from app_settings import get_app_settings
+
+
+_SETTINGS = get_app_settings()
+
+DEFAULT_MCP_HOST_REPORT_PATH = (
+    _SETTINGS.artifacts.default_report_path
+)
 
 SUPPORTED_MCP_HOSTS = {
     "cursor",
@@ -37,7 +45,7 @@ def build_agentloop_launch_command(
     server_script_path: str = "run_mcp_server.py",
     knowledge_path: str = "",
     index_path: str = "",
-    report_path: str = "report.md",
+    report_path: str = DEFAULT_MCP_HOST_REPORT_PATH,
     python_executable: str = "",
 ) -> McpHostLaunchCommand:
     command = python_executable or sys.executable
@@ -187,7 +195,7 @@ def build_mcp_host_config(
     server_script_path: str = "run_mcp_server.py",
     knowledge_path: str = "",
     index_path: str = "",
-    report_path: str = "report.md",
+    report_path: str = DEFAULT_MCP_HOST_REPORT_PATH,
     python_executable: str = "",
 ) -> dict[str, Any] | str:
     if host not in SUPPORTED_MCP_HOSTS:

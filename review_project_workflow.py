@@ -4,7 +4,11 @@ from typing import Any
 from datetime import datetime
 
 from mcp_server_context import AgentLoopMcpContext
-from project_path_safety import select_project_files
+from project_path_safety import (
+    DEFAULT_MAX_FILES,
+    DEFAULT_MAX_FILE_SIZE_BYTES,
+    select_project_files,
+)
 from rag_tool import search_knowledge as search_rag_knowledge
 from review_profiles import (
     REVIEW_PROFILE_FULL,
@@ -607,8 +611,8 @@ def review_project(
     allowed_root: str = "",
     include_globs: str | list[str] | None = None,
     exclude_globs: str | list[str] | None = None,
-    max_files: int = 200,
-    max_file_size_bytes: int = 200_000,
+    max_files: int = DEFAULT_MAX_FILES,
+    max_file_size_bytes: int = DEFAULT_MAX_FILE_SIZE_BYTES,
     reviewer: str = DEFAULT_REVIEWER,
     model: str = DEFAULT_OPENAI_REVIEW_MODEL,
     reviews_dir: str = "",

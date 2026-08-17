@@ -1,13 +1,28 @@
 from dataclasses import dataclass
 from typing import Any
 
+from app_settings import get_app_settings
+
+
+_SETTINGS = get_app_settings()
 
 @dataclass(frozen=True)
 class AgentConfig:
-    max_steps: int = 8
-    max_rejected_final_answers: int = 3
-    max_rejected_tool_calls: int = 5
-    max_invalid_llm_outputs: int = 3
+    max_steps: int = (
+        _SETTINGS.agent.max_steps
+    )
+
+    max_rejected_final_answers: int = (
+        _SETTINGS.agent.max_rejected_final_answers
+    )
+
+    max_rejected_tool_calls: int = (
+        _SETTINGS.agent.max_rejected_tool_calls
+    )
+
+    max_invalid_llm_outputs: int = (
+        _SETTINGS.agent.max_invalid_llm_outputs
+    )
 
     require_report_for_final_answer: bool = True
     require_all_python_files_processed_for_final_answer: bool = True

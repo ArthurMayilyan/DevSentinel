@@ -20,6 +20,14 @@ from rag_evidence_extractor import (
 )
 from rag_index import build_store_from_rag_index, load_rag_index
 from trace import TraceRecorder
+from openai_client_factory import (
+    DEFAULT_OPENAI_MODEL,
+)
+
+from rag_defaults import (
+    DEFAULT_RAG_AGENT_MAX_STEPS,
+    DEFAULT_RAG_RETRIEVAL_STRATEGY,
+)
 
 
 @dataclass(frozen=True)
@@ -108,10 +116,10 @@ def run_rag_agent(
     *,
     knowledge_path: str,
     query: str,
-    strategy: str = RETRIEVAL_STRATEGY_DEFAULT,
+    strategy: str = DEFAULT_RAG_RETRIEVAL_STRATEGY,
     llm_name: str = RAG_QA_LLM_DETERMINISTIC,
-    model: str = "gpt-5",
-    max_steps: int = 4,
+    model: str = DEFAULT_OPENAI_MODEL,
+    max_steps: int = DEFAULT_RAG_AGENT_MAX_STEPS,
     index_path: str = "",
 ) -> RagAgentRunResult:
     if index_path:

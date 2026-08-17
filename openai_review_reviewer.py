@@ -11,7 +11,11 @@ from finding_types import (
     FINDING_TYPE_SECURITY_TOKEN_VALIDATION,
     normalize_finding_type,
 )
-from reviewer_config import DEFAULT_OPENAI_REVIEW_MODEL
+from reviewer_config import (
+    DEFAULT_OPENAI_REVIEW_MAX_CONTENT_CHARS,
+    DEFAULT_OPENAI_REVIEW_MODEL,
+    DEFAULT_OPENAI_REVIEW_REQUEST_TIMEOUT_SECONDS,
+)
 
 
 def extract_openai_response_text(
@@ -129,12 +133,26 @@ class OpenAIReviewReviewer:
         model: str = DEFAULT_OPENAI_REVIEW_MODEL,
         client: Any = None,
         client_class: Any = None,
-        max_content_chars: int = 12_000,
+        max_content_chars: int = DEFAULT_OPENAI_REVIEW_MAX_CONTENT_CHARS,
+        request_timeout_seconds: float = DEFAULT_OPENAI_REVIEW_REQUEST_TIMEOUT_SECONDS,
     ) -> None:
         self.model = model
         self.client = client
         self.client_class = client_class
         self.max_content_chars = max_content_chars
+        self.request_timeout_seconds = (
+            request_timeout_seconds
+        )
+
+        if self.max_content_chars <= 0:
+            raise ValueError(
+                "max_content_chars must be greater than zero."
+            )
+
+        if self.request_timeout_seconds <= 0:
+            raise ValueError(
+                "request_timeout_seconds must be greater than zero."
+            )
 
     def get_client(
         self,
@@ -232,6 +250,14 @@ File content:
         policy_context: str,
     ) -> list[dict[str, Any]]:
         client = self.get_client()
+
+        if hasattr(
+            client,
+            "with_options",
+        ):
+            client = client.with_options(
+                timeout=self.request_timeout_seconds,
+            )
 
         response = client.responses.create(
             model=self.model,

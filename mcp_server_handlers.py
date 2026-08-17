@@ -12,7 +12,15 @@ from tools import (
 )
 
 from review_project_workflow import review_project_result_to_dict, review_project
+from project_path_safety import (
+    DEFAULT_MAX_FILES,
+    DEFAULT_MAX_FILE_SIZE_BYTES,
+)
 
+from reviewer_config import (
+    DEFAULT_OPENAI_REVIEW_MODEL,
+    DEFAULT_REVIEWER,
+)
 
 
 
@@ -190,10 +198,10 @@ def mcp_review_project(
     allowed_root: str = "",
     include_globs: str = "",
     exclude_globs: str = "",
-    max_files: int = 200,
-    max_file_size_bytes: int = 200_000,
-    reviewer: str = "deterministic",
-    model: str = "gpt-5.6-luna",
+    max_files: int = DEFAULT_MAX_FILES,
+    max_file_size_bytes: int = DEFAULT_MAX_FILE_SIZE_BYTES,
+    reviewer: str = DEFAULT_REVIEWER,
+    model: str = DEFAULT_OPENAI_REVIEW_MODEL,
 ) -> dict[str, Any]:
     result = review_project(
         context=context,

@@ -12,6 +12,10 @@ from rag_strategy_factory import (
     SUPPORTED_RETRIEVAL_STRATEGIES,
     build_rag_search_engine_for_strategy,
 )
+from rag_defaults import (
+    DEFAULT_RAG_TOP_K,
+)
+
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -33,8 +37,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--top-k",
         type=int,
-        default=3,
-        help="Number of evidence chunks to retrieve.",
+        default=DEFAULT_RAG_TOP_K,
+        help=(
+            "Number of RAG results to retrieve. "
+            "Defaults to rag.top_k from agentloop.toml."
+        ),
     )
 
     parser.add_argument(

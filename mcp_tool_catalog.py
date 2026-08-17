@@ -1,6 +1,9 @@
 from typing import Any
 
 from mcp_tool_contract import McpToolSpec
+from workspace_review_presets import (
+    SUPPORTED_WORKSPACE_PRESETS,
+)
 
 
 def string_property(
@@ -61,11 +64,9 @@ def build_review_workspace_tool_spec() -> McpToolSpec:
                 "preset": {
                     "type": "string",
                     "description": "Workspace review preset.",
-                    "enum": [
-                        "python-security",
-                        "typescript-security",
-                        "general-security",
-                    ],
+                    "enum": sorted(
+                        SUPPORTED_WORKSPACE_PRESETS,
+                    ),
                 },
                 "reviewer": {
                     "type": "string",

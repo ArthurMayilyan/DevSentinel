@@ -1,4 +1,8 @@
+from app_settings import get_app_settings
 from mcp_server_context import AgentLoopMcpContext
+from workspace_review_presets import (
+    WORKSPACE_PRESET_PYTHON_SECURITY,
+)
 
 
 def build_project_guide_resource() -> str:
@@ -120,6 +124,45 @@ def build_review_project_prompt(
     *,
     project_path: str = "./sample_project",
 ) -> str:
+    settings = get_app_settings()
+
+    preset = settings.presets.get(
+        WORKSPACE_PRESET_PYTHON_SECURITY,
+    )
+
+    if preset is not None:
+        include_globs = ",".join(
+            preset.include_globs,
+        )
+
+        max_files = preset.max_files
+
+        max_file_size_bytes = (
+            preset.max_file_size_bytes
+        )
+
+    else:
+        include_globs = ""
+
+        max_files = (
+            settings.review.max_files
+        )
+
+        max_file_size_bytes = (
+            settings.review.max_file_size_bytes
+        )
+
+    reviews_dir = (
+        f"./{settings.artifacts.reviews_dir_name}"
+    )
+
+    include_globs_line = ""
+
+    if include_globs:
+        include_globs_line = (
+            f"   - include_globs: {include_globs}\n"
+        )
+
     return f"""Use the agentloop MCP server to review this project:
 
 {project_path}
@@ -128,10 +171,9 @@ Preferred workflow:
 1. Call review_project with:
    - project_path: {project_path}
    - profile: security
-   - include_globs: **/*.py
-   - max_files: 200
-   - max_file_size_bytes: 200000
-   - reviews_dir: ./reviews   
+{include_globs_line}   - max_files: {max_files}
+   - max_file_size_bytes: {max_file_size_bytes}
+   - reviews_dir: {reviews_dir}
 2. Return the summary, run directory, HTML report path, and Markdown report path.
 
 Fallback manual workflow if review_project is unavailable:

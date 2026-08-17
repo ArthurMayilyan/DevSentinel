@@ -180,13 +180,15 @@ def test_review_workspace_tool_spec_has_workspace_inputs():
         "workspace_path",
     ]
 
+    # Presets come from agentloop.toml and the MCP
+    # catalog exposes them in deterministic sorted order.
     assert properties["preset"]["enum"] == [
+        "general-security",
         "python-security",
         "typescript-security",
-        "general-security",
     ]
 
     assert properties["reviewer"]["enum"] == [
         "deterministic",
         "openai",
-    ]    
+    ]

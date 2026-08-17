@@ -5,6 +5,9 @@ from ask_rag import (
     format_rag_answer_text,
     run_from_args,
 )
+from rag_defaults import (
+    DEFAULT_RAG_TOP_K,
+)
 
 
 def create_knowledge_fixture(
@@ -181,4 +184,6 @@ def test_run_from_args_uses_selected_strategy_on_noisy_data(tmp_path):
         str(knowledge_path / "security.md"),
     ]
 
-        
+
+
+         

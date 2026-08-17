@@ -21,6 +21,12 @@ from rag_agent_runtime import (
 )
 from rag_qa_llm_factory import RAG_QA_LLM_DETERMINISTIC
 from rag_strategy_factory import RETRIEVAL_STRATEGY_DEFAULT
+from app_settings import get_app_settings
+from openai_client_factory import (
+    DEFAULT_OPENAI_MODEL,
+)
+
+_SETTINGS = get_app_settings()
 
 
 @dataclass(frozen=True)
@@ -38,8 +44,11 @@ class AgentRuntimeRequest:
     index_path: str = ""
     strategy: str = RETRIEVAL_STRATEGY_DEFAULT
     llm_name: str = ""
-    model: str = "gpt-5"
-    max_steps: int = 4
+    model: str = DEFAULT_OPENAI_MODEL
+
+    max_steps: int = (
+        _SETTINGS.runtime.agent_mode_max_steps
+    )
     artifacts_dir: str = ""
 
     # Agent guardrail limits
@@ -123,7 +132,8 @@ def build_artifact_paths(
             path / "result.json",
         ),
         str(
-            path / "report.md",
+            path
+            / _SETTINGS.artifacts.default_report_path,
         ),
     )
 

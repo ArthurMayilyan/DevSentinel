@@ -2,9 +2,18 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 500
-DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = 500
-DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS = 30.0
+from app_settings import get_app_settings
+
+
+_SETTINGS = get_app_settings()
+
+DEFAULT_OPENAI_MAX_OUTPUT_TOKENS = (
+    _SETTINGS.openai.max_output_tokens
+)
+
+DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS = (
+    _SETTINGS.openai.request_timeout_seconds
+)
 
 AGENT_ARGUMENTS_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",

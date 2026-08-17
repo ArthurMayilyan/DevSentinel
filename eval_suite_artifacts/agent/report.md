@@ -6,7 +6,7 @@ Knowledge path: `./knowledge_base_noisy`
 Cases path: `./eval_cases/rag_agent_eval_cases.json`
 Strategy: `binary-overlap`
 LLM: `deterministic`
-Model: `gpt-5`
+Model: `gpt-5.6-luna`
 Max steps: `4`
 Min agent answer accuracy: `1.0`
 

@@ -99,4 +99,43 @@ def test_agent_does_not_register_search_knowledge_without_rag_store():
 
     assert "search_knowledge" not in agent.tool_registry.names()
 
-                
+
+from agent import Agent
+from agent_config import AgentConfig
+from app_settings import get_app_settings
+from trace import TraceRecorder
+
+
+class MinimalFakeLLM:
+    def complete(
+        self,
+        messages,
+        state=None,
+    ):
+        return {
+            "type": "final_answer",
+            "answer": "done",
+        }
+
+
+def test_agent_uses_configured_max_steps_when_not_explicitly_provided():
+    settings = get_app_settings()
+
+    agent = Agent(
+        llm=MinimalFakeLLM(),
+        trace_recorder=TraceRecorder(),
+    )
+
+    assert agent.max_steps == (
+        settings.agent.max_steps
+    )
+
+
+def test_agent_explicit_max_steps_overrides_configured_default():
+    agent = Agent(
+        llm=MinimalFakeLLM(),
+        trace_recorder=TraceRecorder(),
+        max_steps=17,
+    )
+
+    assert agent.max_steps == 17                

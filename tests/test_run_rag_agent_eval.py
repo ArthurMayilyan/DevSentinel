@@ -8,6 +8,9 @@ from run_rag_agent_eval import (
     run_from_args,
     should_fail_due_to_agent_quality_gate,
 )
+from openai_client_factory import (
+    DEFAULT_OPENAI_MODEL,
+)
 
 
 def create_agent_eval_fixture(
@@ -226,7 +229,7 @@ def test_run_from_args_returns_agent_eval_output(tmp_path):
     assert output["summary"]["agent_answer_accuracy"] == 1.0
     assert output["quality_gate"]["passed"] is True
     assert output["llm"] == "deterministic"
-    assert output["model"] == "gpt-5"
+    assert output["model"] == DEFAULT_OPENAI_MODEL
     assert output["summary"]["guardrail_checked_cases"] == 0
     assert output["summary"]["fallback_used_cases"] == 0
 
@@ -269,7 +272,7 @@ def test_run_from_args_writes_output_and_report(tmp_path):
         encoding="utf-8",
     ).startswith("# RAG Agent Eval Report")
     assert output["llm"] == "deterministic"
-    assert output["model"] == "gpt-5"    
+    assert output["model"] == DEFAULT_OPENAI_MODEL    
 
 
 def test_run_from_args_supports_openai_llm_mode_with_guardrail_metrics(
@@ -307,21 +310,28 @@ def test_run_from_args_supports_openai_llm_mode_with_guardrail_metrics(
         model,
         max_steps,
     ):
+        assert knowledge_path == "./knowledge_base_noisy"
+        assert strategy == "binary-overlap"
         assert llm_name == "openai"
+
+        # Explicit CLI argument must override the model
+        # configured in agentloop.toml.
         assert model == "gpt-5"
 
         if query == "small function":
             return FakeRunResult(
                 answer=(
                     "Small function guidelines: functions should be small "
-                    "and readable.\n\nSource: coding.md"
+                    "and readable.\n\n"
+                    "Source: coding.md"
                 ),
             )
 
         return FakeRunResult(
             answer=(
                 "Token expiration policy: tokens must be signed "
-                "and must expire.\n\nSource: security.md"
+                "and must expire.\n\n"
+                "Source: security.md"
             ),
         )
 
@@ -335,7 +345,9 @@ def test_run_from_args_supports_openai_llm_mode_with_guardrail_metrics(
             "--knowledge-path",
             "./knowledge_base_noisy",
             "--cases",
-            str(cases_path),
+            str(
+                cases_path,
+            ),
             "--strategy",
             "binary-overlap",
             "--llm",
@@ -346,11 +358,17 @@ def test_run_from_args_supports_openai_llm_mode_with_guardrail_metrics(
     )
 
     assert output["llm"] == "openai"
+
+    # Explicit --model value has higher priority than
+    # DEFAULT_OPENAI_MODEL / agentloop.toml.
     assert output["model"] == "gpt-5"
+
     assert output["summary"]["total_cases"] == 2
     assert output["summary"]["passed_cases"] == 2
     assert output["summary"]["agent_answer_accuracy"] == 1.0
+
     assert output["summary"]["guardrail_checked_cases"] == 2
     assert output["summary"]["guardrail_passed_cases"] == 2
     assert output["summary"]["fallback_used_cases"] == 0
+
     assert output["quality_gate"]["passed"] is True

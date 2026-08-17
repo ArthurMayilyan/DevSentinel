@@ -2,7 +2,10 @@ from pathlib import Path
 
 from agent_state import AgentState
 from tool_path_utils import normalize_tool_path
+from app_settings import get_app_settings
 
+
+_SETTINGS = get_app_settings()
 
 def list_files(path: str) -> list[str]:
     base_path = Path(path)
@@ -133,13 +136,27 @@ def render_report_from_state(state: AgentState) -> str:
     return "\n".join(lines)
 
 
-def write_report(state: AgentState) -> str:
-    markdown = render_report_from_state(state)
+def write_report(
+    state: AgentState,
+) -> str:
+    markdown = render_report_from_state(
+        state,
+    )
 
-    report_path = Path("report.md")
-    report_path.write_text(markdown, encoding="utf-8")
+    report_path = Path(
+        _SETTINGS.artifacts.default_report_path,
+    )
+
+    report_path.write_text(
+        markdown,
+        encoding="utf-8",
+    )
 
     state.report_written = True
-    state.report_path = str(report_path)
+    state.report_path = str(
+        report_path,
+    )
 
-    return str(report_path)
+    return str(
+        report_path,
+    )

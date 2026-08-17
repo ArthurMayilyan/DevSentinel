@@ -35,7 +35,7 @@ class Agent:
         self,
         llm,
         trace_recorder,
-        max_steps: int = 8,
+        max_steps: int | None = None,
         tool_registry: ToolRegistry | None = None,
         prompt_builder: PromptBuilder | None = None,
         config: AgentConfig | None = None,
@@ -44,14 +44,37 @@ class Agent:
     ):
         self.llm = llm
         self.trace_recorder = trace_recorder
-        self.config = config or AgentConfig(max_steps=max_steps)
+
+        if config is not None:
+            self.config = config
+
+        elif max_steps is not None:
+            self.config = AgentConfig(
+                max_steps=max_steps,
+            )
+
+        else:
+            self.config = AgentConfig()
+
         self.max_steps = self.config.max_steps
-        self.prompt_builder = prompt_builder or PromptBuilder(
-            examples=CODE_REVIEW_JSON_EXAMPLES,
+
+        self.prompt_builder = (
+            prompt_builder
+            or PromptBuilder(
+                examples=CODE_REVIEW_JSON_EXAMPLES,
+            )
         )
 
-        if run_metadata is not None and not isinstance(run_metadata, dict):
-            raise ValueError("run_metadata must be a dictionary or None.")
+        if (
+            run_metadata is not None
+            and not isinstance(
+                run_metadata,
+                dict,
+            )
+        ):
+            raise ValueError(
+                "run_metadata must be a dictionary or None."
+            )
 
         self.run_metadata = run_metadata
 
@@ -69,9 +92,12 @@ class Agent:
                 rag_store=rag_store,
             )
 
-            self.tool_registry = build_default_tool_registry(
-                tool_functions=self._tools,
+            self.tool_registry = (
+                build_default_tool_registry(
+                    tool_functions=self._tools,
+                )
             )
+
         else:
             self._tools = base_tool_functions
             self.tool_registry = tool_registry

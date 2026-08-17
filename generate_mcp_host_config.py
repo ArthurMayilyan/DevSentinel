@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 from mcp_host_config import (
+    DEFAULT_MCP_HOST_REPORT_PATH,
     SUPPORTED_MCP_HOSTS,
     build_mcp_host_config,
     mcp_host_config_to_json,
@@ -43,7 +44,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--report-path",
-        default="report.md",
+        default=DEFAULT_MCP_HOST_REPORT_PATH,
     )
 
     parser.add_argument(

@@ -19,6 +19,14 @@ from rag_agent_eval import (
     load_rag_agent_eval_cases_from_json_file,
     rag_agent_eval_summary_to_dict,
 )
+from openai_client_factory import (
+    DEFAULT_OPENAI_MODEL,
+)
+
+from rag_defaults import (
+    DEFAULT_RAG_AGENT_MAX_STEPS,
+    DEFAULT_RAG_RETRIEVAL_STRATEGY,
+)
 
 
 
@@ -40,7 +48,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--strategy",
         choices=sorted(SUPPORTED_RETRIEVAL_STRATEGIES),
-        default=RETRIEVAL_STRATEGY_DEFAULT,
+        default=DEFAULT_RAG_RETRIEVAL_STRATEGY,
     )
 
     parser.add_argument(
@@ -51,13 +59,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--model",
-        default="gpt-5",
+        default=DEFAULT_OPENAI_MODEL,
     )
 
     parser.add_argument(
         "--max-steps",
         type=int,
-        default=4,
+        default=DEFAULT_RAG_AGENT_MAX_STEPS,
     )
 
     parser.add_argument(

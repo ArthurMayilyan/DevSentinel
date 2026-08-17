@@ -1,11 +1,24 @@
-from agent_config import AgentConfig
+from app_settings import get_app_settings
 
 
-DEMO_CLI_DEFAULT_MAX_STEPS = AgentConfig().max_steps
+_SETTINGS = get_app_settings()
 
-OPENAI_CLI_DEFAULT_MAX_STEPS = 15
-OPENAI_CLI_DEFAULT_MAX_OUTPUT_TOKENS = 250
-OPENAI_CLI_DEFAULT_REQUEST_TIMEOUT_SECONDS = 10.0
+
+DEMO_CLI_DEFAULT_MAX_STEPS = (
+    _SETTINGS.agent.max_steps
+)
+
+OPENAI_CLI_DEFAULT_MAX_STEPS = (
+    _SETTINGS.cli.openai_max_steps
+)
+
+OPENAI_CLI_DEFAULT_MAX_OUTPUT_TOKENS = (
+    _SETTINGS.cli.openai_max_output_tokens
+)
+
+OPENAI_CLI_DEFAULT_REQUEST_TIMEOUT_SECONDS = (
+    _SETTINGS.cli.openai_request_timeout_seconds
+)
 
 
 def resolve_cli_max_steps(
@@ -40,4 +53,3 @@ def resolve_cli_request_timeout_seconds(
         return request_timeout_seconds
 
     return OPENAI_CLI_DEFAULT_REQUEST_TIMEOUT_SECONDS
-

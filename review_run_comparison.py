@@ -9,6 +9,7 @@ from finding_types import (
     FINDING_TYPE_SECURITY_OTHER,
     normalize_finding_type,
 )
+from app_settings import get_app_settings
 
 
 @dataclass(frozen=True)
@@ -590,6 +591,8 @@ def compare_review_runs(
             comparisons_dir,
         ).expanduser().resolve()
     else:
+        settings = get_app_settings()
+
         root = (
             Path(
                 new_run_dir,
@@ -597,7 +600,7 @@ def compare_review_runs(
             .expanduser()
             .resolve()
             .parent
-            / "comparisons"
+            / settings.artifacts.comparisons_dir_name
         )
 
     root.mkdir(

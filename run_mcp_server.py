@@ -2,8 +2,10 @@ import argparse
 
 from mcp_tool_catalog import list_mcp_tool_specs_for_mode
 from agent_loop_mcp_server import create_agent_loop_mcp_server
-from mcp_server_context import build_agent_loop_mcp_context
-
+from mcp_server_context import (
+    DEFAULT_MCP_REPORT_PATH,
+    build_agent_loop_mcp_context,
+)
 
 SUPPORTED_MCP_TRANSPORTS = {
     "stdio",
@@ -36,7 +38,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--report-path",
-        default="report.md",
+        default=DEFAULT_MCP_REPORT_PATH,
     )
 
     parser.add_argument(

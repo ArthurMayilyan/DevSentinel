@@ -1,6 +1,11 @@
 from agent import Agent
 from agent_config import AgentConfig
-from rag_agent_prompt import build_rag_qa_prompt_builder
+from rag_agent_prompt import (
+    build_rag_qa_prompt_builder,
+)
+from rag_defaults import (
+    DEFAULT_RAG_AGENT_MAX_STEPS,
+)
 from rag_qa_llm import DeterministicRagQaLLM
 from trace import TraceRecorder
 
@@ -8,7 +13,7 @@ from trace import TraceRecorder
 def build_rag_qa_agent(
     *,
     rag_store,
-    max_steps: int = 4,
+    max_steps: int = DEFAULT_RAG_AGENT_MAX_STEPS,
     trace_recorder: TraceRecorder | None = None,
     llm=None,
 ) -> Agent:
