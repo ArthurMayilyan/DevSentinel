@@ -1,53 +1,106 @@
-from tool_specs import IssueSeverity, IssueCategory
 import json
-from openai import BadRequestError, OpenAI, RateLimitError
+
 from dotenv import load_dotenv
+from openai import (
+    BadRequestError,
+    OpenAI,
+    RateLimitError,
+)
+
+from app_settings import get_app_settings
+
+
+_SETTINGS = get_app_settings()
+
 
 class RealLLM:
-    def __init__(self, model: str = "gpt-5.6-luna", temperature: float | None = None):
+    def __init__(
+        self,
+        model: str = _SETTINGS.openai.model,
+        temperature: float | None = None,
+        request_timeout_seconds: float = (
+            _SETTINGS.openai.request_timeout_seconds
+        ),
+    ):
         load_dotenv()
+
         self.client = OpenAI()
         self.model = model
         self.temperature = temperature
+        self.request_timeout_seconds = (
+            request_timeout_seconds
+        )
 
-    def complete(self, messages: list[dict], state=None) -> dict:
+    def complete(
+        self,
+        messages: list[dict],
+        state=None,
+    ) -> dict:
         action = None
+        content = ""
 
         try:
             request = {
                 "model": self.model,
                 "messages": messages,
-                "response_format": {"type": "json_object"},
+                "response_format": {
+                    "type": "json_object",
+                },
             }
 
             if self.temperature is not None:
-                request["temperature"] = self.temperature
+                request[
+                    "temperature"
+                ] = self.temperature
 
-            response = self.client.chat.completions.create(**request)
+            client = self.client
 
-            content = response.choices[0].message.content
+            if hasattr(
+                client,
+                "with_options",
+            ):
+                client = client.with_options(
+                    timeout=self.request_timeout_seconds,
+                )
 
-            action = json.loads(content)
+            response = (
+                client.chat.completions.create(
+                    **request
+                )
+            )
+
+            content = (
+                response.choices[0].message.content
+            )
+
+            action = json.loads(
+                content,
+            )
 
         except RateLimitError as error:
             return {
                 "type": "llm_error",
                 "error_type": "rate_limit_or_quota",
-                "error": str(error),
+                "error": str(
+                    error,
+                ),
             }
 
         except BadRequestError as error:
             return {
                 "type": "llm_error",
                 "error_type": "bad_request",
-                "error": str(error),
+                "error": str(
+                    error,
+                ),
             }
 
-           
         except json.JSONDecodeError as error:
             return {
                 "type": "invalid_output",
-                "error": f"Invalid JSON from model: {error}",
+                "error": (
+                    f"Invalid JSON from model: {error}"
+                ),
                 "raw_content": content,
             }
 

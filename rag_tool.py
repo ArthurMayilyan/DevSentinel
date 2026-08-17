@@ -1,9 +1,10 @@
 from typing import Any
 
-from rag_search_engine import RagSearchEngine, validate_rag_search_engine
-
-
-DEFAULT_RAG_TOP_K = 3
+from rag_defaults import DEFAULT_RAG_TOP_K
+from rag_search_engine import (
+    RagSearchEngine,
+    validate_rag_search_engine,
+)
 
 
 def search_knowledge(
@@ -17,13 +18,19 @@ def search_knowledge(
     )
 
     if not isinstance(query, str) or not query.strip():
-        raise ValueError("query must be a non-empty string.")
+        raise ValueError(
+            "query must be a non-empty string."
+        )
 
     if type(top_k) is not int:
-        raise ValueError("top_k must be an integer.")
+        raise ValueError(
+            "top_k must be an integer."
+        )
 
     if top_k <= 0:
-        raise ValueError("top_k must be greater than 0.")
+        raise ValueError(
+            "top_k must be greater than 0."
+        )
 
     chunks = store.search(
         query=query,

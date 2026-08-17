@@ -1,5 +1,7 @@
 from mcp_tool_catalog import (
     build_all_mcp_tool_specs,
+    build_review_project_tool_spec,
+    build_review_workspace_tool_spec,
     list_mcp_tool_specs_for_mode,
 )
 
@@ -24,6 +26,7 @@ def test_list_mcp_tool_specs_for_all_tools():
         "add_finding",
         "write_report",
         "review_project",
+        "review_workspace",
         "compare_review_runs",
     ]
 
@@ -55,6 +58,7 @@ def test_list_mcp_tool_specs_for_code_review_mode():
         "add_finding",
         "write_report",
         "review_project",
+        "review_workspace",
         "compare_review_runs",
     ]
 
@@ -149,5 +153,42 @@ def test_build_all_mcp_tool_specs_returns_all_tools():
         "add_finding",
         "write_report",
         "review_project",
+        "review_workspace",
         "compare_review_runs",
     ]    
+
+
+
+def test_review_workspace_tool_spec_has_workspace_inputs():
+    spec = build_review_workspace_tool_spec()
+
+    assert spec.name == "review_workspace"
+
+    properties = spec.input_schema[
+        "properties"
+    ]
+
+    assert "workspace_path" in properties
+    assert "preset" in properties
+    assert "reviewer" in properties
+    assert "model" in properties
+    assert "reviews_dir" in properties
+
+    assert spec.input_schema[
+        "required"
+    ] == [
+        "workspace_path",
+    ]
+
+    # Presets come from agentloop.toml and the MCP
+    # catalog exposes them in deterministic sorted order.
+    assert properties["preset"]["enum"] == [
+        "general-security",
+        "python-security",
+        "typescript-security",
+    ]
+
+    assert properties["reviewer"]["enum"] == [
+        "deterministic",
+        "openai",
+    ]

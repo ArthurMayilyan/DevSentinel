@@ -1,8 +1,16 @@
+from app_settings import get_app_settings
+
+
 SUPPORTED_TASK_PRESETS = {
     "code-review",
 }
 
-DEFAULT_CODE_REVIEW_MAX_FINDINGS = 5
+
+_SETTINGS = get_app_settings()
+
+DEFAULT_CODE_REVIEW_MAX_FINDINGS = (
+    _SETTINGS.review.max_findings
+)
 
 
 def build_code_review_task(

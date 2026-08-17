@@ -4,7 +4,7 @@ from trace import TraceRecorder
 
 
 def main():
-    llm = RealLLM(model="gpt-5.6-luna")
+    llm = RealLLM()
     trace_recorder = TraceRecorder()
 
     agent = Agent(

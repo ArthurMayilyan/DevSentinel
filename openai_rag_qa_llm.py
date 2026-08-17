@@ -17,6 +17,14 @@ from rag_evidence_extractor import (
     get_evidence_text,
 )
 from rag_query_planner import plan_rag_subqueries
+from app_settings import get_app_settings
+
+
+_SETTINGS = get_app_settings()
+
+DEFAULT_OPENAI_RAG_REQUEST_TIMEOUT_SECONDS = (
+    _SETTINGS.openai.request_timeout_seconds
+)
 
 
 class OpenAIRagQaLLM:
@@ -25,12 +33,29 @@ class OpenAIRagQaLLM:
         *,
         model: str,
         client=None,
+        request_timeout_seconds: float = (
+            DEFAULT_OPENAI_RAG_REQUEST_TIMEOUT_SECONDS
+        ),
     ):
-        if not isinstance(model, str) or not model.strip():
-            raise ValueError("model must be a non-empty string.")
+        if not isinstance(
+            model,
+            str,
+        ) or not model.strip():
+            raise ValueError(
+                "model must be a non-empty string."
+            )
+
+        if request_timeout_seconds <= 0:
+            raise ValueError(
+                "request_timeout_seconds must be greater than zero."
+            )
 
         self.model = model
         self.client = client
+        self.request_timeout_seconds = (
+            request_timeout_seconds
+        )
+
         self.call_count = 0
         self.subqueries = []
         self.original_query = ""
@@ -138,6 +163,14 @@ class OpenAIRagQaLLM:
         evidence: list[dict[str, Any]],
     ) -> str:
         client = self.get_client()
+
+        if hasattr(
+            client,
+            "with_options",
+        ):
+            client = client.with_options(
+                timeout=self.request_timeout_seconds,
+            )
 
         response = client.responses.create(
             model=self.model,

@@ -12,6 +12,9 @@ from cli_task import build_task_from_args
 from rag_loader import load_rag_store_from_path
 from task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS
 from trace import TraceRecorder
+from openai_client_factory import (
+    DEFAULT_OPENAI_MODEL,
+)
 
 
 SUPPORTED_CODE_REVIEW_LLMS = {
@@ -33,7 +36,7 @@ def build_code_review_args(
     path: str = "",
     knowledge_path: str = "",
     llm_name: str = "demo",
-    model: str = "gpt-5",
+    model: str = DEFAULT_OPENAI_MODEL,
     max_steps: int | None = None,
     max_findings: int = DEFAULT_CODE_REVIEW_MAX_FINDINGS,
     max_rejected_final_answers: int = AgentConfig().max_rejected_final_answers,
@@ -82,7 +85,7 @@ def run_code_review_agent(
     path: str = "",
     knowledge_path: str = "",
     llm_name: str = "demo",
-    model: str = "gpt-5",
+    model: str = DEFAULT_OPENAI_MODEL,
     max_steps: int | None = None,
     max_findings: int = DEFAULT_CODE_REVIEW_MAX_FINDINGS,
     max_rejected_final_answers: int = AgentConfig().max_rejected_final_answers,

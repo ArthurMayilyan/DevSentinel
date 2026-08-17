@@ -62,6 +62,7 @@ def test_run_from_args_returns_json(tmp_path):
         report_path,
     )
     assert "review_project" in payload["tools"]
+    assert "review_workspace" in payload["tools"]
     assert "compare_review_runs" in payload["tools"]
     assert payload["review_project"] is not None
 

@@ -1,3 +1,6 @@
+from app_settings import get_app_settings
+
+
 REVIEWER_DETERMINISTIC = "deterministic"
 REVIEWER_OPENAI = "openai"
 
@@ -6,8 +9,22 @@ SUPPORTED_REVIEWERS = {
     REVIEWER_OPENAI,
 }
 
-DEFAULT_REVIEWER = REVIEWER_DETERMINISTIC
-DEFAULT_OPENAI_REVIEW_MODEL = "gpt-5.6-luna"
+
+_SETTINGS = get_app_settings()
+
+DEFAULT_REVIEWER = _SETTINGS.review.default_reviewer
+
+DEFAULT_OPENAI_REVIEW_MODEL = (
+    _SETTINGS.openai.model
+)
+
+DEFAULT_OPENAI_REVIEW_MAX_CONTENT_CHARS = (
+    _SETTINGS.openai.review_max_content_chars
+)
+
+DEFAULT_OPENAI_REVIEW_REQUEST_TIMEOUT_SECONDS = (
+    _SETTINGS.openai.request_timeout_seconds
+)
 
 
 def validate_reviewer(
@@ -24,7 +41,8 @@ def validate_reviewer(
         )
 
         raise ValueError(
-            f"unsupported reviewer: {reviewer}. Supported reviewers: {supported}"
+            f"unsupported reviewer: {reviewer}. "
+            f"Supported reviewers: {supported}"
         )
 
     return reviewer

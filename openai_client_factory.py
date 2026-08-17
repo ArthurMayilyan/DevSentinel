@@ -6,9 +6,12 @@ from openai_llm_adapter import (
     DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
     DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS,
 )
+from app_settings import get_app_settings
 
 
-DEFAULT_OPENAI_MODEL = "gpt-5.6-luna"
+DEFAULT_OPENAI_MODEL = (
+    get_app_settings().openai.model
+)
 
 
 def load_dotenv_if_available(

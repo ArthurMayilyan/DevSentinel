@@ -22,6 +22,17 @@ from rag_strategy_factory import (
     RETRIEVAL_STRATEGY_DEFAULT,
     SUPPORTED_RETRIEVAL_STRATEGIES,
 )
+from app_settings import get_app_settings
+from openai_client_factory import (
+    DEFAULT_OPENAI_MODEL,
+)
+from rag_defaults import (
+    DEFAULT_RAG_RETRIEVAL_STRATEGY,
+)
+
+
+_SETTINGS = get_app_settings()
+
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -77,7 +88,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         choices=sorted(
             SUPPORTED_RETRIEVAL_STRATEGIES,
         ),
-        default=RETRIEVAL_STRATEGY_DEFAULT,
+        default=DEFAULT_RAG_RETRIEVAL_STRATEGY,
     )
 
     parser.add_argument(
@@ -90,13 +101,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--model",
-        default="gpt-5",
+        default=DEFAULT_OPENAI_MODEL,
     )
 
     parser.add_argument(
         "--max-steps",
         type=int,
-        default=4,
+        default=_SETTINGS.runtime.agent_mode_max_steps,
     )
 
     parser.add_argument(
