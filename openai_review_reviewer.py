@@ -1,6 +1,16 @@
 import json
 from typing import Any
 
+from finding_types import (
+    FINDING_TYPE_SECURITY_DEBUG_MODE,
+    FINDING_TYPE_SECURITY_HARDCODED_ADMIN_CREDENTIALS,
+    FINDING_TYPE_SECURITY_HARDCODED_SECRET,
+    FINDING_TYPE_SECURITY_INFORMATION_DISCLOSURE,
+    FINDING_TYPE_SECURITY_OTHER,
+    FINDING_TYPE_SECURITY_TOKEN_EXPIRATION,
+    FINDING_TYPE_SECURITY_TOKEN_VALIDATION,
+    normalize_finding_type,
+)
 from reviewer_config import DEFAULT_OPENAI_REVIEW_MODEL
 
 
@@ -70,8 +80,28 @@ def parse_review_findings_json(
         ):
             continue
 
+        issue = str(
+            item["issue"],
+        )
+
+        evidence = str(
+            item["evidence"],
+        )
+
+        finding_type = normalize_finding_type(
+            str(
+                item.get(
+                    "finding_type",
+                    "",
+                )
+            ),
+            issue=issue,
+            evidence=evidence,
+        )
+
         normalized.append(
             {
+                "finding_type": finding_type,
                 "file": str(
                     item["file"],
                 ),
@@ -81,12 +111,8 @@ def parse_review_findings_json(
                 "category": str(
                     item["category"],
                 ).upper(),
-                "issue": str(
-                    item["issue"],
-                ),
-                "evidence": str(
-                    item["evidence"],
-                ),
+                "issue": issue,
+                "evidence": evidence,
                 "recommendation": str(
                     item["recommendation"],
                 ),
@@ -141,6 +167,18 @@ class OpenAIReviewReviewer:
             : self.max_content_chars
         ]
 
+        supported_types = "\n".join(
+            [
+                f"- {FINDING_TYPE_SECURITY_HARDCODED_SECRET}",
+                f"- {FINDING_TYPE_SECURITY_HARDCODED_ADMIN_CREDENTIALS}",
+                f"- {FINDING_TYPE_SECURITY_DEBUG_MODE}",
+                f"- {FINDING_TYPE_SECURITY_TOKEN_VALIDATION}",
+                f"- {FINDING_TYPE_SECURITY_TOKEN_EXPIRATION}",
+                f"- {FINDING_TYPE_SECURITY_INFORMATION_DISCLOSURE}",
+                f"- {FINDING_TYPE_SECURITY_OTHER}",
+            ]
+        )
+
         return f"""You are a careful code security reviewer.
 
 Review profile: {profile}
@@ -149,6 +187,7 @@ Return JSON only in this exact shape:
 {{
   "findings": [
     {{
+      "finding_type": "security.debug_mode",
       "file": "...",
       "severity": "LOW|MEDIUM|HIGH|CRITICAL",
       "category": "SECURITY|MAINTAINABILITY|RELIABILITY|PERFORMANCE",
@@ -159,9 +198,16 @@ Return JSON only in this exact shape:
   ]
 }}
 
+Supported finding_type values:
+{supported_types}
+
 Rules:
 - Do not invent issues.
 - Every finding must be supported by concrete evidence from the file.
+- finding_type is a stable machine-readable identifier.
+- Use the same finding_type even if the human-readable issue wording changes.
+- Select the closest supported finding_type.
+- Use security.other only if none of the specific types applies.
 - If there are no concrete findings, return {{"findings": []}}.
 - Prefer SECURITY for credentials, secrets, authentication, token, or debug-mode issues.
 

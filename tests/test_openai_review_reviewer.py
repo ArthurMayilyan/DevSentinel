@@ -12,11 +12,12 @@ class FakeOpenAIResponse:
         {
             "findings": [
                 {
+                    "finding_type": "security.hardcoded_secret",
                     "file": "app.py",
                     "severity": "high",
                     "category": "security",
-                    "issue": "Hardcoded credential risk.",
-                    "evidence": "A sensitive value appears directly in source code.",
+                    "issue": "Sensitive credential is embedded in source.",
+                    "evidence": 'PASSWORD = "secret"',
                     "recommendation": "Move sensitive values to secure configuration.",
                 }
             ]
@@ -59,14 +60,38 @@ def test_parse_review_findings_json_normalizes_values():
 
     assert findings == [
         {
+            "finding_type": "security.hardcoded_secret",
             "file": "app.py",
             "severity": "HIGH",
             "category": "SECURITY",
-            "issue": "Hardcoded credential risk.",
-            "evidence": "A sensitive value appears directly in source code.",
+            "issue": "Sensitive credential is embedded in source.",
+            "evidence": 'PASSWORD = "secret"',
             "recommendation": "Move sensitive values to secure configuration.",
         }
     ]
+
+
+def test_parse_review_findings_json_infers_missing_finding_type():
+    findings = parse_review_findings_json(
+        json.dumps(
+            {
+                "findings": [
+                    {
+                        "file": "config.py",
+                        "severity": "HIGH",
+                        "category": "SECURITY",
+                        "issue": "Debug mode enabled.",
+                        "evidence": "DEBUG = True",
+                        "recommendation": "Disable debug mode.",
+                    }
+                ]
+            }
+        )
+    )
+
+    assert findings[0]["finding_type"] == (
+        "security.debug_mode"
+    )
 
 
 def test_parse_review_findings_json_returns_empty_list_for_empty_text():
@@ -108,6 +133,18 @@ def test_openai_review_reviewer_uses_configured_model():
     )
 
     assert findings[0]["severity"] == "HIGH"
-    assert fake_client.responses.calls[0]["model"] == "gpt-5.6-luna"
-    assert "PASSWORD" in fake_client.responses.calls[0]["input"]
-    assert "Credentials must not be hardcoded." in fake_client.responses.calls[0]["input"]
+    assert findings[0]["finding_type"] == (
+        "security.hardcoded_secret"
+    )
+
+    assert fake_client.responses.calls[0]["model"] == (
+        "gpt-5.6-luna"
+    )
+
+    assert "PASSWORD" in (
+        fake_client.responses.calls[0]["input"]
+    )
+
+    assert "finding_type" in (
+        fake_client.responses.calls[0]["input"]
+    )

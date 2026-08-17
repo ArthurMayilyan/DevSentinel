@@ -122,6 +122,7 @@ def test_compare_findings_detects_new_resolved_unchanged_and_severity_change():
 
     assert severity_changes == [
         {
+            "finding_type": "security.other",
             "file": "config.py",
             "category": "SECURITY",
             "issue": "Severity issue",
@@ -190,3 +191,92 @@ def test_compare_review_runs_creates_comparison_artifacts(tmp_path):
 
     assert "New: 1" in result.summary
     assert "resolved: 1" in result.summary
+
+
+def test_compare_findings_matches_rephrased_issue_by_finding_type():
+    old_findings = [
+        {
+            "finding_type": "security.debug_mode",
+            "file": "config.py",
+            "severity": "HIGH",
+            "category": "SECURITY",
+            "issue": "Debug mode enabled.",
+            "evidence": "DEBUG = True",
+            "recommendation": "Disable debug mode.",
+        }
+    ]
+
+    new_findings = [
+        {
+            "finding_type": "security.debug_mode",
+            "file": "config.py",
+            "severity": "HIGH",
+            "category": "SECURITY",
+            "issue": "Application debug configuration is enabled.",
+            "evidence": "DEBUG = True",
+            "recommendation": "Disable debug configuration.",
+        }
+    ]
+
+    (
+        added,
+        resolved,
+        unchanged,
+        severity_changes,
+    ) = compare_findings(
+        old_findings=old_findings,
+        new_findings=new_findings,
+    )
+
+    assert added == []
+    assert resolved == []
+
+    assert len(
+        unchanged,
+    ) == 1
+
+    assert severity_changes == []
+
+
+def test_compare_findings_matches_legacy_finding_to_stable_type():
+    old_findings = [
+        {
+            "file": "config.py",
+            "severity": "HIGH",
+            "category": "SECURITY",
+            "issue": "Debug mode enabled.",
+            "evidence": "Debug mode appears to be enabled in source code.",
+            "recommendation": "Disable debug mode.",
+        }
+    ]
+
+    new_findings = [
+        {
+            "finding_type": "security.debug_mode",
+            "file": "config.py",
+            "severity": "HIGH",
+            "category": "SECURITY",
+            "issue": "Application runs with debug enabled.",
+            "evidence": "DEBUG = True",
+            "recommendation": "Disable debug mode.",
+        }
+    ]
+
+    (
+        added,
+        resolved,
+        unchanged,
+        severity_changes,
+    ) = compare_findings(
+        old_findings=old_findings,
+        new_findings=new_findings,
+    )
+
+    assert added == []
+    assert resolved == []
+
+    assert len(
+        unchanged,
+    ) == 1
+
+    assert severity_changes == []    
