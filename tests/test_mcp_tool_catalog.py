@@ -131,3 +131,4 @@ def test_review_project_spec_has_profile_input():
     assert "max_files" in spec.input_schema["properties"]
     assert "max_file_size_bytes" in spec.input_schema["properties"]
     assert "report_dir" in spec.input_schema["properties"]          
+    assert "reviews_dir" in spec.input_schema["properties"]

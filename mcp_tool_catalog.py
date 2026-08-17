@@ -72,6 +72,9 @@ def build_review_project_tool_spec() -> McpToolSpec:
                 "report_dir": string_property(
                     "Optional directory where a timestamped report should be created.",
                 ),
+                "reviews_dir": string_property(
+                    "Optional directory for persistent review run packages and history.",
+                ),                
                 "allowed_root": string_property(
                     "Optional root directory boundary. project_path must be inside it.",
                 ),

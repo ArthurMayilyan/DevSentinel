@@ -34,3 +34,9 @@ def test_vscode_mcp_workflow_doc_exists_and_mentions_product_workflow():
     assert "max_files" in content
     assert "max_file_size_bytes" in content
     assert "report_dir" in content
+    assert "Review run package" in content
+    assert "reviews_dir" in content
+    assert "report.html" in content
+    assert "history.json" in content
+    assert "summary.json" in content
+    assert "findings.json" in content    

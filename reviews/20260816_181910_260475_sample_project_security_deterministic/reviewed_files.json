@@ -1,0 +1,19 @@
+{
+  "selected_files": [
+    "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\sample_project\\app.py",
+    "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\sample_project\\auth.py",
+    "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\sample_project\\config.py"
+  ],
+  "skipped_files": [],
+  "scope": {
+    "selected_files_count": 3,
+    "skipped_files_count": 0,
+    "include_globs": [
+      "**/*.py"
+    ],
+    "exclude_globs": [],
+    "max_files": 200,
+    "max_file_size_bytes": 200000,
+    "allowed_root": "D:\\Projects\\AgentLoop"
+  }
+}
