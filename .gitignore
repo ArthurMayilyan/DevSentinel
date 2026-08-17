@@ -1,5 +1,7 @@
 traces/
+reviews/
 __pycache__/
+tests/__pycache__/
 .env
 __pycache__/agent.cpython-311.pyc
 run_summaries/

@@ -77,6 +77,7 @@ Expected tools:
 - add_finding
 - write_report
 - review_project
+- compare_review_runs
 
 ## Resources
 
@@ -173,3 +174,26 @@ reviews/
     reviewed_files.json
     run_config.json
 ```    
+
+
+## Compare review runs
+
+AgentLoop can compare two persisted review run packages.
+
+Example:
+
+```text
+Use the agentloop MCP server.
+
+Call compare_review_runs with:
+- old_run_dir: D:\Projects\AgentLoop\agent_loop_from_scratch\reviews\<old-run>
+- new_run_dir: D:\Projects\AgentLoop\agent_loop_from_scratch\reviews\<new-run>
+
+Return:
+- summary
+- new findings
+- resolved findings
+- unchanged findings
+- severity changes
+- HTML comparison report path
+```

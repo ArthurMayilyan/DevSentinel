@@ -19,6 +19,7 @@ from mcp_product_content import (
     build_write_security_report_prompt,
 )
 from rag_tool import DEFAULT_RAG_TOP_K
+from mcp_compare_review_runs import mcp_compare_review_runs
 
 
 def import_mcp_server_class():
@@ -145,6 +146,20 @@ def create_agent_loop_mcp_server(
             reviewer=reviewer,
             model=model,
         )
+
+    @mcp.tool()
+    def compare_review_runs(
+        old_run_dir: str,
+        new_run_dir: str,
+        comparisons_dir: str = "",
+    ) -> dict:
+        """Compare two persisted AgentLoop review runs."""
+        return mcp_compare_review_runs(
+            old_run_dir=old_run_dir,
+            new_run_dir=new_run_dir,
+            comparisons_dir=comparisons_dir,
+        )
+
 
     @mcp.resource(
         "agentloop://project-guide",

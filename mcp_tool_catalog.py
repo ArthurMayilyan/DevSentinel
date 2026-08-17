@@ -47,6 +47,31 @@ def generic_output_schema() -> dict[str, Any]:
     }
 
 
+def build_compare_review_runs_tool_spec() -> McpToolSpec:
+    return McpToolSpec(
+        name="compare_review_runs",
+        description="Compare two persisted AgentLoop review runs.",
+        input_schema=object_schema(
+            properties={
+                "old_run_dir": string_property(
+                    "Directory of the older review run.",
+                ),
+                "new_run_dir": string_property(
+                    "Directory of the newer review run.",
+                ),
+                "comparisons_dir": string_property(
+                    "Optional output directory for comparison artifacts.",
+                ),
+            },
+            required=[
+                "old_run_dir",
+                "new_run_dir",
+            ],
+        ),
+        output_schema=generic_output_schema(),
+    )
+
+
 def build_review_project_tool_spec() -> McpToolSpec:
     return McpToolSpec(
         name="review_project",
@@ -251,6 +276,7 @@ def build_all_mcp_tool_specs() -> list[McpToolSpec]:
         build_add_finding_tool_spec(),
         build_write_report_tool_spec(),
         build_review_project_tool_spec(),
+        build_compare_review_runs_tool_spec(),
     ]
 
 
@@ -263,6 +289,7 @@ def build_code_review_mcp_tool_specs() -> list[McpToolSpec]:
         build_add_finding_tool_spec(),
         build_write_report_tool_spec(),
         build_review_project_tool_spec(),
+        build_compare_review_runs_tool_spec(),
     ]
 
 

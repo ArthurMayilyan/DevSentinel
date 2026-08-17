@@ -66,6 +66,7 @@ def test_get_agent_mode_spec_returns_code_review_spec():
         "add_finding",
         "write_report",
         "review_project",
+        "compare_review_runs",
     ]
 
 
