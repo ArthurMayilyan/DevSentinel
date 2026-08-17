@@ -24,6 +24,15 @@ from reviewer_config import (
     REVIEWER_OPENAI,
     validate_reviewer,
 )
+from finding_types import (
+    FINDING_TYPE_SECURITY_DEBUG_MODE,
+    FINDING_TYPE_SECURITY_HARDCODED_ADMIN_CREDENTIALS,
+    FINDING_TYPE_SECURITY_HARDCODED_SECRET,
+    FINDING_TYPE_SECURITY_INFORMATION_DISCLOSURE,
+    FINDING_TYPE_SECURITY_TOKEN_EXPIRATION,
+    FINDING_TYPE_SECURITY_TOKEN_VALIDATION,
+    normalize_finding_type,
+)
 
 from tools import read_file as read_project_file
 from tools import render_report_from_state
@@ -186,7 +195,25 @@ def add_finding_for_review(
     context: AgentLoopMcpContext,
     finding: dict[str, Any],
 ) -> None:
+    issue = str(
+        finding["issue"],
+    )
+
+    evidence = str(
+        finding["evidence"],
+    )
+
     normalized_finding = {
+        "finding_type": normalize_finding_type(
+            str(
+                finding.get(
+                    "finding_type",
+                    "",
+                )
+            ),
+            issue=issue,
+            evidence=evidence,
+        ),
         "file": finding["file"],
         "severity": normalize_enum_value(
             value=finding["severity"],
@@ -196,8 +223,8 @@ def add_finding_for_review(
             value=finding["category"],
             enum_cls=IssueCategory,
         ),
-        "issue": finding["issue"],
-        "evidence": finding["evidence"],
+        "issue": issue,
+        "evidence": evidence,
         "recommendation": finding["recommendation"],
     }
 
@@ -220,26 +247,40 @@ def add_finding_for_review(
 
 def finding_key(
     finding: dict[str, Any],
-) -> tuple[str, str, str]:
-    return (
+) -> tuple[str, str]:
+    file_name = Path(
         str(
             finding.get(
                 "file",
                 "",
             )
-        ),
+        )
+    ).name.lower()
+
+    finding_type = normalize_finding_type(
         str(
+            finding.get(
+                "finding_type",
+                "",
+            )
+        ),
+        issue=str(
             finding.get(
                 "issue",
                 "",
             )
         ),
-        str(
+        evidence=str(
             finding.get(
                 "evidence",
                 "",
             )
         ),
+    )
+
+    return (
+        file_name,
+        finding_type,
     )
 
 
@@ -324,9 +365,14 @@ def detect_security_findings_for_file(
 
     lowered = content.lower()
 
-    if "secret_key" in lowered and "=" in content and "os.environ" not in lowered:
+    if (
+        "secret_key" in lowered
+        and "=" in content
+        and "os.environ" not in lowered
+    ):
         findings.append(
             {
+                "finding_type": FINDING_TYPE_SECURITY_HARDCODED_SECRET,
                 "file": file_path,
                 "severity": "CRITICAL",
                 "category": "SECURITY",
@@ -349,6 +395,7 @@ def detect_security_findings_for_file(
     ):
         findings.append(
             {
+                "finding_type": FINDING_TYPE_SECURITY_HARDCODED_ADMIN_CREDENTIALS,
                 "file": file_path,
                 "severity": "CRITICAL",
                 "category": "SECURITY",
@@ -368,6 +415,7 @@ def detect_security_findings_for_file(
     ):
         findings.append(
             {
+                "finding_type": FINDING_TYPE_SECURITY_DEBUG_MODE,
                 "file": file_path,
                 "severity": "HIGH",
                 "category": "SECURITY",
@@ -377,17 +425,21 @@ def detect_security_findings_for_file(
             }
         )
 
-    if "def verify_token" in lowered and contains_any(
-        lowered,
-        [
-            "return bool(token)",
-            "return token",
-            "if token:",
-            "return true",
-        ],
+    if (
+        "def verify_token" in lowered
+        and contains_any(
+            lowered,
+            [
+                "return bool(token)",
+                "return token",
+                "if token:",
+                "return true",
+            ],
+        )
     ):
         findings.append(
             {
+                "finding_type": FINDING_TYPE_SECURITY_TOKEN_VALIDATION,
                 "file": file_path,
                 "severity": "CRITICAL",
                 "category": "SECURITY",
@@ -397,16 +449,21 @@ def detect_security_findings_for_file(
             }
         )
 
-    if contains_any(
-        lowered,
-        [
-            "create_token",
-            "generate_token",
-            "token =",
-        ],
-    ) and "exp" not in lowered and "expires" not in lowered:
+    if (
+        contains_any(
+            lowered,
+            [
+                "create_token",
+                "generate_token",
+                "token =",
+            ],
+        )
+        and "exp" not in lowered
+        and "expires" not in lowered
+    ):
         findings.append(
             {
+                "finding_type": FINDING_TYPE_SECURITY_TOKEN_EXPIRATION,
                 "file": file_path,
                 "severity": "CRITICAL",
                 "category": "SECURITY",
@@ -416,16 +473,21 @@ def detect_security_findings_for_file(
             }
         )
 
-    if path_name == "app.py" and "debug" in lowered and contains_any(
-        lowered,
-        [
-            "return",
-            "jsonify",
-            "response",
-        ],
+    if (
+        path_name == "app.py"
+        and "debug" in lowered
+        and contains_any(
+            lowered,
+            [
+                "return",
+                "jsonify",
+                "response",
+            ],
+        )
     ):
         findings.append(
             {
+                "finding_type": FINDING_TYPE_SECURITY_INFORMATION_DISCLOSURE,
                 "file": file_path,
                 "severity": "HIGH",
                 "category": "SECURITY",
@@ -436,7 +498,6 @@ def detect_security_findings_for_file(
         )
 
     return findings
-
 
 def detect_findings_for_file(
     *,

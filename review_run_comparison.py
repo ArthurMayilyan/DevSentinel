@@ -5,6 +5,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from finding_types import (
+    FINDING_TYPE_SECURITY_OTHER,
+    normalize_finding_type,
+)
+
 
 @dataclass(frozen=True)
 class ReviewRunComparison:
@@ -106,34 +111,66 @@ def normalized_file_name(
 
 def finding_identity(
     finding: dict[str, Any],
-) -> tuple[str, str, str]:
-    return (
-        normalized_file_name(
-            str(
-                finding.get(
-                    "file",
-                    "",
-                )
-            )
-        ),
+) -> tuple[str, str]:
+    file_identity = normalized_file_name(
         str(
             finding.get(
-                "category",
+                "file",
                 "",
             )
-        ).upper(),
+        )
+    )
+
+    finding_type = normalize_finding_type(
         str(
+            finding.get(
+                "finding_type",
+                "",
+            )
+        ),
+        issue=str(
             finding.get(
                 "issue",
                 "",
             )
-        ).strip().lower(),
+        ),
+        evidence=str(
+            finding.get(
+                "evidence",
+                "",
+            )
+        ),
+    )
+
+    if finding_type != FINDING_TYPE_SECURITY_OTHER:
+        return (
+            file_identity,
+            finding_type,
+        )
+
+    category = str(
+        finding.get(
+            "category",
+            "",
+        )
+    ).upper()
+
+    issue = str(
+        finding.get(
+            "issue",
+            "",
+        )
+    ).strip().lower()
+
+    return (
+        file_identity,
+        f"legacy:{category}:{issue}",
     )
 
 
 def build_findings_map(
     findings: list[dict[str, Any]],
-) -> dict[tuple[str, str, str], dict[str, Any]]:
+) -> dict[tuple[str, str], dict[str, Any]]:
     return {
         finding_identity(
             finding,
@@ -212,6 +249,26 @@ def compare_findings(
         if old_severity != new_severity:
             severity_changes.append(
                 {
+                    "finding_type": normalize_finding_type(
+                        str(
+                            new_finding.get(
+                                "finding_type",
+                                "",
+                            )
+                        ),
+                        issue=str(
+                            new_finding.get(
+                                "issue",
+                                "",
+                            )
+                        ),
+                        evidence=str(
+                            new_finding.get(
+                                "evidence",
+                                "",
+                            )
+                        ),
+                    ),
                     "file": new_finding.get(
                         "file",
                         "",
