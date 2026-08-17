@@ -34,6 +34,7 @@ def test_format_server_description_lists_tools():
         "- add_finding",
         "- write_report",
         "- review_project",
+        "- compare_review_runs",
     ]
 
 

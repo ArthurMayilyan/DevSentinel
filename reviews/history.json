@@ -9,5 +9,16 @@
     "findings_count": 6,
     "run_dir": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260816_181910_260475_sample_project_security_deterministic",
     "report_html_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260816_181910_260475_sample_project_security_deterministic\\report.html"
+  },
+  {
+    "run_id": "20260817_153853_378279_sample_project_security_openai",
+    "created_at": "2026-08-17T15:38:53.378279+04:00",
+    "project_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\sample_project",
+    "profile": "security",
+    "reviewer": "openai",
+    "model": "gpt-5.6-luna",
+    "findings_count": 7,
+    "run_dir": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260817_153853_378279_sample_project_security_openai",
+    "report_html_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260817_153853_378279_sample_project_security_openai\\report.html"
   }
 ]

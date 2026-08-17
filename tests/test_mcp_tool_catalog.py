@@ -1,4 +1,5 @@
 from mcp_tool_catalog import (
+    build_all_mcp_tool_specs,
     list_mcp_tool_specs_for_mode,
 )
 
@@ -23,6 +24,7 @@ def test_list_mcp_tool_specs_for_all_tools():
         "add_finding",
         "write_report",
         "review_project",
+        "compare_review_runs",
     ]
 
 
@@ -53,6 +55,7 @@ def test_list_mcp_tool_specs_for_code_review_mode():
         "add_finding",
         "write_report",
         "review_project",
+        "compare_review_runs",
     ]
 
 
@@ -132,3 +135,19 @@ def test_review_project_spec_has_profile_input():
     assert "max_file_size_bytes" in spec.input_schema["properties"]
     assert "report_dir" in spec.input_schema["properties"]          
     assert "reviews_dir" in spec.input_schema["properties"]
+
+def test_build_all_mcp_tool_specs_returns_all_tools():
+    specs = build_all_mcp_tool_specs()
+
+    assert get_names(
+        specs,
+    ) == [
+        "list_files",
+        "read_file",
+        "search_in_files",
+        "search_knowledge",
+        "add_finding",
+        "write_report",
+        "review_project",
+        "compare_review_runs",
+    ]    
