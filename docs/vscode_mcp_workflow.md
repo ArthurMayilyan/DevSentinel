@@ -197,3 +197,28 @@ Return:
 - severity changes
 - HTML comparison report path
 ```
+
+
+## Workspace review
+
+For normal daily use, prefer `review_workspace` instead of configuring every `review_project` option manually.
+
+Python example:
+
+```text
+Use the agentloop MCP server.
+
+Call review_workspace with:
+- workspace_path: D:\Projects\MyProject
+- preset: python-security
+- reviewer: openai
+- model: gpt-5.6-luna
+
+Return:
+- summary
+- run_id
+- run_dir
+- HTML report path
+```
+
+AgentLoop automatically applies safe file filters, scope limits, the workspace as the allowed root, and a persistent `reviews` directory inside the workspace.

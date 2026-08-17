@@ -14,6 +14,7 @@ def test_run_from_args_lists_all_tools():
         "add_finding",
         "write_report",
         "review_project",
+        "review_workspace",
         "compare_review_runs",
     ]
 
@@ -47,6 +48,7 @@ def test_run_from_args_lists_code_review_tools():
         "add_finding",
         "write_report",
         "review_project",
+        "review_workspace",
         "compare_review_runs",
     ]
 

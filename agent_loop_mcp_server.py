@@ -20,6 +20,7 @@ from mcp_product_content import (
 )
 from rag_tool import DEFAULT_RAG_TOP_K
 from mcp_compare_review_runs import mcp_compare_review_runs
+from mcp_review_workspace import mcp_review_workspace
 
 
 def import_mcp_server_class():
@@ -146,6 +147,24 @@ def create_agent_loop_mcp_server(
             reviewer=reviewer,
             model=model,
         )
+
+    @mcp.tool()
+    def review_workspace(
+        workspace_path: str,
+        preset: str = "python-security",
+        reviewer: str = "deterministic",
+        model: str = "gpt-5.6-luna",
+        reviews_dir: str = "",
+    ) -> dict:
+        """Review a workspace using a predefined AgentLoop review preset."""
+        return mcp_review_workspace(
+            context=context,
+            workspace_path=workspace_path,
+            preset=preset,
+            reviewer=reviewer,
+            model=model,
+            reviews_dir=reviews_dir,
+        )    
 
     @mcp.tool()
     def compare_review_runs(

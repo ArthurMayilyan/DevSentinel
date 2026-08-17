@@ -38,6 +38,7 @@ def get_agent_mode_specs() -> dict[str, AgentModeSpec]:
                 "add_finding",
                 "write_report",
                 "review_project",
+                "review_workspace",
                 "compare_review_runs",
             ],
         ),

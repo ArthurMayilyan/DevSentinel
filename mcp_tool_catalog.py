@@ -47,6 +47,49 @@ def generic_output_schema() -> dict[str, Any]:
     }
 
 
+def build_review_workspace_tool_spec() -> McpToolSpec:
+    return McpToolSpec(
+        name="review_workspace",
+        description=(
+            "Review a workspace using a predefined AgentLoop review preset."
+        ),
+        input_schema=object_schema(
+            properties={
+                "workspace_path": string_property(
+                    "Local workspace directory to review.",
+                ),
+                "preset": {
+                    "type": "string",
+                    "description": "Workspace review preset.",
+                    "enum": [
+                        "python-security",
+                        "typescript-security",
+                        "general-security",
+                    ],
+                },
+                "reviewer": {
+                    "type": "string",
+                    "description": "Review engine.",
+                    "enum": [
+                        "deterministic",
+                        "openai",
+                    ],
+                },
+                "model": string_property(
+                    "OpenAI model used when reviewer is openai.",
+                ),
+                "reviews_dir": string_property(
+                    "Optional persistent review history directory.",
+                ),
+            },
+            required=[
+                "workspace_path",
+            ],
+        ),
+        output_schema=generic_output_schema(),
+    )
+
+
 def build_compare_review_runs_tool_spec() -> McpToolSpec:
     return McpToolSpec(
         name="compare_review_runs",
@@ -276,6 +319,7 @@ def build_all_mcp_tool_specs() -> list[McpToolSpec]:
         build_add_finding_tool_spec(),
         build_write_report_tool_spec(),
         build_review_project_tool_spec(),
+        build_review_workspace_tool_spec(),
         build_compare_review_runs_tool_spec(),
     ]
 
@@ -289,6 +333,7 @@ def build_code_review_mcp_tool_specs() -> list[McpToolSpec]:
         build_add_finding_tool_spec(),
         build_write_report_tool_spec(),
         build_review_project_tool_spec(),
+        build_review_workspace_tool_spec(),
         build_compare_review_runs_tool_spec(),
     ]
 
