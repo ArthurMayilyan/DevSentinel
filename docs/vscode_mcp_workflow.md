@@ -134,18 +134,18 @@ Return the generated report path.
 
 ## Real repository workflow prompt
 
-Use this for a real local repository:
-
-```text
 Use the agentloop MCP server.
+```text
 Call review_project for D:\Projects\SomeRepo with security profile.
+Use reviewer openai.
+Use model gpt-5.6-luna.
 Use allowed_root D:\Projects.
 Use include_globs **/*.py.
 Use exclude_globs tests/**,__pycache__/**,.venv/**.
 Use max_files 200.
 Use max_file_size_bytes 200000.
-Use report_dir D:\Projects\AgentLoop\agent_loop_from_scratch\reviews.
-Return the review summary and generated report path.
+Use reviews_dir D:\Projects\AgentLoop\agent_loop_from_scratch\reviews.
+Return the review summary, run directory, HTML report path, and Markdown report path.
 ```
 
 Expected result:
@@ -155,3 +155,21 @@ Expected result:
 - Large files and excluded paths are skipped.
 - A timestamped report is generated under the requested `report_dir`.
 - The response includes selected/skipped file counts, findings count, severity summary, and report path.
+
+## Review run package
+
+When `reviews_dir` is provided, AgentLoop creates a persistent package for every review run.
+
+Example:
+
+```text
+reviews/
+  history.json
+  20260816_174500_123456_sample_project_security_openai/
+    report.md
+    report.html
+    summary.json
+    findings.json
+    reviewed_files.json
+    run_config.json
+```    

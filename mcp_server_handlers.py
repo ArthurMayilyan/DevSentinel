@@ -186,11 +186,14 @@ def mcp_review_project(
     profile: str = "security",
     report_path: str = "",
     report_dir: str = "",
+    reviews_dir: str = "",
     allowed_root: str = "",
     include_globs: str = "",
     exclude_globs: str = "",
     max_files: int = 200,
     max_file_size_bytes: int = 200_000,
+    reviewer: str = "deterministic",
+    model: str = "gpt-5.6-luna",
 ) -> dict[str, Any]:
     result = review_project(
         context=context,
@@ -198,11 +201,14 @@ def mcp_review_project(
         profile=profile,
         report_path=report_path,
         report_dir=report_dir,
+        reviews_dir=reviews_dir,
         allowed_root=allowed_root,
         include_globs=include_globs,
         exclude_globs=exclude_globs,
         max_files=max_files,
         max_file_size_bytes=max_file_size_bytes,
+        reviewer=reviewer,
+        model=model,
     )
 
     return review_project_result_to_dict(

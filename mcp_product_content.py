@@ -131,7 +131,8 @@ Preferred workflow:
    - include_globs: **/*.py
    - max_files: 200
    - max_file_size_bytes: 200000
-2. Return the summary and report path from review_project.
+   - reviews_dir: ./reviews   
+2. Return the summary, run directory, HTML report path, and Markdown report path.
 
 Fallback manual workflow if review_project is unavailable:
 1. Use list_files to discover files under the project path.

@@ -178,3 +178,54 @@ def test_review_project_supports_report_dir_and_scope_options(tmp_path):
     assert result.report_path.endswith(
         ".md",
     )    
+
+def test_review_project_creates_review_run_package(tmp_path):
+    project_path = create_security_project(
+        tmp_path,
+    )
+
+    source_report_path = tmp_path / "source_report.md"
+    reviews_dir = tmp_path / "reviews"
+
+    context = build_agent_loop_mcp_context(
+        report_path=str(
+            source_report_path,
+        )
+    )
+
+    result = review_project(
+        context=context,
+        project_path=str(
+            project_path,
+        ),
+        profile="security",
+        include_globs="**/*.py",
+        reviewer="deterministic",
+        reviews_dir=str(
+            reviews_dir,
+        ),
+    )
+
+    assert result.status == "completed"
+    assert result.run_id
+    assert result.run_dir
+
+    assert Path(
+        result.run_dir,
+    ).exists()
+
+    assert "report_markdown_path" in result.artifacts
+    assert "report_html_path" in result.artifacts
+    assert "summary_json_path" in result.artifacts
+    assert "findings_json_path" in result.artifacts
+    assert "reviewed_files_json_path" in result.artifacts
+    assert "run_config_json_path" in result.artifacts
+    assert "history_path" in result.artifacts
+
+    assert Path(
+        result.artifacts["report_html_path"],
+    ).exists()
+
+    assert Path(
+        result.artifacts["history_path"],
+    ).exists()    

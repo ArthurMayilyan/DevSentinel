@@ -120,11 +120,14 @@ def create_agent_loop_mcp_server(
         profile: str = "security",
         report_path: str = "",
         report_dir: str = "",
+        reviews_dir: str = "",
         allowed_root: str = "",
         include_globs: str = "",
         exclude_globs: str = "",
         max_files: int = 200,
         max_file_size_bytes: int = 200_000,
+        reviewer: str = "deterministic",
+        model: str = "gpt-5.6-luna",
     ) -> dict:
         """Run a full project review workflow and write a report."""
         return mcp_review_project(
@@ -133,11 +136,14 @@ def create_agent_loop_mcp_server(
             profile=profile,
             report_path=report_path,
             report_dir=report_dir,
+            reviews_dir=reviews_dir,
             allowed_root=allowed_root,
             include_globs=include_globs,
             exclude_globs=exclude_globs,
             max_files=max_files,
             max_file_size_bytes=max_file_size_bytes,
+            reviewer=reviewer,
+            model=model,
         )
 
     @mcp.resource(

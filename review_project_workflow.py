@@ -11,6 +11,20 @@ from review_profiles import (
     REVIEW_PROFILE_SECURITY,
     get_review_profile,
 )
+from review_run_artifacts import (
+    create_review_run_package,
+    review_run_artifacts_to_dict,
+)
+
+from openai_review_reviewer import OpenAIReviewReviewer
+from reviewer_config import (
+    DEFAULT_OPENAI_REVIEW_MODEL,
+    DEFAULT_REVIEWER,
+    REVIEWER_DETERMINISTIC,
+    REVIEWER_OPENAI,
+    validate_reviewer,
+)
+
 from tools import read_file as read_project_file
 from tools import render_report_from_state
 from tool_specs import IssueCategory, IssueSeverity
@@ -20,6 +34,8 @@ from tool_specs import IssueCategory, IssueSeverity
 class ReviewProjectResult:
     status: str
     profile: str
+    reviewer: str
+    model: str
     project_path: str
     inspected_files_count: int
     selected_files_count: int
@@ -30,6 +46,9 @@ class ReviewProjectResult:
     summary: str
     scope: dict[str, Any]
     findings: list[dict[str, Any]]
+    run_id: str
+    run_dir: str
+    artifacts: dict[str, Any]
 
 
 def review_project_result_to_dict(
@@ -437,16 +456,84 @@ def detect_findings_for_file(
     return []
 
 
-def warm_up_knowledge_context(
+def collect_knowledge_context(
     *,
     context: AgentLoopMcpContext,
     knowledge_queries: list[str],
-) -> None:
+) -> str:
+    chunks = []
+
     for query in knowledge_queries:
-        search_knowledge_for_review(
+        results = search_knowledge_for_review(
             context=context,
             query=query,
         )
+
+        for item in results:
+            source = (
+                item.get(
+                    "source",
+                    "",
+                )
+                or item.get(
+                    "document_id",
+                    "",
+                )
+            )
+
+            text = (
+                item.get(
+                    "text",
+                    "",
+                )
+                or item.get(
+                    "content",
+                    "",
+                )
+            )
+
+            if text:
+                chunks.append(
+                    f"Source: {source}\n{text}"
+                )
+
+    return "\n\n".join(
+        chunks,
+    )
+
+
+def detect_findings_with_reviewer(
+    *,
+    reviewer: str,
+    file_path: str,
+    content: str,
+    profile: str,
+    policy_context: str,
+    openai_reviewer: OpenAIReviewReviewer | None,
+) -> list[dict[str, Any]]:
+    if reviewer == REVIEWER_DETERMINISTIC:
+        return detect_findings_for_file(
+            file_path=file_path,
+            content=content,
+            profile=profile,
+        )
+
+    if reviewer == REVIEWER_OPENAI:
+        if openai_reviewer is None:
+            raise ValueError(
+                "openai_reviewer is required for OpenAI reviewer."
+            )
+
+        return openai_reviewer.review_file(
+            file_path=file_path,
+            content=content,
+            profile=profile,
+            policy_context=policy_context,
+        )
+
+    raise ValueError(
+        f"unsupported reviewer: {reviewer}"
+    )
 
 
 def review_project(
@@ -461,9 +548,17 @@ def review_project(
     exclude_globs: str | list[str] | None = None,
     max_files: int = 200,
     max_file_size_bytes: int = 200_000,
+    reviewer: str = DEFAULT_REVIEWER,
+    model: str = DEFAULT_OPENAI_REVIEW_MODEL,
+    reviews_dir: str = "",
+    openai_client_class: Any = None,
 ) -> ReviewProjectResult:
     review_profile = get_review_profile(
         profile,
+    )
+
+    selected_reviewer = validate_reviewer(
+        reviewer,
     )
 
     selected_files = select_project_files(
@@ -484,10 +579,18 @@ def review_project(
             profile=review_profile.name,
         )
 
-    warm_up_knowledge_context(
+    policy_context = collect_knowledge_context(
         context=context,
         knowledge_queries=review_profile.knowledge_queries,
     )
+
+    openai_reviewer = None
+
+    if selected_reviewer == REVIEWER_OPENAI:
+        openai_reviewer = OpenAIReviewReviewer(
+            model=model,
+            client_class=openai_client_class,
+        )
 
     for file_path in selected_files.files:
         content = read_file_for_review(
@@ -495,10 +598,13 @@ def review_project(
             path=file_path,
         )
 
-        findings = detect_findings_for_file(
+        findings = detect_findings_with_reviewer(
+            reviewer=selected_reviewer,
             file_path=file_path,
             content=content,
             profile=review_profile.name,
+            policy_context=policy_context,
+            openai_reviewer=openai_reviewer,
         )
 
         for finding in findings:
@@ -522,11 +628,18 @@ def review_project(
         "exclude_globs": selected_files.exclude_globs,
         "max_files": selected_files.max_files,
         "max_file_size_bytes": selected_files.max_file_size_bytes,
+        "allowed_root": allowed_root,
     }
 
     result_without_summary = ReviewProjectResult(
         status="completed",
         profile=review_profile.name,
+        reviewer=selected_reviewer,
+        model=(
+            model
+            if selected_reviewer == REVIEWER_OPENAI
+            else ""
+        ),
         project_path=selected_files.project_path,
         inspected_files_count=len(
             context.state.inspected_files,
@@ -549,15 +662,69 @@ def review_project(
         findings=list(
             context.state.findings,
         ),
+        run_id="",
+        run_dir="",
+        artifacts={},
     )
 
     summary = build_review_summary(
         result=result_without_summary,
     )
 
+    run_id = ""
+    run_dir = ""
+    artifacts: dict[str, Any] = {}
+
+    if reviews_dir:
+        review_artifacts = create_review_run_package(
+            reviews_dir=reviews_dir,
+            project_path=result_without_summary.project_path,
+            profile=result_without_summary.profile,
+            reviewer=result_without_summary.reviewer,
+            model=result_without_summary.model,
+            status=result_without_summary.status,
+            summary=summary,
+            findings=result_without_summary.findings,
+            selected_files=list(
+                selected_files.files,
+            ),
+            skipped_files=list(
+                selected_files.skipped_files,
+            ),
+            scope=result_without_summary.scope,
+            source_report_path=result_without_summary.report_path,
+            run_config={
+                "project_path": project_path,
+                "profile": profile,
+                "reviewer": selected_reviewer,
+                "model": (
+                    model
+                    if selected_reviewer == REVIEWER_OPENAI
+                    else ""
+                ),
+                "report_path": report_path,
+                "report_dir": report_dir,
+                "reviews_dir": reviews_dir,
+                "allowed_root": allowed_root,
+                "include_globs": selected_files.include_globs,
+                "exclude_globs": selected_files.exclude_globs,
+                "max_files": max_files,
+                "max_file_size_bytes": max_file_size_bytes,
+            },
+        )
+
+        artifacts = review_run_artifacts_to_dict(
+            review_artifacts,
+        )
+
+        run_id = review_artifacts.run_id
+        run_dir = review_artifacts.run_dir
+
     return ReviewProjectResult(
         status=result_without_summary.status,
         profile=result_without_summary.profile,
+        reviewer=result_without_summary.reviewer,
+        model=result_without_summary.model,
         project_path=result_without_summary.project_path,
         inspected_files_count=result_without_summary.inspected_files_count,
         selected_files_count=result_without_summary.selected_files_count,
@@ -568,4 +735,7 @@ def review_project(
         summary=summary,
         scope=result_without_summary.scope,
         findings=result_without_summary.findings,
+        run_id=run_id,
+        run_dir=run_dir,
+        artifacts=artifacts,
     )

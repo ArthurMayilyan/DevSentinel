@@ -1,0 +1,16 @@
+{
+  "project_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\sample_project",
+  "profile": "security",
+  "reviewer": "deterministic",
+  "model": "",
+  "report_path": "",
+  "report_dir": "",
+  "reviews_dir": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews",
+  "allowed_root": "D:\\Projects\\AgentLoop",
+  "include_globs": [
+    "**/*.py"
+  ],
+  "exclude_globs": [],
+  "max_files": 200,
+  "max_file_size_bytes": 200000
+}
