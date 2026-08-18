@@ -90,6 +90,61 @@ def build_review_workspace_tool_spec() -> McpToolSpec:
         output_schema=generic_output_schema(),
     )
 
+def build_review_git_diff_tool_spec() -> McpToolSpec:
+    return McpToolSpec(
+        name="review_git_diff",
+        description=(
+            "Review changed files from a Git diff "
+            "or from the staged Git index."
+        ),
+        input_schema=object_schema(
+            properties={
+                "repository_path": string_property(
+                    "Local Git repository directory to review.",
+                ),
+                "base_ref": string_property(
+                    "Base Git revision for ref comparison. "
+                    "Ignored when staged_only is true.",
+                ),
+                "target_ref": string_property(
+                    "Target Git revision for ref comparison. "
+                    "Ignored when staged_only is true.",
+                ),
+                "staged_only": {
+                    "type": "boolean",
+                    "description": (
+                        "When true, review changes currently "
+                        "stored in the Git index."
+                    ),
+                },
+                "preset": {
+                    "type": "string",
+                    "description": "Workspace review preset.",
+                    "enum": sorted(
+                        SUPPORTED_WORKSPACE_PRESETS,
+                    ),
+                },
+                "reviewer": {
+                    "type": "string",
+                    "description": "Review engine.",
+                    "enum": [
+                        "deterministic",
+                        "openai",
+                    ],
+                },
+                "model": string_property(
+                    "OpenAI model used when reviewer is openai.",
+                ),
+                "reviews_dir": string_property(
+                    "Optional persistent review history directory.",
+                ),
+            },
+            required=[
+                "repository_path",
+            ],
+        ),
+        output_schema=generic_output_schema(),
+    )
 
 def build_compare_review_runs_tool_spec() -> McpToolSpec:
     return McpToolSpec(
@@ -321,6 +376,7 @@ def build_all_mcp_tool_specs() -> list[McpToolSpec]:
         build_write_report_tool_spec(),
         build_review_project_tool_spec(),
         build_review_workspace_tool_spec(),
+        build_review_git_diff_tool_spec(),
         build_compare_review_runs_tool_spec(),
     ]
 
@@ -335,6 +391,7 @@ def build_code_review_mcp_tool_specs() -> list[McpToolSpec]:
         build_write_report_tool_spec(),
         build_review_project_tool_spec(),
         build_review_workspace_tool_spec(),
+        build_review_git_diff_tool_spec(),
         build_compare_review_runs_tool_spec(),
     ]
 

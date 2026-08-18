@@ -15,6 +15,7 @@ def test_run_from_args_lists_all_tools():
         "write_report",
         "review_project",
         "review_workspace",
+        "review_git_diff",
         "compare_review_runs",
     ]
 
@@ -49,9 +50,9 @@ def test_run_from_args_lists_code_review_tools():
         "write_report",
         "review_project",
         "review_workspace",
+        "review_git_diff",
         "compare_review_runs",
     ]
-
 
 def test_run_from_args_returns_json_specs():
     output = run_from_args(
