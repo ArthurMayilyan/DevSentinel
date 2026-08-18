@@ -457,6 +457,8 @@ class AgentLoopWebServer(
         self,
         server_address,
         handler_class,
+        *,
+        knowledge_path: str = "",
     ):
         super().__init__(
             server_address,
@@ -464,7 +466,9 @@ class AgentLoopWebServer(
         )
 
         self.context = (
-            build_agent_loop_mcp_context()
+            build_agent_loop_mcp_context(
+                knowledge_path=knowledge_path,
+            )
         )
 
         self.report_paths: dict[
@@ -956,6 +960,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    parser.add_argument(
+        "--knowledge-path",
+        default="",
+        help=(
+            "Optional knowledge-base directory "
+            "used by security reviews."
+        ),
+    )    
+
     return parser
 
 
@@ -986,6 +999,7 @@ def run_from_args(
             args.port,
         ),
         AgentLoopWebHandler,
+        knowledge_path=args.knowledge_path,
     )
 
     url = (
