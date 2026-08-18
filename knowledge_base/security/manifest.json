@@ -1,0 +1,23 @@
+{
+  "name": "AgentLoop Production Security Knowledge Base",
+  "version": "2026-08-18",
+  "files": [
+    "README.md",
+    "00_review_policy.md",
+    "01_secrets_credentials.md",
+    "02_authentication_sessions_tokens.md",
+    "03_authorization_access_control.md",
+    "04_input_injection_ssrf_files.md",
+    "05_api_data_crypto.md",
+    "06_supply_chain_config_logging_errors.md",
+    "07_ai_llm_security.md"
+  ],
+  "references": {
+    "OWASP ASVS": "5.0.0 stable",
+    "OWASP Top 10": "2025",
+    "OWASP API Security Top 10": "2023",
+    "NIST SSDF": "SP 800-218 v1.1 final",
+    "NIST Generative AI SSDF profile": "SP 800-218A final",
+    "NIST SSDF v1.2": "SP 800-218 Rev.1 initial public draft; informative only"
+  }
+}

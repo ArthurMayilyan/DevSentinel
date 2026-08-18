@@ -8,7 +8,7 @@
         "--transport",
         "stdio",
         "--knowledge-path",
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\knowledge_base_noisy",
+        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\knowledge_base\\security",
         "--report-path",
         "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\mcp_host_report.md"
       ],

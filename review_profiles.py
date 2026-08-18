@@ -41,11 +41,31 @@ def get_review_profile(
     if profile == REVIEW_PROFILE_SECURITY:
         return ReviewProfile(
             name=REVIEW_PROFILE_SECURITY,
-            description="Security-focused review for credentials, tokens, debug mode, and unsafe production behavior.",
+            description=(
+                "Security-focused review for credentials, tokens, "
+                "debug mode, and unsafe production behavior."
+            ),
             knowledge_queries=[
-                "credentials production security",
-                "debug mode production",
-                "token expiration validation",
+                (
+                    "security review evidence false positives "
+                    "production reachability detector examples"
+                ),
+                (
+                    "secrets credentials hardcoded keys "
+                    "passwords secret management"
+                ),
+                (
+                    "authentication sessions JWT bearer tokens "
+                    "signature expiration authorization access control"
+                ),
+                (
+                    "SQL command injection path traversal SSRF "
+                    "input validation file security"
+                ),
+                (
+                    "API sensitive data cryptography supply chain "
+                    "configuration logging errors AI LLM tool security"
+                ),
             ],
         )
 
