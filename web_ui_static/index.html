@@ -1,0 +1,1096 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>AgentLoop</title>
+
+    <style>
+        :root {
+            font-family:
+                Inter,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            color-scheme: light dark;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: Canvas;
+            color: CanvasText;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 20px 64px;
+        }
+
+        h1 {
+            margin: 0 0 4px;
+            font-size: 30px;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+
+        .subtitle {
+            margin: 0 0 28px;
+            opacity: 0.7;
+        }
+
+        .card {
+            border: 1px solid
+                color-mix(
+                    in srgb,
+                    CanvasText 18%,
+                    transparent
+                );
+
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns:
+                repeat(
+                    2,
+                    minmax(0, 1fr)
+                );
+
+            gap: 16px;
+        }
+
+        .full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            min-height: 42px;
+            border-radius: 7px;
+            border: 1px solid
+                color-mix(
+                    in srgb,
+                    CanvasText 25%,
+                    transparent
+                );
+
+            padding: 8px 10px;
+            font: inherit;
+        }
+
+        input,
+        select {
+            background: Canvas;
+            color: CanvasText;
+        }
+
+        button {
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.6;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .actions button {
+            width: auto;
+            min-width: 160px;
+        }
+
+        .status {
+            margin-top: 14px;
+            min-height: 24px;
+        }
+
+        .error {
+            color: #d33;
+            white-space: pre-wrap;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns:
+                repeat(
+                    4,
+                    minmax(0, 1fr)
+                );
+
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .metric {
+            border: 1px solid
+                color-mix(
+                    in srgb,
+                    CanvasText 15%,
+                    transparent
+                );
+
+            border-radius: 9px;
+            padding: 14px;
+        }
+
+        .metric strong {
+            display: block;
+            font-size: 24px;
+            margin-top: 4px;
+        }
+
+        .metric span {
+            opacity: 0.7;
+            font-size: 13px;
+        }
+
+        .result-summary {
+            line-height: 1.5;
+        }
+
+        .result-path {
+            overflow-wrap: anywhere;
+            font-family:
+                ui-monospace,
+                SFMono-Regular,
+                Consolas,
+                monospace;
+            font-size: 13px;
+        }
+
+        .report-link {
+            display: inline-block;
+            margin-top: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 10px 8px;
+            border-bottom: 1px solid
+                color-mix(
+                    in srgb,
+                    CanvasText 12%,
+                    transparent
+                );
+            vertical-align: top;
+        }
+
+        th {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        td {
+            font-size: 14px;
+        }
+
+        .history-summary {
+            max-width: 420px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (
+            max-width: 720px
+        ) {
+            .grid,
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .actions button {
+                width: 100%;
+            }
+
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<main>
+    <h1>AgentLoop</h1>
+
+    <p class="subtitle">
+        Local engineering review workspace
+    </p>
+
+    <section class="card">
+        <h2>Run Review</h2>
+
+        <div class="grid">
+            <div class="full">
+                <label for="projectPath">
+                    Repository / Workspace
+                </label>
+
+                <input
+                    id="projectPath"
+                    type="text"
+                    placeholder="D:\Projects\MyProject"
+                >
+            </div>
+
+            <div>
+                <label for="mode">
+                    Review mode
+                </label>
+
+                <select id="mode">
+                    <option value="workspace">
+                        Workspace
+                    </option>
+
+                    <option value="git">
+                        Git diff
+                    </option>
+
+                    <option value="staged">
+                        Staged changes
+                    </option>
+                </select>
+            </div>
+
+            <div>
+                <label for="preset">
+                    Preset
+                </label>
+
+                <select id="preset"></select>
+            </div>
+
+            <div>
+                <label for="reviewer">
+                    Reviewer
+                </label>
+
+                <select id="reviewer"></select>
+            </div>
+
+            <div>
+                <label for="model">
+                    OpenAI model
+                </label>
+
+                <input
+                    id="model"
+                    type="text"
+                >
+            </div>
+
+            <div
+                id="baseRefGroup"
+                class="hidden"
+            >
+                <label for="baseRef">
+                    Base ref
+                </label>
+
+                <input
+                    id="baseRef"
+                    type="text"
+                >
+            </div>
+
+            <div
+                id="targetRefGroup"
+                class="hidden"
+            >
+                <label for="targetRef">
+                    Target ref
+                </label>
+
+                <input
+                    id="targetRef"
+                    type="text"
+                >
+            </div>
+
+            <div class="full">
+                <label for="reviewsDir">
+                    Reviews directory
+                    (optional)
+                </label>
+
+                <input
+                    id="reviewsDir"
+                    type="text"
+                    placeholder="Default: <project>\reviews"
+                >
+            </div>
+
+            <div class="full actions">
+                <button id="runButton">
+                    Run Review
+                </button>
+
+                <button id="historyButton">
+                    Refresh History
+                </button>
+            </div>
+        </div>
+
+        <div
+            id="status"
+            class="status"
+        ></div>
+    </section>
+
+    <section
+        id="resultCard"
+        class="card hidden"
+    >
+        <h2>Review Result</h2>
+
+        <p
+            id="resultSummary"
+            class="result-summary"
+        ></p>
+
+        <div class="metrics">
+            <div class="metric">
+                <span>Changed</span>
+                <strong id="changedCount">—</strong>
+            </div>
+
+            <div class="metric">
+                <span>Reviewed</span>
+                <strong id="reviewedCount">—</strong>
+            </div>
+
+            <div class="metric">
+                <span>Skipped</span>
+                <strong id="skippedCount">—</strong>
+            </div>
+
+            <div class="metric">
+                <span>Findings</span>
+                <strong id="findingsCount">—</strong>
+            </div>
+        </div>
+
+        <p>
+            <strong>Run ID</strong>
+        </p>
+
+        <p
+            id="runId"
+            class="result-path"
+        ></p>
+
+        <p>
+            <strong>Run directory</strong>
+        </p>
+
+        <p
+            id="runDir"
+            class="result-path"
+        ></p>
+
+        <a
+            id="reportLink"
+            class="report-link hidden"
+            target="_blank"
+            rel="noopener"
+        >
+            Open HTML Report
+        </a>
+    </section>
+
+    <section class="card">
+        <h2>Recent Reviews</h2>
+
+        <div id="historyEmpty">
+            Enter a project path and refresh history.
+        </div>
+
+        <table
+            id="historyTable"
+            class="hidden"
+        >
+            <thead>
+                <tr>
+                    <th>Run</th>
+                    <th>Workflow</th>
+                    <th>Reviewer</th>
+                    <th>Findings</th>
+                    <th>Summary</th>
+                    <th>Report</th>
+                </tr>
+            </thead>
+
+            <tbody id="historyBody"></tbody>
+        </table>
+    </section>
+</main>
+
+<script>
+    const elements = {
+        projectPath:
+            document.getElementById(
+                "projectPath"
+            ),
+
+        mode:
+            document.getElementById(
+                "mode"
+            ),
+
+        preset:
+            document.getElementById(
+                "preset"
+            ),
+
+        reviewer:
+            document.getElementById(
+                "reviewer"
+            ),
+
+        model:
+            document.getElementById(
+                "model"
+            ),
+
+        baseRef:
+            document.getElementById(
+                "baseRef"
+            ),
+
+        targetRef:
+            document.getElementById(
+                "targetRef"
+            ),
+
+        baseRefGroup:
+            document.getElementById(
+                "baseRefGroup"
+            ),
+
+        targetRefGroup:
+            document.getElementById(
+                "targetRefGroup"
+            ),
+
+        reviewsDir:
+            document.getElementById(
+                "reviewsDir"
+            ),
+
+        runButton:
+            document.getElementById(
+                "runButton"
+            ),
+
+        historyButton:
+            document.getElementById(
+                "historyButton"
+            ),
+
+        status:
+            document.getElementById(
+                "status"
+            ),
+
+        resultCard:
+            document.getElementById(
+                "resultCard"
+            ),
+
+        resultSummary:
+            document.getElementById(
+                "resultSummary"
+            ),
+
+        changedCount:
+            document.getElementById(
+                "changedCount"
+            ),
+
+        reviewedCount:
+            document.getElementById(
+                "reviewedCount"
+            ),
+
+        skippedCount:
+            document.getElementById(
+                "skippedCount"
+            ),
+
+        findingsCount:
+            document.getElementById(
+                "findingsCount"
+            ),
+
+        runId:
+            document.getElementById(
+                "runId"
+            ),
+
+        runDir:
+            document.getElementById(
+                "runDir"
+            ),
+
+        reportLink:
+            document.getElementById(
+                "reportLink"
+            ),
+
+        historyEmpty:
+            document.getElementById(
+                "historyEmpty"
+            ),
+
+        historyTable:
+            document.getElementById(
+                "historyTable"
+            ),
+
+        historyBody:
+            document.getElementById(
+                "historyBody"
+            ),
+    };
+
+
+    function setStatus(
+        text,
+        isError = false,
+    ) {
+        elements.status.textContent =
+            text;
+
+        elements.status.className =
+            isError
+                ? "status error"
+                : "status";
+    }
+
+
+    function updateModeVisibility() {
+        const isGit =
+            elements.mode.value ===
+            "git";
+
+        elements.baseRefGroup.classList.toggle(
+            "hidden",
+            !isGit,
+        );
+
+        elements.targetRefGroup.classList.toggle(
+            "hidden",
+            !isGit,
+        );
+    }
+
+
+    function populateSelect(
+        select,
+        values,
+        selectedValue,
+    ) {
+        select.replaceChildren();
+
+        for (
+            const value
+            of values
+        ) {
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value = value;
+            option.textContent = value;
+
+            if (
+                value === selectedValue
+            ) {
+                option.selected = true;
+            }
+
+            select.appendChild(
+                option
+            );
+        }
+    }
+
+
+    async function loadConfig() {
+        const response =
+            await fetch(
+                "/api/config"
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                "Unable to load UI configuration."
+            );
+        }
+
+        const config =
+            await response.json();
+
+        populateSelect(
+            elements.preset,
+            config.presets,
+            config.defaults.preset,
+        );
+
+        populateSelect(
+            elements.reviewer,
+            config.reviewers,
+            config.defaults.reviewer,
+        );
+
+        elements.model.value =
+            config.defaults.model;
+
+        elements.baseRef.value =
+            config.defaults.base_ref;
+
+        elements.targetRef.value =
+            config.defaults.target_ref;
+    }
+
+
+    function metricValue(
+        value,
+    ) {
+        return (
+            Number.isInteger(value)
+                ? String(value)
+                : "—"
+        );
+    }
+
+
+    function renderResult(
+        result,
+    ) {
+        elements.resultCard.classList.remove(
+            "hidden"
+        );
+
+        elements.resultSummary.textContent =
+            result.summary || "";
+
+        elements.changedCount.textContent =
+            metricValue(
+                result.changed_files_count
+            );
+
+        elements.reviewedCount.textContent =
+            metricValue(
+                result.selected_files_count
+            );
+
+        elements.skippedCount.textContent =
+            metricValue(
+                result.skipped_files_count
+            );
+
+        elements.findingsCount.textContent =
+            metricValue(
+                result.findings_count
+            );
+
+        elements.runId.textContent =
+            result.run_id || "";
+
+        elements.runDir.textContent =
+            result.run_dir || "";
+
+        if (result.report_url) {
+            elements.reportLink.href =
+                result.report_url;
+
+            elements.reportLink.classList.remove(
+                "hidden"
+            );
+        } else {
+            elements.reportLink.removeAttribute(
+                "href"
+            );
+
+            elements.reportLink.classList.add(
+                "hidden"
+            );
+        }
+    }
+
+
+    function buildReviewPayload() {
+        return {
+            project_path:
+                elements.projectPath.value.trim(),
+
+            mode:
+                elements.mode.value,
+
+            preset:
+                elements.preset.value,
+
+            reviewer:
+                elements.reviewer.value,
+
+            model:
+                elements.model.value.trim(),
+
+            base_ref:
+                elements.baseRef.value.trim(),
+
+            target_ref:
+                elements.targetRef.value.trim(),
+
+            reviews_dir:
+                elements.reviewsDir.value.trim(),
+        };
+    }
+
+
+    async function runReview() {
+        const payload =
+            buildReviewPayload();
+
+        if (!payload.project_path) {
+            setStatus(
+                "Project path is required.",
+                true,
+            );
+
+            return;
+        }
+
+        elements.runButton.disabled =
+            true;
+
+        setStatus(
+            "Review is running..."
+        );
+
+        try {
+            const response =
+                await fetch(
+                    "/api/review",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                        body:
+                            JSON.stringify(
+                                payload
+                            ),
+                    }
+                );
+
+            const result =
+                await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    result.error ||
+                    "Review failed."
+                );
+            }
+
+            renderResult(
+                result
+            );
+
+            setStatus(
+                "Review completed."
+            );
+
+            await loadHistory();
+
+        } catch (error) {
+            setStatus(
+                error.message,
+                true,
+            );
+
+        } finally {
+            elements.runButton.disabled =
+                false;
+        }
+    }
+
+
+    function appendCell(
+        row,
+        text,
+    ) {
+        const cell =
+            document.createElement(
+                "td"
+            );
+
+        cell.textContent =
+            text ?? "";
+
+        row.appendChild(
+            cell
+        );
+
+        return cell;
+    }
+
+
+    function renderHistory(
+        runs,
+    ) {
+        elements.historyBody.replaceChildren();
+
+        if (!runs.length) {
+            elements.historyTable.classList.add(
+                "hidden"
+            );
+
+            elements.historyEmpty.classList.remove(
+                "hidden"
+            );
+
+            elements.historyEmpty.textContent =
+                "No review runs found.";
+
+            return;
+        }
+
+        elements.historyEmpty.classList.add(
+            "hidden"
+        );
+
+        elements.historyTable.classList.remove(
+            "hidden"
+        );
+
+        for (
+            const run
+            of runs
+        ) {
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+            appendCell(
+                row,
+                run.run_id,
+            );
+
+            appendCell(
+                row,
+                run.workflow,
+            );
+
+            appendCell(
+                row,
+                run.reviewer,
+            );
+
+            appendCell(
+                row,
+                String(
+                    run.findings_count
+                ),
+            );
+
+            const summaryCell =
+                appendCell(
+                    row,
+                    run.summary,
+                );
+
+            summaryCell.classList.add(
+                "history-summary"
+            );
+
+            const reportCell =
+                document.createElement(
+                    "td"
+                );
+
+            if (run.report_url) {
+                const link =
+                    document.createElement(
+                        "a"
+                    );
+
+                link.href =
+                    run.report_url;
+
+                link.target =
+                    "_blank";
+
+                link.rel =
+                    "noopener";
+
+                link.textContent =
+                    "Open";
+
+                reportCell.appendChild(
+                    link
+                );
+            } else {
+                reportCell.textContent =
+                    "—";
+            }
+
+            row.appendChild(
+                reportCell
+            );
+
+            elements.historyBody.appendChild(
+                row
+            );
+        }
+    }
+
+
+    async function loadHistory() {
+        const projectPath =
+            elements.projectPath.value.trim();
+
+        if (!projectPath) {
+            setStatus(
+                "Enter a project path first.",
+                true,
+            );
+
+            return;
+        }
+
+        const params =
+            new URLSearchParams();
+
+        params.set(
+            "project_path",
+            projectPath,
+        );
+
+        const reviewsDir =
+            elements.reviewsDir.value.trim();
+
+        if (reviewsDir) {
+            params.set(
+                "reviews_dir",
+                reviewsDir,
+            );
+        }
+
+        try {
+            const response =
+                await fetch(
+                    "/api/history?"
+                    + params.toString()
+                );
+
+            const payload =
+                await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    payload.error ||
+                    "Unable to load history."
+                );
+            }
+
+            renderHistory(
+                payload.runs || []
+            );
+
+        } catch (error) {
+            setStatus(
+                error.message,
+                true,
+            );
+        }
+    }
+
+
+    elements.mode.addEventListener(
+        "change",
+        updateModeVisibility,
+    );
+
+    elements.runButton.addEventListener(
+        "click",
+        runReview,
+    );
+
+    elements.historyButton.addEventListener(
+        "click",
+        loadHistory,
+    );
+
+
+    async function initialize() {
+        try {
+            await loadConfig();
+
+            updateModeVisibility();
+
+        } catch (error) {
+            setStatus(
+                error.message,
+                true,
+            );
+        }
+    }
+
+
+    initialize();
+</script>
+</body>
+</html>
