@@ -97,5 +97,49 @@
     "findings_count": 0,
     "run_dir": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_135047_260054_agent_loop_from_scratch_security_deterministic",
     "report_html_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_135047_260054_agent_loop_from_scratch_security_deterministic\\report.html"
+  },
+  {
+    "run_id": "20260818_141314_099609_agent_loop_from_scratch_security_deterministic",
+    "created_at": "2026-08-18T14:13:14.099609+04:00",
+    "project_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch",
+    "profile": "security",
+    "reviewer": "deterministic",
+    "model": "",
+    "findings_count": 15,
+    "run_dir": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_141314_099609_agent_loop_from_scratch_security_deterministic",
+    "report_html_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_141314_099609_agent_loop_from_scratch_security_deterministic\\report.html"
+  },
+  {
+    "run_id": "20260818_141650_922115_agent_loop_from_scratch_security_deterministic",
+    "created_at": "2026-08-18T14:16:50.922115+04:00",
+    "project_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch",
+    "profile": "security",
+    "reviewer": "deterministic",
+    "model": "",
+    "findings_count": 6,
+    "run_dir": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_141650_922115_agent_loop_from_scratch_security_deterministic",
+    "report_html_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_141650_922115_agent_loop_from_scratch_security_deterministic\\report.html"
+  },
+  {
+    "run_id": "20260818_141828_172644_agent_loop_from_scratch_security_deterministic",
+    "created_at": "2026-08-18T14:18:28.172644+04:00",
+    "project_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch",
+    "profile": "security",
+    "reviewer": "deterministic",
+    "model": "",
+    "findings_count": 0,
+    "run_dir": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_141828_172644_agent_loop_from_scratch_security_deterministic",
+    "report_html_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_141828_172644_agent_loop_from_scratch_security_deterministic\\report.html"
+  },
+  {
+    "run_id": "20260818_142215_736817_agent_loop_from_scratch_security_deterministic",
+    "created_at": "2026-08-18T14:22:15.736817+04:00",
+    "project_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch",
+    "profile": "security",
+    "reviewer": "deterministic",
+    "model": "",
+    "findings_count": 0,
+    "run_dir": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_142215_736817_agent_loop_from_scratch_security_deterministic",
+    "report_html_path": "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\reviews\\20260818_142215_736817_agent_loop_from_scratch_security_deterministic\\report.html"
   }
 ]
