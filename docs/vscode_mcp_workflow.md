@@ -222,3 +222,55 @@ Return:
 ```
 
 AgentLoop automatically applies safe file filters, scope limits, the workspace as the allowed root, and a persistent `reviews` directory inside the workspace.
+
+
+## Git diff review
+
+Use `review_git_diff` when you want to review only files changed between Git revisions instead of reviewing the entire workspace.
+
+For committed changes:
+
+```text
+Use the agentloop MCP server.
+
+Call review_git_diff with:
+- repository_path: D:\Projects\MyProject
+- base_ref: main
+- target_ref: HEAD
+- preset: python-security
+- reviewer: openai
+
+Return:
+- summary
+- changed_files_count
+- selected_files_count
+- skipped_files_count
+- findings_count
+- run_id
+- run_dir
+- HTML report path
+```
+
+For staged changes:
+
+```text
+Use the agentloop MCP server.
+
+Call review_git_diff with:
+- repository_path: D:\Projects\MyProject
+- staged_only: true
+- preset: python-security
+- reviewer: deterministic
+
+Return:
+- summary
+- changed_files_count
+- selected_files_count
+- skipped_files_count
+- findings_count
+- run_id
+- run_dir
+- HTML report path
+```
+
+When `staged_only` is true, AgentLoop reviews the Git index snapshot rather than unstaged working-tree content.

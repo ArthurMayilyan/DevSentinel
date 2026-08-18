@@ -27,6 +27,9 @@ from mcp_server_handlers import (
     mcp_search_knowledge,
     mcp_write_report,
 )
+from mcp_review_git_diff import (
+    mcp_review_git_diff,
+)
 from project_path_safety import (
     DEFAULT_MAX_FILES,
     DEFAULT_MAX_FILE_SIZE_BYTES,
@@ -193,6 +196,30 @@ def create_agent_loop_mcp_server(
         return mcp_review_workspace(
             context=context,
             workspace_path=workspace_path,
+            preset=preset,
+            reviewer=reviewer,
+            model=model,
+            reviews_dir=reviews_dir,
+        )
+
+    @mcp.tool()
+    def review_git_diff(
+        repository_path: str,
+        base_ref: str = "main",
+        target_ref: str = "HEAD",
+        staged_only: bool = False,
+        preset: str = WORKSPACE_PRESET_PYTHON_SECURITY,
+        reviewer: str = DEFAULT_REVIEWER,
+        model: str = DEFAULT_OPENAI_REVIEW_MODEL,
+        reviews_dir: str = "",
+    ) -> dict:
+        """Review changed files from a Git diff or staged Git index."""
+        return mcp_review_git_diff(
+            context=context,
+            repository_path=repository_path,
+            base_ref=base_ref,
+            target_ref=target_ref,
+            staged_only=staged_only,
             preset=preset,
             reviewer=reviewer,
             model=model,

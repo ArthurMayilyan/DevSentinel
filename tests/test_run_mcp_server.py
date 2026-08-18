@@ -35,6 +35,7 @@ def test_format_server_description_lists_tools():
         "- write_report",
         "- review_project",
         "- review_workspace",
+        "- review_git_diff",
         "- compare_review_runs",
     ]
 
