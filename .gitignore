@@ -1,7 +1,41 @@
-traces/
-reviews/
+# Python
 __pycache__/
-tests/__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Secrets / local environment
 .env
-__pycache__/agent.cpython-311.pyc
+.env.*
+!.env.example
+
+# Runtime traces and review runs
+traces/
 run_summaries/
+reviews/
+
+# Generated run/evaluation artifact directories
+*_artifacts/
+
+# Generated root reports/results/indexes
+/report.md
+/eval_report*.md
+/mcp_client_smoke_report.md
+/mcp_host_report.md
+/multi_step*_report.md
+/multi_step*_result.json
+/rag_agent*_report.md
+/rag_agent*_result.json
+/rag_answer_eval_report.md
+/rag_answer_eval_result.json
+/rag_eval_profiles_summary.json
+/rag_eval_summary.json
+/rag_index.json
+/rag_strategy_comparison.json
+/rag_strategy_report.md
+/rag_strategy_failed_report.md
+
+# OS noise
+.DS_Store
+Thumbs.db

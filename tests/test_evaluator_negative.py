@@ -5,12 +5,28 @@ from pathlib import Path
 from evaluator import evaluate_run
 
 
-BASE_TRACE_PATH = "traces/trace_20260730_161818.json"
-EVAL_CASE_PATH = "eval_cases/security_review_eval.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
+BASE_TRACE_PATH = (
+    PROJECT_ROOT
+    / "tests"
+    / "fixtures"
+    / "evaluator"
+    / "security_review_baseline_trace.json"
+)
 
-def load_json(path: str):
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+EVAL_CASE_PATH = (
+    PROJECT_ROOT
+    / "eval_cases"
+    / "security_review_eval.json"
+)
+
+def load_json(path: str | Path):
+    return json.loads(
+        Path(path).read_text(
+            encoding="utf-8",
+        )
+    )
 
 
 def load_baseline():
