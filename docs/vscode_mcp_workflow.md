@@ -19,7 +19,7 @@ Example:
         "--transport",
         "stdio",
         "--knowledge-path",
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\knowledge_base_noisy",
+        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\knowledge_base\\security",
         "--report-path",
         "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\mcp_host_report.md"
       ],
@@ -58,7 +58,7 @@ VS Code UI may show either a `Start` action above the server entry or only an `A
    --transport
    stdio
    --knowledge-path
-   D:\Projects\AgentLoop\agent_loop_from_scratch\knowledge_base_noisy
+   D:\Projects\AgentLoop\agent_loop_from_scratch\knowledge_base\security
    --report-path
    D:\Projects\AgentLoop\agent_loop_from_scratch\mcp_host_report.md
    ```
@@ -77,6 +77,8 @@ Expected tools:
 - add_finding
 - write_report
 - review_project
+- review_workspace
+- review_git_diff
 - compare_review_runs
 
 ## Resources
@@ -154,8 +156,17 @@ Expected result:
 - AgentLoop reviews only files matching the requested scope.
 - Files outside `allowed_root` are rejected.
 - Large files and excluded paths are skipped.
-- A timestamped report is generated under the requested `report_dir`.
+- A persistent review run package is created under the requested `reviews_dir`.
 - The response includes selected/skipped file counts, findings count, severity summary, and report path.
+
+### Report and review artifact directories
+
+`review_project` supports two related output locations:
+
+- `report_dir` — optional directory for the generated timestamped Markdown report when an exact `report_path` is not provided.
+- `reviews_dir` — optional directory for persistent review run packages, including Markdown/HTML reports, JSON artifacts, and review history.
+
+They serve different purposes and may be used independently or together.
 
 ## Review run package
 
