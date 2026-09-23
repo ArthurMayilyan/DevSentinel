@@ -1,10 +1,10 @@
-# AgentLoop Architecture & Interview Notes
+# DevSentinel Architecture Notes
 
 ## Purpose
 
-This document is a compact technical reference for explaining AgentLoop in interviews, architecture discussions, and future development.
+This document is a compact technical reference for explaining AgentLoop in architecture discussions, and future development.
 
-AgentLoop is an **engineering-grade / production-oriented prototype** for AI-assisted engineering review. It combines deterministic controls with LLM-based contextual reasoning, RAG-backed security knowledge, Git-aware scope selection, MCP integration, persistent review artifacts, and a lightweight Web UI.
+DevSentinel is an **engineering-grade / production-oriented prototype** for AI-assisted engineering review. It combines deterministic controls with LLM-based contextual reasoning, RAG-backed security knowledge, Git-aware scope selection, MCP integration, persistent review artifacts, and a lightweight Web UI.
 
 The project was intentionally built from the agent loop upward rather than starting with a high-level agent framework.
 
@@ -12,7 +12,7 @@ The project was intentionally built from the agent loop upward rather than start
 
 # 1. One-Sentence Description
 
-> **AgentLoop is an AI-assisted engineering review platform that combines deterministic analysis, LLM-based contextual review, RAG-backed policies, Git-aware code selection, MCP/VS Code integration, evaluation, and persistent review artifacts.**
+> **DevSentinel is an AI-assisted engineering review platform that combines deterministic analysis, LLM-based contextual review, RAG-backed policies, Git-aware code selection, MCP/VS Code integration, evaluation, and persistent review artifacts.**
 
 ---
 
@@ -28,7 +28,7 @@ The project was intentionally built from the agent loop upward rather than start
                                           v
 +----------------+              +----------------------+              +----------------+
 | VS Code / MCP  |------------->|                      |<-------------| Local Web UI   |
-+----------------+              |   AgentLoop Runtime  |              +----------------+
++----------------+              |   DevSentinel Runtime|              +----------------+
                                 |                      |
 +----------------+------------->|                      |<-------------+----------------+
 | CLI / Python   |              +----------+-----------+              | Tests / Evals  |
@@ -372,7 +372,7 @@ better semantic review quality
 
 # 7. Git-Aware Review
 
-AgentLoop can review:
+DevSentinel can review:
 
 ```text
 Workspace
@@ -419,7 +419,7 @@ This is a good interview detail because it demonstrates attention to real Git se
 
 # 8. MCP Architecture
 
-AgentLoop exposes a local MCP server over stdio.
+DevSentinel exposes a local MCP server over stdio.
 
 Conceptually:
 
@@ -430,7 +430,7 @@ VS Code / Copilot Agent
      MCP Protocol
           |
           v
- AgentLoop MCP Server
+ DevSentinel MCP Server
           |
           v
  Product Workflows
@@ -549,7 +549,7 @@ vs.
 
 Text equality therefore does not work well for run comparison.
 
-AgentLoop introduced stable finding types such as:
+DevSentinel introduced stable finding types such as:
 
 ```text
 security.hardcoded_secret
@@ -621,7 +621,7 @@ This avoided scattering runtime constants throughout the codebase.
 
 # 13. Evaluation Strategy
 
-AgentLoop does not rely only on manual demos.
+DevSentinel does not rely only on manual demos.
 
 The evaluation suite covers:
 
@@ -842,7 +842,7 @@ A credible next-generation roadmap would be:
 
 # 17. 30-Second Interview Pitch
 
-> I built AgentLoop to understand agentic engineering from the mechanics upward rather than only using a framework. It started as a custom tool-using agent with state, guardrails and structured outputs, and evolved into an engineering review platform with RAG, evaluation, deterministic and LLM reviewers, MCP integration, Git-diff and staged review, persistent artifacts and a local Web UI. A key design principle was keeping deterministic controls in application code and using the LLM only where semantic reasoning adds value.
+> I built DevSentinel to understand agentic engineering from the mechanics upward rather than only using a framework. It started as a custom tool-using agent with state, guardrails and structured outputs, and evolved into an engineering review platform with RAG, evaluation, deterministic and LLM reviewers, MCP integration, Git-diff and staged review, persistent artifacts and a local Web UI. A key design principle was keeping deterministic controls in application code and using the LLM only where semantic reasoning adds value.
 
 ---
 
