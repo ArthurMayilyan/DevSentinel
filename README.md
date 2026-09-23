@@ -1,6 +1,6 @@
-# AgentLoop
+# DevSentinel
 
-AgentLoop is a local AI-assisted engineering review platform built to explore and demonstrate modern agentic engineering from first principles.
+DevSentinel is a local AI-assisted engineering review platform built to use agentic engineering to control source code security.
 
 It combines:
 
@@ -13,13 +13,13 @@ It combines:
 - centralized runtime configuration;
 - a lightweight local Web UI.
 
-The project is best described as an **engineering-grade / production-oriented prototype**, not a commercial security scanner.
+The project is best described as an **engineering-grade / production-oriented prototype**.
 
 ---
 
 ## 1. Main use cases
 
-AgentLoop currently supports four practical workflows:
+DevSentinel currently supports four practical workflows:
 
 1. **Workspace review** — review a project directory using a review preset.
 2. **Git diff review** — review only files changed between Git revisions.
@@ -35,7 +35,7 @@ For daily engineering work, prefer **Git diff** or **staged review** over a full
 The examples below assume:
 
 ```text
-D:\Projects\AgentLoop\agent_loop_from_scratch
+D:\Projects\DevSentinel\
 ```
 
 Run shell commands from the project root unless noted otherwise.
@@ -54,7 +54,7 @@ C:\Program Files\Python311\python.exe
 
 Use the existing project environment/dependency setup for the checkout.
 
-Before using AgentLoop, verify the environment:
+Before using DevSentinel, verify the environment:
 
 ```powershell
 python --version
@@ -186,7 +186,7 @@ The deterministic reviewer remains pattern-based and may still produce lexical f
 
 ---
 
-# 6. Recommended way to use AgentLoop: Web UI
+# 6. Recommended way to use DevSentinel: Web UI
 
 Start the local UI with the security knowledge base:
 
@@ -218,7 +218,7 @@ In the UI:
 
 ```text
 Repository / Workspace:
-D:\Projects\AgentLoop\agent_loop_from_scratch
+D:\Projects\DevSentinel\
 
 Review mode:
 Workspace
@@ -283,7 +283,7 @@ Preset: python-security
 Reviewer: deterministic
 ```
 
-AgentLoop reads the **Git index snapshot**, not the unstaged working-tree version.
+DevSentinel reads the **Git index snapshot**, not the unstaged working-tree version.
 
 After a temporary staged test:
 
@@ -300,7 +300,7 @@ Click `Refresh History` to show recent review runs and links to HTML reports.
 
 # 7. VS Code / MCP setup
 
-AgentLoop exposes a local stdio MCP server.
+DevSentinel exposes a local stdio MCP server.
 
 Use:
 
@@ -344,7 +344,7 @@ In VS Code:
 3. Select/start/restart `agentloop`.
 4. Open Copilot Chat.
 5. Use Agent mode.
-6. Confirm AgentLoop tools are available.
+6. Confirm DevSentinel tools are available.
 
 Current product-level tools include:
 
@@ -397,7 +397,7 @@ Return the retrieved evidence and source files.
 Use the agentloop MCP server.
 
 Call review_workspace with:
-- workspace_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- workspace_path: D:\Projects\DevSentinel
 - preset: python-security
 - reviewer: deterministic
 
@@ -418,7 +418,7 @@ OpenAI/contextual version:
 Use the agentloop MCP server.
 
 Call review_workspace with:
-- workspace_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- workspace_path: D:\Projects\DevSentinel\
 - preset: python-security
 - reviewer: openai
 
@@ -437,7 +437,7 @@ For a branch `dev` containing changes relative to `main`:
 Use the agentloop MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - base_ref: main
 - target_ref: dev
 - preset: python-security
@@ -456,7 +456,7 @@ Return only:
 - HTML report path
 ```
 
-AgentLoop uses PR-style triple-dot semantics:
+DevSentinel uses PR-style triple-dot semantics:
 
 ```text
 main...dev
@@ -474,13 +474,13 @@ git --no-pager diff --name-status main...dev
 
 Use a smaller commit range when a large OpenAI diff review exceeds the MCP host timeout.
 
-Example from AgentLoop development history:
+Example from DevSentinel development history:
 
 ```text
 Use the agentloop MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - base_ref: 65d0c84
 - target_ref: 2d3f07d
 - preset: python-security
@@ -508,7 +508,7 @@ Return only:
 Use the agentloop MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - staged_only: true
 - preset: python-security
 - reviewer: deterministic
@@ -908,7 +908,7 @@ without a stale index.
 
 # 19. Known limitations
 
-AgentLoop intentionally stops short of a commercial/enterprise security platform.
+DevSentinel intentionally stops short of a commercial/enterprise security platform.
 
 Current limitations include:
 
@@ -939,7 +939,7 @@ For normal local development:
 7. Use deterministic review as the baseline.
 8. Use OpenAI review for contextual follow-up.
 9. Inspect finding evidence and report.html before acting.
-10. Run tests/evals after modifying AgentLoop itself.
+10. Run tests/evals after modifying DevSentinel itself.
 ```
 
 ---
@@ -989,7 +989,7 @@ python run_mcp_server.py `
 
 ```text
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - base_ref: main
 - target_ref: dev
 - preset: python-security
@@ -1000,7 +1000,7 @@ Call review_git_diff with:
 
 ```text
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - staged_only: true
 - preset: python-security
 - reviewer: deterministic
@@ -1010,7 +1010,7 @@ Call review_git_diff with:
 
 ```text
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - base_ref: <base>
 - target_ref: <target>
 - preset: python-security
