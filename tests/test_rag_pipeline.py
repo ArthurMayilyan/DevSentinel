@@ -1,13 +1,13 @@
 import pytest
 
-from rag_pipeline import (
+from devsentinel.rag.rag_pipeline import (
     build_cited_extractive_answer_from_evidence,
     build_extractive_answer_from_evidence,
     rag_pipeline_result_to_dict,
     retrieve_evidence,
     run_rag_pipeline,
 )
-from rag_store import InMemoryRagStore
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 def build_test_store() -> InMemoryRagStore:

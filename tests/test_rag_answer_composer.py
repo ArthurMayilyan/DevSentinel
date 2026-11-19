@@ -1,6 +1,6 @@
 import pytest
 
-from rag_answer_composer import (
+from devsentinel.rag.rag_answer_composer import (
     compose_rag_answer,
     select_relevant_sentences,
     split_into_sentences,

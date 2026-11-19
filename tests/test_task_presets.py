@@ -1,6 +1,6 @@
 import pytest
 
-from task_presets import (
+from devsentinel.review.task_presets import (
     DEFAULT_CODE_REVIEW_MAX_FINDINGS,
     SUPPORTED_TASK_PRESETS,
     build_code_review_task,

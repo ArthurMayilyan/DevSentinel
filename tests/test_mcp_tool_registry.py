@@ -1,5 +1,5 @@
-from mcp_tool_catalog import list_mcp_tool_specs_for_mode
-from mcp_tool_registry import build_mcp_tool_registry
+from devsentinel.mcp.mcp_tool_catalog import list_mcp_tool_specs_for_mode
+from devsentinel.mcp.mcp_tool_registry import build_mcp_tool_registry
 
 
 def test_build_mcp_tool_registry_registers_specs():

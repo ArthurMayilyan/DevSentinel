@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from mcp_server_context import build_agent_loop_mcp_context
-from review_project_workflow import (
+from devsentinel.mcp.mcp_server_context import build_devsentinel_mcp_context
+from devsentinel.review.review_project_workflow import (
     detect_security_findings_for_file,
     review_project,
     review_project_result_to_dict,
@@ -72,7 +72,7 @@ def test_review_project_runs_security_workflow_and_writes_report(tmp_path):
 
     report_path = tmp_path / "review.md"
 
-    context = build_agent_loop_mcp_context(
+    context = build_devsentinel_mcp_context(
         report_path=str(
             report_path,
         )
@@ -112,7 +112,7 @@ def test_review_project_result_to_dict_serializes_result(tmp_path):
 
     report_path = tmp_path / "review.md"
 
-    context = build_agent_loop_mcp_context(
+    context = build_devsentinel_mcp_context(
         report_path=str(
             report_path,
         )
@@ -144,7 +144,7 @@ def test_review_project_supports_report_dir_and_scope_options(tmp_path):
 
     report_dir = tmp_path / "reviews"
 
-    context = build_agent_loop_mcp_context()
+    context = build_devsentinel_mcp_context()
 
     result = review_project(
         context=context,
@@ -187,7 +187,7 @@ def test_review_project_creates_review_run_package(tmp_path):
     source_report_path = tmp_path / "source_report.md"
     reviews_dir = tmp_path / "reviews"
 
-    context = build_agent_loop_mcp_context(
+    context = build_devsentinel_mcp_context(
         report_path=str(
             source_report_path,
         )

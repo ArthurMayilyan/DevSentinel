@@ -1,6 +1,6 @@
 import pytest
 
-from agent_modes import (
+from devsentinel.core.agent_modes import (
     AGENT_MODE_CODE_REVIEW,
     AGENT_MODE_RAG_QA,
     get_agent_mode_spec,

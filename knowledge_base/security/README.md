@@ -1,8 +1,8 @@
-# AgentLoop Production Security Knowledge Base
+# DevSentinel Production Security Knowledge Base
 
 Version: 2026-08-18
 
-Purpose: compact, code-review-oriented security guidance for AgentLoop RAG/OpenAI-assisted review.
+Purpose: compact, code-review-oriented security guidance for DevSentinel RAG/OpenAI-assisted review.
 
 Primary baseline:
 - OWASP ASVS 5.0.0 (stable)

@@ -1,6 +1,6 @@
 import pytest
 
-from run_mcp_server import (
+from devsentinel.cli.run_mcp_server import (
     build_arg_parser,
     format_server_description,
     run_from_args,
@@ -24,7 +24,7 @@ def test_format_server_description_lists_tools():
     output = format_server_description()
 
     assert output.splitlines() == [
-        "AgentLoop MCP server",
+        "DevSentinel MCP server",
         "",
         "Tools:",
         "- list_files",
@@ -47,7 +47,7 @@ def test_run_from_args_describe_does_not_start_server():
         ]
     )
 
-    assert "AgentLoop MCP server" in output
+    assert "DevSentinel MCP server" in output
     assert "- search_knowledge" in output
 
 
@@ -69,7 +69,7 @@ def test_run_from_args_server_mode_is_silent(monkeypatch):
             return None
 
     monkeypatch.setattr(
-        "run_mcp_server.create_agent_loop_mcp_server",
+        "devsentinel.cli.run_mcp_server.create_devsentinel_mcp_server",
         lambda context: FakeMcpServer(),
     )
 
@@ -94,7 +94,7 @@ def test_run_from_args_streamable_http_mode_is_silent(monkeypatch):
     fake_server = FakeMcpServer()
 
     monkeypatch.setattr(
-        "run_mcp_server.create_agent_loop_mcp_server",
+        "devsentinel.cli.run_mcp_server.create_devsentinel_mcp_server",
         lambda context: fake_server,
     )
 
@@ -109,5 +109,3 @@ def test_run_from_args_streamable_http_mode_is_silent(monkeypatch):
     assert fake_server.args == (
         "streamable-http",
     )
-
-        

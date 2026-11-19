@@ -1,4 +1,4 @@
-from rag_qa_llm import DeterministicRagQaLLM
+from devsentinel.rag.rag_qa_llm import DeterministicRagQaLLM
 
 
 def test_rag_qa_llm_extracts_evidence_from_json_observation_string():

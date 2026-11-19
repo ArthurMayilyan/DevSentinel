@@ -1,40 +1,40 @@
-from app_settings import get_app_settings
-from agent_config import AgentConfig
-from cli_defaults import (
+from devsentinel.config.app_settings import get_app_settings
+from devsentinel.core.agent_config import AgentConfig
+from devsentinel.cli.cli_defaults import (
     OPENAI_CLI_DEFAULT_MAX_OUTPUT_TOKENS,
     OPENAI_CLI_DEFAULT_MAX_STEPS,
     OPENAI_CLI_DEFAULT_REQUEST_TIMEOUT_SECONDS,
 )
-from openai_client_factory import (
+from devsentinel.llm.openai_client_factory import (
     DEFAULT_OPENAI_MODEL,
 )
-from openai_llm_adapter import (
+from devsentinel.llm.openai_llm_adapter import (
     DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
     DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS,
 )
-from project_path_safety import (
+from devsentinel.review.project_path_safety import (
     DEFAULT_MAX_FILES,
     DEFAULT_MAX_FILE_SIZE_BYTES,
 )
-from rag_defaults import (
+from devsentinel.rag.rag_defaults import (
     DEFAULT_RAG_AGENT_MAX_STEPS,
     DEFAULT_RAG_CHUNK_MAX_CHARS,
     DEFAULT_RAG_CHUNK_OVERLAP_CHARS,
     DEFAULT_RAG_TOP_K,
 )
-from reviewer_config import (
+from devsentinel.config.reviewer_config import (
     DEFAULT_OPENAI_REVIEW_MODEL,
     DEFAULT_REVIEWER,
 )
-from task_presets import (
+from devsentinel.review.task_presets import (
     DEFAULT_CODE_REVIEW_MAX_FINDINGS,
 )
-from workspace_review_presets import (
+from devsentinel.review.workspace_review_presets import (
     get_workspace_review_preset,
 )
 
 
-def test_runtime_defaults_match_agentloop_config():
+def test_runtime_defaults_match_devsentinel_config():
     settings = get_app_settings()
 
     assert DEFAULT_OPENAI_MODEL == (
@@ -71,7 +71,7 @@ def test_runtime_defaults_match_agentloop_config():
     )
 
 
-def test_agent_defaults_match_agentloop_config():
+def test_agent_defaults_match_devsentinel_config():
     settings = get_app_settings()
 
     config = AgentConfig()
@@ -93,7 +93,7 @@ def test_agent_defaults_match_agentloop_config():
     )
 
 
-def test_cli_defaults_match_agentloop_config():
+def test_cli_defaults_match_devsentinel_config():
     settings = get_app_settings()
 
     assert OPENAI_CLI_DEFAULT_MAX_STEPS == (
@@ -111,7 +111,7 @@ def test_cli_defaults_match_agentloop_config():
     )
 
 
-def test_rag_defaults_match_agentloop_config():
+def test_rag_defaults_match_devsentinel_config():
     settings = get_app_settings()
 
     assert DEFAULT_RAG_TOP_K == (
@@ -131,7 +131,7 @@ def test_rag_defaults_match_agentloop_config():
     )
 
 
-def test_workspace_preset_is_loaded_from_agentloop_config():
+def test_workspace_preset_is_loaded_from_devsentinel_config():
     settings = get_app_settings()
 
     preset = get_workspace_review_preset(

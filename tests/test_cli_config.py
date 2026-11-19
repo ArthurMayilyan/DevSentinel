@@ -1,10 +1,10 @@
 import pytest
 
-from agent_config import AgentConfig
-from cli_config import build_agent_config_from_args, build_arg_parser
-from openai_client_factory import DEFAULT_OPENAI_MODEL
-from cli_defaults import OPENAI_CLI_DEFAULT_MAX_STEPS
-from task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS
+from devsentinel.core.agent_config import AgentConfig
+from devsentinel.cli.cli_config import build_agent_config_from_args, build_arg_parser
+from devsentinel.llm.openai_client_factory import DEFAULT_OPENAI_MODEL
+from devsentinel.cli.cli_defaults import OPENAI_CLI_DEFAULT_MAX_STEPS
+from devsentinel.review.task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS
 
 
 def test_cli_parser_accepts_empty_args_for_later_task_validation():

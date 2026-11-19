@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from run_rag_eval_profiles import (
+from devsentinel.cli.run_rag_eval_profiles import (
     build_profile_artifact_paths,
     build_profile_artifacts_dir,
     build_profile_run_summary,

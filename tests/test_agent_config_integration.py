@@ -5,10 +5,10 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from agent import Agent
-from agent_config import AgentConfig
-from trace import TraceRecorder
-from rag_store import InMemoryRagStore
+from devsentinel.core.agent import Agent
+from devsentinel.core.agent_config import AgentConfig
+from devsentinel.core.trace import TraceRecorder
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 class DummyLLM:
@@ -100,10 +100,10 @@ def test_agent_does_not_register_search_knowledge_without_rag_store():
     assert "search_knowledge" not in agent.tool_registry.names()
 
 
-from agent import Agent
-from agent_config import AgentConfig
-from app_settings import get_app_settings
-from trace import TraceRecorder
+from devsentinel.core.agent import Agent
+from devsentinel.core.agent_config import AgentConfig
+from devsentinel.config.app_settings import get_app_settings
+from devsentinel.core.trace import TraceRecorder
 
 
 class MinimalFakeLLM:

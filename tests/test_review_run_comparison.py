@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from review_run_comparison import (
+from devsentinel.review.review_run_comparison import (
     compare_findings,
     compare_review_runs,
 )

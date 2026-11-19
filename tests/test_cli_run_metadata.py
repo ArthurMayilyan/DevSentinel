@@ -1,11 +1,11 @@
 from argparse import Namespace
 
-from agent_config import AgentConfig
-from cli_defaults import (
+from devsentinel.core.agent_config import AgentConfig
+from devsentinel.cli.cli_defaults import (
     OPENAI_CLI_DEFAULT_MAX_OUTPUT_TOKENS,
     OPENAI_CLI_DEFAULT_REQUEST_TIMEOUT_SECONDS,
 )
-from cli_run_metadata import build_run_metadata
+from devsentinel.cli.cli_run_metadata import build_run_metadata
 
 
 def test_build_run_metadata_for_demo_task():

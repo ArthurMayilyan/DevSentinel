@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from rag_agent_runtime import (
+from devsentinel.rag.rag_agent_runtime import (
     extract_latest_evidence_from_trace_steps,
     extract_sources_from_evidence,
     format_rag_agent_markdown_report,
@@ -9,7 +9,7 @@ from rag_agent_runtime import (
     write_rag_agent_markdown_report,
     write_rag_agent_result_json,
 )
-from rag_index import build_rag_index_from_path, save_rag_index
+from devsentinel.rag.rag_index import build_rag_index_from_path, save_rag_index
 
 
 def normalize_path(

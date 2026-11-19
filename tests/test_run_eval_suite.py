@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from run_eval_suite import (
+from devsentinel.cli.run_eval_suite import (
     build_eval_suite_summary,
     format_eval_suite_markdown_summary,
     format_eval_suite_summary,

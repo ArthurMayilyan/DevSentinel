@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from run_rag_grounding_eval import (
+from devsentinel.cli.run_rag_grounding_eval import (
     build_grounding_quality_gate,
     format_grounding_eval_markdown_report,
     format_grounding_eval_summary,

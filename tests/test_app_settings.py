@@ -1,8 +1,10 @@
+import tomllib
+from importlib.resources import files
 from pathlib import Path
 
 import pytest
 
-from app_settings import (
+from devsentinel.config.app_settings import (
     load_app_settings,
 )
 
@@ -40,7 +42,7 @@ def test_load_app_settings_reads_project_config():
 
 
 def test_environment_overrides_toml(tmp_path):
-    config_path = tmp_path / "agentloop.toml"
+    config_path = tmp_path / "devsentinel.toml"
 
     write_config(
         config_path,
@@ -73,11 +75,11 @@ retrieval_strategy = "default"
     settings = load_app_settings(
         config_path=config_path,
         environ={
-            "AGENTLOOP_OPENAI_MODEL": "from-environment",
-            "AGENTLOOP_OPENAI_REQUEST_TIMEOUT_SECONDS": "45",
-            "AGENTLOOP_COMMAND_TIMEOUT_SECONDS": "90",
-            "AGENTLOOP_REVIEW_MAX_FILES": "250",
-            "AGENTLOOP_RAG_TOP_K": "5",
+            "DEVSENTINEL_OPENAI_MODEL": "from-environment",
+            "DEVSENTINEL_OPENAI_REQUEST_TIMEOUT_SECONDS": "45",
+            "DEVSENTINEL_COMMAND_TIMEOUT_SECONDS": "90",
+            "DEVSENTINEL_REVIEW_MAX_FILES": "250",
+            "DEVSENTINEL_RAG_TOP_K": "5",
         },
     )
 
@@ -101,7 +103,7 @@ model = "custom-model"
 
     settings = load_app_settings(
         environ={
-            "AGENTLOOP_CONFIG_PATH": str(
+            "DEVSENTINEL_CONFIG_PATH": str(
                 config_path,
             ),
         },
@@ -173,3 +175,15 @@ def test_workspace_presets_are_loaded_from_toml():
     assert ".venv/**" in preset.exclude_globs
 
     assert preset.max_files == 200
+
+
+def test_packaged_defaults_match_repository_config():
+    repository_config = Path(__file__).resolve().parents[1] / "devsentinel.toml"
+    packaged_config = files("devsentinel.config").joinpath("defaults.toml")
+
+    with repository_config.open("rb") as repository_file:
+        repository_settings = tomllib.load(repository_file)
+    with packaged_config.open("rb") as packaged_file:
+        packaged_settings = tomllib.load(packaged_file)
+
+    assert packaged_settings == repository_settings

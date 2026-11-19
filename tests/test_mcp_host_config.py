@@ -2,16 +2,16 @@ import json
 
 import pytest
 
-from mcp_host_config import (
-    build_agentloop_launch_command,
+from devsentinel.mcp.mcp_host_config import (
+    build_devsentinel_launch_command,
     build_mcp_host_config,
     mcp_host_config_to_json,
     quote_command_part,
 )
 
 
-def test_build_agentloop_launch_command_uses_absolute_server_path():
-    command = build_agentloop_launch_command(
+def test_build_devsentinel_launch_command_uses_absolute_server_path():
+    command = build_devsentinel_launch_command(
         server_script_path="run_mcp_server.py",
         python_executable="python",
     )
@@ -27,8 +27,8 @@ def test_build_agentloop_launch_command_uses_absolute_server_path():
     assert "--report-path" in command.args
 
 
-def test_build_agentloop_launch_command_adds_knowledge_path():
-    command = build_agentloop_launch_command(
+def test_build_devsentinel_launch_command_adds_knowledge_path():
+    command = build_devsentinel_launch_command(
         server_script_path="run_mcp_server.py",
         knowledge_path="./knowledge_base_noisy",
         python_executable="python",
@@ -41,24 +41,24 @@ def test_build_agentloop_launch_command_adds_knowledge_path():
 def test_build_cursor_mcp_config():
     config = build_mcp_host_config(
         host="cursor",
-        server_name="agentloop",
+        server_name="devsentinel",
         server_script_path="run_mcp_server.py",
         python_executable="python",
     )
 
-    assert config["mcpServers"]["agentloop"]["command"] == "python"
-    assert "run_mcp_server.py" in config["mcpServers"]["agentloop"]["args"][0]
+    assert config["mcpServers"]["devsentinel"]["command"] == "python"
+    assert "run_mcp_server.py" in config["mcpServers"]["devsentinel"]["args"][0]
 
 
 def test_build_claude_desktop_mcp_config_has_stdio_type():
     config = build_mcp_host_config(
         host="claude-desktop",
-        server_name="agentloop",
+        server_name="devsentinel",
         server_script_path="run_mcp_server.py",
         python_executable="python",
     )
 
-    server = config["mcpServers"]["agentloop"]
+    server = config["mcpServers"]["devsentinel"]
 
     assert server["type"] == "stdio"
     assert server["command"] == "python"
@@ -67,25 +67,25 @@ def test_build_claude_desktop_mcp_config_has_stdio_type():
 def test_build_vscode_mcp_config_uses_servers_key():
     config = build_mcp_host_config(
         host="vscode",
-        server_name="agentloop",
+        server_name="devsentinel",
         server_script_path="run_mcp_server.py",
         python_executable="python",
     )
 
     assert "servers" in config
-    assert config["servers"]["agentloop"]["type"] == "stdio"
+    assert config["servers"]["devsentinel"]["type"] == "stdio"
 
 
 def test_build_claude_code_mcp_command():
     command = build_mcp_host_config(
         host="claude-code",
-        server_name="agentloop",
+        server_name="devsentinel",
         server_script_path="run_mcp_server.py",
         python_executable="python",
     )
 
     assert command.startswith(
-        "claude mcp add agentloop -- python "
+        "claude mcp add devsentinel -- python "
     )
     assert "run_mcp_server.py" in command
 
@@ -100,7 +100,7 @@ def test_build_mcp_host_config_rejects_unknown_host():
 def test_mcp_host_config_to_json_serializes_config():
     config = build_mcp_host_config(
         host="cursor",
-        server_name="agentloop",
+        server_name="devsentinel",
         server_script_path="run_mcp_server.py",
         python_executable="python",
     )

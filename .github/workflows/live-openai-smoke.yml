@@ -1,0 +1,22 @@
+name: Live OpenAI Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - name: Verify real OpenAI review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEVSENTINEL_OPENAI_MODEL: ${{ vars.DEVSENTINEL_OPENAI_MODEL }}
+        run: python -m devsentinel.cli.run_live_openai_smoke --model "$DEVSENTINEL_OPENAI_MODEL"

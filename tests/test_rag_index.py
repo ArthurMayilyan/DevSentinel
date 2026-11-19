@@ -1,4 +1,4 @@
-from build_rag_index import run_from_args
+from devsentinel.cli.build_rag_index import run_from_args
 
 
 def test_run_from_args_builds_rag_index_file(tmp_path):

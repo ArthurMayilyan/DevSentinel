@@ -1,4 +1,4 @@
-from cli_defaults import (
+from devsentinel.cli.cli_defaults import (
     DEMO_CLI_DEFAULT_MAX_STEPS,
     OPENAI_CLI_DEFAULT_MAX_OUTPUT_TOKENS,
     OPENAI_CLI_DEFAULT_MAX_STEPS,

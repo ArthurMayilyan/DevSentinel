@@ -1,11 +1,11 @@
 import json
 from pathlib import Path
 
-from ask_rag import (
+from devsentinel.cli.ask_rag import (
     format_rag_answer_text,
     run_from_args,
 )
-from rag_defaults import (
+from devsentinel.rag.rag_defaults import (
     DEFAULT_RAG_TOP_K,
 )
 

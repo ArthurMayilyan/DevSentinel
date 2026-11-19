@@ -1,16 +1,16 @@
 {
   "servers": {
-    "agentloop": {
+    "devsentinel": {
       "type": "stdio",
       "command": "C:\\Program Files\\Python311\\python.exe",
       "args": [
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\run_mcp_server.py",
+        "D:\\Projects\\DevSentinel\\run_mcp_server.py",
         "--transport",
         "stdio",
         "--knowledge-path",
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\knowledge_base\\security",
+        "D:\\Projects\\DevSentinel\\knowledge_base\\security",
         "--report-path",
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\mcp_host_report.md"
+        "D:\\Projects\\DevSentinel\\mcp_host_report.md"
       ],
       "env": {}
     }

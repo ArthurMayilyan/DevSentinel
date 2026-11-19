@@ -1,6 +1,6 @@
 import pytest
 
-from tool_path_utils import normalize_tool_path
+from devsentinel.core.tool_path_utils import normalize_tool_path
 
 
 def test_normalize_tool_path_keeps_posix_path():

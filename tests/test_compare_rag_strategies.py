@@ -2,7 +2,7 @@ import pytest
 import json
 import argparse
 
-from compare_rag_strategies import (
+from devsentinel.cli.compare_rag_strategies import (
     build_arg_parser,
     build_candidate_strategy_decision,
     build_candidate_strategy_decisions,

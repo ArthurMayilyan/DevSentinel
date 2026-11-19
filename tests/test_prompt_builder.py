@@ -1,4 +1,4 @@
-from prompt_builder import PromptBuilder
+from devsentinel.core.prompt_builder import PromptBuilder
 
 
 def test_prompt_builder_includes_tools_description():
@@ -91,9 +91,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from agent import Agent
-from prompt_builder import PromptBuilder
-from trace import TraceRecorder
+from devsentinel.core.agent import Agent
+from devsentinel.core.prompt_builder import PromptBuilder
+from devsentinel.core.trace import TraceRecorder
 
 
 class DummyLLM:

@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from agent_modes import AGENT_MODE_CODE_REVIEW, AGENT_MODE_RAG_QA
-from agent_runtime import (
+from devsentinel.core.agent_modes import AGENT_MODE_CODE_REVIEW, AGENT_MODE_RAG_QA
+from devsentinel.core.agent_runtime import (
     AgentRuntimeRequest,
     agent_runtime_result_to_dict,
     run_agent_runtime,

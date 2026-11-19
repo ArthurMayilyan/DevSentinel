@@ -1,4 +1,4 @@
-from mcp_tool_catalog import (
+from devsentinel.mcp.mcp_tool_catalog import (
     build_all_mcp_tool_specs,
     build_review_project_tool_spec,
     build_review_workspace_tool_spec,
@@ -184,7 +184,7 @@ def test_review_workspace_tool_spec_has_workspace_inputs():
         "workspace_path",
     ]
 
-    # Presets come from agentloop.toml and the MCP
+    # Presets come from devsentinel.toml and the MCP
     # catalog exposes them in deterministic sorted order.
     assert properties["preset"]["enum"] == [
         "general-security",

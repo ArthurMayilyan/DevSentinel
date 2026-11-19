@@ -1,6 +1,6 @@
 import json
 
-from openai_review_reviewer import (
+from devsentinel.llm.openai_review_reviewer import (
     OpenAIReviewReviewer,
     extract_openai_response_text,
     parse_review_findings_json,

@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from rag_eval_loader import (
+from devsentinel.rag.rag_eval_loader import (
     RAG_RETRIEVAL_EVAL_CASE_FIELDS,
     load_rag_retrieval_eval_cases_from_json_file,
     parse_rag_retrieval_eval_case,

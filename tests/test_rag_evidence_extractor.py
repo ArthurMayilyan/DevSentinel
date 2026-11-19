@@ -1,8 +1,8 @@
-from rag_evidence_extractor import (
+from devsentinel.rag.rag_evidence_extractor import (
     extract_all_evidence,
     extract_latest_evidence,
 )
-from rag_evidence_extractor import extract_all_evidence_with_provenance
+from devsentinel.rag.rag_evidence_extractor import extract_all_evidence_with_provenance
 
 
 def test_extract_latest_evidence_returns_latest_tool_result():

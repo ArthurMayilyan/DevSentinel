@@ -1,7 +1,7 @@
 import pytest
 import json
 
-from rag_answer_eval import (
+from devsentinel.rag.rag_answer_eval import (
     RagAnswerEvalCase,
     RagAnswerEvidence,
     answer_contains,
@@ -11,7 +11,7 @@ from rag_answer_eval import (
     evaluate_rag_answers,
     source_contains,
 )
-from rag_store import InMemoryRagStore
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 def build_test_store() -> InMemoryRagStore:
@@ -253,7 +253,7 @@ def test_build_rag_answer_rejects_non_string_answer():
         )
 
 def test_load_rag_answer_eval_cases_from_json_file_loads_cases(tmp_path):
-    from rag_answer_eval import load_rag_answer_eval_cases_from_json_file
+    from devsentinel.rag.rag_answer_eval import load_rag_answer_eval_cases_from_json_file
 
     cases_path = tmp_path / "rag_answer_eval_cases.json"
     cases_path.write_text(
@@ -282,7 +282,7 @@ def test_load_rag_answer_eval_cases_from_json_file_loads_cases(tmp_path):
 
 
 def test_load_rag_answer_eval_cases_from_json_file_rejects_non_list(tmp_path):
-    from rag_answer_eval import load_rag_answer_eval_cases_from_json_file
+    from devsentinel.rag.rag_answer_eval import load_rag_answer_eval_cases_from_json_file
 
     cases_path = tmp_path / "rag_answer_eval_cases.json"
     cases_path.write_text(
@@ -301,7 +301,7 @@ def test_load_rag_answer_eval_cases_from_json_file_rejects_non_list(tmp_path):
 
 
 def test_load_rag_answer_eval_cases_from_json_file_rejects_missing_field(tmp_path):
-    from rag_answer_eval import load_rag_answer_eval_cases_from_json_file
+    from devsentinel.rag.rag_answer_eval import load_rag_answer_eval_cases_from_json_file
 
     cases_path = tmp_path / "rag_answer_eval_cases.json"
     cases_path.write_text(

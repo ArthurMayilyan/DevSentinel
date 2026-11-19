@@ -1,4 +1,4 @@
-from finding_types import (
+from devsentinel.review.finding_types import (
     FINDING_TYPE_SECURITY_DEBUG_MODE,
     FINDING_TYPE_SECURITY_HARDCODED_ADMIN_CREDENTIALS,
     FINDING_TYPE_SECURITY_HARDCODED_SECRET,

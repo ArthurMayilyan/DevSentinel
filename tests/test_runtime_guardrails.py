@@ -1,23 +1,23 @@
 import json
 import sys
 from pathlib import Path
-from agent import Agent
-from tool_specs import TOOL_SPECS
-from agent_config import AgentConfig
+from devsentinel.core.agent import Agent
+from devsentinel.core.tool_specs import TOOL_SPECS
+from devsentinel.core.agent_config import AgentConfig
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from agent import Agent
-from bad_llm import bad_final_answer_too_early_then_recovers
-from evaluator import evaluate_run, load_json
-from trace import TraceRecorder
-from agent_stop_reasons import (
+from devsentinel.core.agent import Agent
+from devsentinel.llm.bad_llm import bad_final_answer_too_early_then_recovers
+from devsentinel.core.evaluator import evaluate_run, load_json
+from devsentinel.core.trace import TraceRecorder
+from devsentinel.core.agent_stop_reasons import (
     STOP_REJECTED_FINAL_ANSWERS,
     STOP_REJECTED_TOOL_CALLS,
     STOP_INVALID_LLM_OUTPUTS,
 )
-from bad_llm import (
+from devsentinel.llm.bad_llm import (
     bad_final_answer_too_early_then_recovers,
     bad_unknown_tool_then_recovers,
     bad_write_report_with_markdown_then_completes,

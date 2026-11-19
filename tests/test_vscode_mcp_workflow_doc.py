@@ -12,7 +12,7 @@ def test_vscode_mcp_workflow_doc_exists_and_mentions_product_workflow():
         encoding="utf-8",
     )
 
-    assert "AgentLoop MCP in VS Code" in content
+    assert "DevSentinel MCP in VS Code" in content
     assert ".vscode/mcp.json" in content
 
     assert "list_files" in content
@@ -27,7 +27,7 @@ def test_vscode_mcp_workflow_doc_exists_and_mentions_product_workflow():
     assert "Manual fallback prompt" in content
     assert "Real repository workflow prompt" in content
 
-    assert "/mcp.agentloop.review_project" in content
+    assert "/mcp.devsentinel.review_project" in content
     assert "allowed_root" in content
     assert "include_globs" in content
     assert "exclude_globs" in content

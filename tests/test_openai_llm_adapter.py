@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from openai_llm_adapter import (
+from devsentinel.llm.openai_llm_adapter import (
     AGENT_OUTPUT_JSON_SCHEMA,
     DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
     DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS,
@@ -119,7 +119,7 @@ def test_openai_adapter_calls_responses_api_with_json_schema_format():
     assert call["model"] == "test-model"
     assert call["input"] == messages
     assert call["text"]["format"]["type"] == "json_schema"
-    assert call["text"]["format"]["name"] == "agent_loop_output"
+    assert call["text"]["format"]["name"] == "devsentinel_output"
     assert call["text"]["format"]["strict"] is True
 
 

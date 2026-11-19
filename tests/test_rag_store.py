@@ -1,6 +1,6 @@
 import pytest
 
-from rag_store import (
+from devsentinel.rag.rag_store import (
     InMemoryRagStore,
     RetrievedChunk,
     chunk_text,

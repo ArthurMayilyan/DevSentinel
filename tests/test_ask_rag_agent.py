@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from ask_rag_agent import (
+from devsentinel.cli.ask_rag_agent import (
     format_agent_rag_answer,
     run_from_args,
 )
