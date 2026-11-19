@@ -2,10 +2,10 @@ from argparse import Namespace
 
 import pytest
 
-from cli_llm import build_llm_from_args
-from demo_llm import DemoCodeReviewLLM
-from openai_llm_adapter import OpenAILLMAdapter
-from cli_defaults import (
+from devsentinel.cli.cli_llm import build_llm_from_args
+from devsentinel.llm.demo_llm import DemoCodeReviewLLM
+from devsentinel.llm.openai_llm_adapter import OpenAILLMAdapter
+from devsentinel.cli.cli_defaults import (
     OPENAI_CLI_DEFAULT_MAX_OUTPUT_TOKENS,
     OPENAI_CLI_DEFAULT_REQUEST_TIMEOUT_SECONDS,
 )

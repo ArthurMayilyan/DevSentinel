@@ -1,6 +1,6 @@
-# AgentLoop
+# DevSentinel
 
-AgentLoop is a local AI-assisted engineering review platform built to explore and demonstrate modern agentic engineering from first principles.
+DevSentinel is a local AI-assisted engineering review platform built to explore and demonstrate modern agentic engineering from first principles.
 
 It combines:
 
@@ -15,11 +15,32 @@ It combines:
 
 The project is best described as an **engineering-grade / production-oriented prototype**, not a commercial security scanner.
 
+## Repository layout
+
+```text
+devsentinel/
+  cli/       Command-line workflows and evaluation runners
+  config/    Application and reviewer settings
+  core/      Agent runtime, tools, prompts, and traces
+  llm/       Model adapters and test implementations
+  mcp/       MCP server, tools, prompts, and host configuration
+  rag/       Retrieval, indexing, QA, and RAG evaluation
+  review/    Workspace and Git review workflows and artifacts
+  ui/        Web server and static assets
+tests/       Automated tests and fixtures
+docs/        MCP workflow and architecture notes
+```
+
+`run_mcp_server.py` and `web_ui.py` are small launchers for existing local
+MCP and Web UI configurations. Other commands run as package modules, for
+example `python -m devsentinel.cli.run_agent --help`. The package can also be
+installed with `pip install -e ".[dev]"` to use the `devsentinel-*` commands.
+
 ---
 
 ## 1. Main use cases
 
-AgentLoop currently supports four practical workflows:
+DevSentinel currently supports four practical workflows:
 
 1. **Workspace review** — review a project directory using a review preset.
 2. **Git diff review** — review only files changed between Git revisions.
@@ -32,42 +53,51 @@ For daily engineering work, prefer **Git diff** or **staged review** over a full
 
 ## 2. Project location used in the examples
 
-The examples below assume:
+The examples below assume this checkout path:
 
 ```text
-D:\Projects\AgentLoop\agent_loop_from_scratch
+D:\Projects\DevSentinel
 ```
 
-Run shell commands from the project root unless noted otherwise.
+Replace this path with your checkout location. Run shell commands from the
+project root unless noted otherwise. Branch names and commit IDs in later
+examples are placeholders; use refs that exist in your repository.
 
 ---
 
 ## 3. Runtime requirements
 
-The project has been developed and tested with Python 3.11.
-
-Example Python executable used by the VS Code MCP configuration:
-
-```text
-C:\Program Files\Python311\python.exe
-```
-
-Use the existing project environment/dependency setup for the checkout.
-
-Before using AgentLoop, verify the environment:
+Use Python 3.11 or newer. Git is required for Git diff and staged review.
+From a checkout, create an environment and install the package and its test
+dependencies:
 
 ```powershell
+Set-Location D:\Projects\DevSentinel
 python --version
+git --version
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+`requirements.txt` installs this checkout in editable mode with the `dev`
+extras from `pyproject.toml`. If PowerShell blocks activation, run commands
+with `.\.venv\Scripts\python.exe` in place of `python`.
+
+On macOS or Linux, use `python3 -m venv .venv` and
+`source .venv/bin/activate`, then run the same pip command. Later examples use
+PowerShell syntax; use `/` paths and your shell's line continuation syntax on
+macOS or Linux.
+
+Check the installation without an API key:
+
+```powershell
+python -m devsentinel.cli.run_agent --preset code-review --path .\sample_project --print-task
 python -m pytest -q
 ```
 
-The project also includes a combined CI/evaluation check:
-
-```powershell
-python scripts/run_ci_checks.py
-```
-
-A healthy run should finish with the pytest suite passing and the eval suite reporting:
+Then start the Web UI as shown in section 6. The combined test and evaluation
+command is `python scripts/run_ci_checks.py`; a healthy run reports:
 
 ```text
 overall: passed
@@ -81,9 +111,10 @@ agent: passed
 
 ## 4. OpenAI configuration
 
-OpenAI-backed workflows require an API key.
+OpenAI-backed workflows require an API key. The deterministic reviewer, demo
+agent, and local tests run without one.
 
-Create a local `.env` file in the project root:
+Create a local `.env` file in the project root before using the OpenAI reviewer:
 
 ```dotenv
 OPENAI_API_KEY=your-key-here
@@ -91,22 +122,34 @@ OPENAI_API_KEY=your-key-here
 
 Do **not** commit `.env`.
 
+Before using `reviewer: openai`, set `[openai].model` in `devsentinel.toml`
+or `DEVSENTINEL_OPENAI_MODEL` to a model available to your API account.
+Before a release that uses OpenAI review, run the real integration check:
+
+```powershell
+python -m devsentinel.cli.run_live_openai_smoke --model YOUR_MODEL_ID
+```
+
+This command requires `OPENAI_API_KEY` and makes a live API request. The
+`Live OpenAI Smoke` GitHub Actions workflow can run the same check manually
+when its API key secret and model variable are configured.
+
 The project loads non-secret runtime settings from:
 
 ```text
-agentloop.toml
+devsentinel.toml
 ```
 
 Secrets such as `OPENAI_API_KEY` stay outside TOML.
 
 ### Configuration precedence
 
-AgentLoop follows this general precedence:
+DevSentinel follows this general precedence:
 
 ```text
 1. Explicit CLI / MCP argument
 2. Environment variable
-3. agentloop.toml
+3. devsentinel.toml
 4. Built-in fallback
 ```
 
@@ -148,7 +191,9 @@ reviews_dir_name = "reviews"
 comparisons_dir_name = "comparisons"
 ```
 
-The repository's actual `agentloop.toml` is authoritative.
+The repository's actual `devsentinel.toml` is authoritative.
+Installed packages use bundled defaults when the repository config is absent;
+set `DEVSENTINEL_CONFIG_PATH` to load a different TOML file.
 
 ---
 
@@ -186,7 +231,7 @@ The deterministic reviewer remains pattern-based and may still produce lexical f
 
 ---
 
-# 6. Recommended way to use AgentLoop: Web UI
+# 6. Recommended way to use DevSentinel: Web UI
 
 Start the local UI with the security knowledge base:
 
@@ -199,6 +244,14 @@ The browser should open automatically at:
 ```text
 http://127.0.0.1:8765/
 ```
+
+The browser asks for Basic authentication. Use username `devsentinel` and
+the generated password printed in the terminal. Set `DEVSENTINEL_WEB_TOKEN`
+before starting the server to use a stable password. The built-in server binds
+only to a loopback address.
+
+Press `Ctrl+C` in the terminal to stop the server. For a first review, choose
+`Workspace`, `python-security`, and `deterministic`; this needs no API key.
 
 To avoid opening the browser automatically:
 
@@ -218,7 +271,7 @@ In the UI:
 
 ```text
 Repository / Workspace:
-D:\Projects\AgentLoop\agent_loop_from_scratch
+D:\Projects\DevSentinel
 
 Review mode:
 Workspace
@@ -238,6 +291,8 @@ openai
 ```
 
 The result page shows reviewed/selected files, skipped files, finding count, run ID, run directory, and a link to the HTML report.
+If the scan limit is reached, the summary says the results are incomplete;
+narrow the workspace or preset scope and run the review again.
 
 ## Git diff review
 
@@ -283,13 +338,12 @@ Preset: python-security
 Reviewer: deterministic
 ```
 
-AgentLoop reads the **Git index snapshot**, not the unstaged working-tree version.
+DevSentinel reads the **Git index snapshot**, not the unstaged working-tree version.
 
-After a temporary staged test:
+To undo staging after a temporary test, while keeping your file edits:
 
 ```powershell
 git restore --staged path\to\file.py
-git restore path\to\file.py
 ```
 
 ## Review history
@@ -300,30 +354,38 @@ Click `Refresh History` to show recent review runs and links to HTML reports.
 
 # 7. VS Code / MCP setup
 
-AgentLoop exposes a local stdio MCP server.
+DevSentinel exposes a local stdio MCP server.
 
-Use:
+Use the checked-in configuration:
 
 ```text
 .vscode\mcp.json
 ```
+
+Before starting the server, edit `command` to the Python executable where you
+installed DevSentinel and update every absolute path if your checkout is
+elsewhere. The checked-in file uses `C:\Program Files\Python311\python.exe`;
+if you followed section 3, set `command` to
+`D:\Projects\DevSentinel\.venv\Scripts\python.exe` (adjusting the checkout
+path). A VS Code MCP server runs in its own process, so choosing the same
+interpreter matters.
 
 Example configuration:
 
 ```json
 {
   "servers": {
-    "agentloop": {
+    "devsentinel": {
       "type": "stdio",
-      "command": "C:\\Program Files\\Python311\\python.exe",
+      "command": "D:\\Projects\\DevSentinel\\.venv\\Scripts\\python.exe",
       "args": [
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\run_mcp_server.py",
+        "D:\\Projects\\DevSentinel\\run_mcp_server.py",
         "--transport",
         "stdio",
         "--knowledge-path",
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\knowledge_base\\security",
+        "D:\\Projects\\DevSentinel\\knowledge_base\\security",
         "--report-path",
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\mcp_host_report.md"
+        "D:\\Projects\\DevSentinel\\mcp_host_report.md"
       ],
       "env": {}
     }
@@ -341,10 +403,16 @@ In VS Code:
 
 1. Open Command Palette.
 2. Run `MCP: List Servers`.
-3. Select/start/restart `agentloop`.
+3. Select/start/restart `devsentinel`.
 4. Open Copilot Chat.
 5. Use Agent mode.
-6. Confirm AgentLoop tools are available.
+6. Confirm DevSentinel tools are available.
+
+For OpenAI review through MCP, make `OPENAI_API_KEY` available to the MCP
+process. Do not put a key in the checked-in JSON file. The `.env` loader reads
+from the process working directory, so verify that VS Code starts the server
+from the project root or set the variable in the environment that launches VS
+Code.
 
 Current product-level tools include:
 
@@ -370,7 +438,7 @@ The examples below are prompts for VS Code / Copilot Agent mode.
 ## 8.1 Search the security knowledge base
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call search_knowledge with:
 - query: security review false positives detector SECRET_KEY debug token terminology
@@ -381,7 +449,7 @@ Return the retrieved evidence and source files.
 JWT/authentication example:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call search_knowledge with:
 - query: JWT bearer token signature issuer audience expiration authentication
@@ -394,10 +462,10 @@ Return the retrieved evidence and source files.
 ## 8.2 Review an entire workspace
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call review_workspace with:
-- workspace_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- workspace_path: D:\Projects\DevSentinel
 - preset: python-security
 - reviewer: deterministic
 
@@ -415,10 +483,10 @@ Return only:
 OpenAI/contextual version:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call review_workspace with:
-- workspace_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- workspace_path: D:\Projects\DevSentinel
 - preset: python-security
 - reviewer: openai
 
@@ -434,10 +502,10 @@ A full OpenAI workspace review can be slow on a large repository. Prefer Git dif
 For a branch `dev` containing changes relative to `main`:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - base_ref: main
 - target_ref: dev
 - preset: python-security
@@ -456,7 +524,7 @@ Return only:
 - HTML report path
 ```
 
-AgentLoop uses PR-style triple-dot semantics:
+DevSentinel uses PR-style triple-dot semantics:
 
 ```text
 main...dev
@@ -474,15 +542,16 @@ git --no-pager diff --name-status main...dev
 
 Use a smaller commit range when a large OpenAI diff review exceeds the MCP host timeout.
 
-Example from AgentLoop development history:
+The example below reviews the latest commit when the repository has at least
+two commits. Check the refs with `git rev-parse HEAD~1 HEAD`:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
-- base_ref: 65d0c84
-- target_ref: 2d3f07d
+- repository_path: D:\Projects\DevSentinel
+- base_ref: HEAD~1
+- target_ref: HEAD
 - preset: python-security
 - reviewer: openai
 
@@ -505,10 +574,10 @@ Return only:
 ## 8.5 Review staged changes
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - staged_only: true
 - preset: python-security
 - reviewer: deterministic
@@ -549,7 +618,7 @@ general-security
 
 Use `python-security` for Python source review, `typescript-security` for TypeScript/JavaScript review, and `general-security` for mixed-language projects.
 
-Preset file patterns and limits live in `agentloop.toml`.
+Preset file patterns and limits live in `devsentinel.toml`.
 
 ---
 
@@ -591,7 +660,7 @@ The project still supports lower-level CLI execution for experimentation and deb
 ## Classic code-review preset
 
 ```powershell
-python run_agent.py `
+python -m devsentinel.cli.run_agent `
   --preset code-review `
   --path .\sample_project `
   --llm demo `
@@ -601,7 +670,7 @@ python run_agent.py `
 Preview the generated task without running:
 
 ```powershell
-python run_agent.py `
+python -m devsentinel.cli.run_agent `
   --preset code-review `
   --path .\sample_project `
   --print-task
@@ -610,7 +679,7 @@ python run_agent.py `
 Run an explicit task:
 
 ```powershell
-python run_agent.py `
+python -m devsentinel.cli.run_agent `
   --task "Review the sample project." `
   --llm demo `
   --max-steps 20
@@ -625,7 +694,7 @@ The lower-level CLI writes trace/run-summary artifacts and is useful for debuggi
 List modes:
 
 ```powershell
-python run_agent_mode.py --list-modes
+python -m devsentinel.cli.run_agent_mode --list-modes
 ```
 
 The project supports at least:
@@ -638,7 +707,7 @@ rag_qa
 Unified code review:
 
 ```powershell
-python run_agent_mode.py `
+python -m devsentinel.cli.run_agent_mode `
   --mode code_review `
   --preset code-review `
   --path .\sample_project `
@@ -649,7 +718,7 @@ python run_agent_mode.py `
 Unified RAG QA:
 
 ```powershell
-python run_agent_mode.py `
+python -m devsentinel.cli.run_agent_mode `
   --mode rag_qa `
   --task "What does the security policy say about token expiration?" `
   --knowledge-path .\knowledge_base\security
@@ -658,7 +727,7 @@ python run_agent_mode.py `
 For current options:
 
 ```powershell
-python run_agent_mode.py --help
+python -m devsentinel.cli.run_agent_mode --help
 ```
 
 ---
@@ -668,7 +737,7 @@ python run_agent_mode.py --help
 Example:
 
 ```powershell
-python run_mcp_client_smoke.py `
+python -m devsentinel.cli.run_mcp_client_smoke `
   --project-path .\sample_project `
   --knowledge-path .\knowledge_base\security `
   --report-path .\mcp_host_report.md
@@ -677,7 +746,7 @@ python run_mcp_client_smoke.py `
 Machine-readable output:
 
 ```powershell
-python run_mcp_client_smoke.py `
+python -m devsentinel.cli.run_mcp_client_smoke `
   --project-path .\sample_project `
   --knowledge-path .\knowledge_base\security `
   --report-path .\mcp_host_report.md `
@@ -716,7 +785,7 @@ reviews\
 A run ID contains a timestamp and metadata, for example:
 
 ```text
-20260818_151954_505700_agent_loop_from_scratch_security_openai
+20260818_151954_505700_DevSentinel_security_openai
 ```
 
 The HTML report is usually the easiest artifact to inspect manually.
@@ -908,7 +977,7 @@ without a stale index.
 
 # 19. Known limitations
 
-AgentLoop intentionally stops short of a commercial/enterprise security platform.
+DevSentinel intentionally stops short of a commercial/enterprise security platform.
 
 Current limitations include:
 
@@ -930,7 +999,7 @@ Current limitations include:
 For normal local development:
 
 ```text
-1. Keep agentloop.toml under version control.
+1. Keep devsentinel.toml under version control.
 2. Keep .env private.
 3. Keep production security guidance in knowledge_base\security.
 4. Use Web UI for convenient local reviews.
@@ -939,7 +1008,7 @@ For normal local development:
 7. Use deterministic review as the baseline.
 8. Use OpenAI review for contextual follow-up.
 9. Inspect finding evidence and report.html before acting.
-10. Run tests/evals after modifying AgentLoop itself.
+10. Run tests/evals after modifying DevSentinel itself.
 ```
 
 ---
@@ -978,6 +1047,16 @@ git --no-pager diff --name-status main...dev
 
 ## Start MCP server manually
 
+Use `--describe` to check the launcher without starting a long-running
+server:
+
+```powershell
+python run_mcp_server.py --describe
+```
+
+The stdio command below waits for an MCP client. It is intended for an editor
+or MCP host, so it will not display an interactive prompt:
+
 ```powershell
 python run_mcp_server.py `
   --transport stdio `
@@ -989,7 +1068,7 @@ python run_mcp_server.py `
 
 ```text
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - base_ref: main
 - target_ref: dev
 - preset: python-security
@@ -1000,7 +1079,7 @@ Call review_git_diff with:
 
 ```text
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - staged_only: true
 - preset: python-security
 - reviewer: deterministic
@@ -1010,7 +1089,7 @@ Call review_git_diff with:
 
 ```text
 Call review_git_diff with:
-- repository_path: D:\Projects\AgentLoop\agent_loop_from_scratch
+- repository_path: D:\Projects\DevSentinel
 - base_ref: <base>
 - target_ref: <target>
 - preset: python-security

@@ -2,17 +2,17 @@ import pytest
 import json
 from pathlib import Path
 
-from agent import Agent
-from agent_config import AgentConfig
-from agent_run_result import AgentRunResult
-from agent_stop_reasons import (
+from devsentinel.core.agent import Agent
+from devsentinel.core.agent_config import AgentConfig
+from devsentinel.core.agent_run_result import AgentRunResult
+from devsentinel.core.agent_stop_reasons import (
     STOP_CODE_INVALID_LLM_OUTPUTS,
     STOP_CODE_MAX_STEPS,
     STOP_INVALID_LLM_OUTPUTS,
     STOP_MAX_STEPS,
 )
-from trace import TraceRecorder
-from rag_store import InMemoryRagStore
+from devsentinel.core.trace import TraceRecorder
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 class CallsSearchKnowledgeWithoutRagStoreLLM:

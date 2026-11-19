@@ -1,6 +1,6 @@
 import pytest
 
-from rag_loader import (
+from devsentinel.rag.rag_loader import (
     SUPPORTED_KNOWLEDGE_FILE_SUFFIXES,
     is_supported_knowledge_file,
     iter_knowledge_files,

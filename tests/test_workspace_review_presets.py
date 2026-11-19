@@ -1,6 +1,6 @@
 import pytest
 
-from workspace_review_presets import (
+from devsentinel.review.workspace_review_presets import (
     WORKSPACE_PRESET_GENERAL_SECURITY,
     WORKSPACE_PRESET_PYTHON_SECURITY,
     WORKSPACE_PRESET_TYPESCRIPT_SECURITY,

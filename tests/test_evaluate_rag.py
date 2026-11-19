@@ -1,18 +1,18 @@
 import json
 import pytest
 
-from evaluate_rag import (
+from devsentinel.cli.evaluate_rag import (
     build_arg_parser,
     build_rag_search_engine,
     format_rag_eval_summary,
     run_rag_eval_from_args,
 )
-from rag_retrievers import (
+from devsentinel.rag.rag_retrievers import (
     BinaryOverlapRagRetriever,
     HybridLexicalRagRetriever,
     TermFrequencyRagRetriever,
 )
-from rag_store import InMemoryRagStore
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 def test_format_rag_eval_summary_includes_mrr_threshold():

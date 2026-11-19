@@ -1,6 +1,6 @@
 import pytest
 
-from openai_rag_qa_llm import OpenAIRagQaLLM
+from devsentinel.llm.openai_rag_qa_llm import OpenAIRagQaLLM
 
 
 class FakeInvalidOpenAIResponse:

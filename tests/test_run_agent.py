@@ -2,8 +2,8 @@ import json
 import pytest
 from pathlib import Path
 
-from run_agent import build_summary_path, run_agent_from_args
-from trace import TraceRecorder
+from devsentinel.cli.run_agent import build_summary_path, run_agent_from_args
+from devsentinel.core.trace import TraceRecorder
 
 
 def test_build_summary_path_uses_trace_path_stem():
@@ -85,8 +85,7 @@ def test_run_agent_from_args_accepts_explicit_demo_llm():
     assert output["answer"] == "Review complete. Report written to report.md."    
 
 def test_main_prints_json_error_and_exits(monkeypatch, capsys):
-    import run_agent
-
+    import devsentinel.cli.run_agent as run_agent
     def fake_run_agent_from_args():
         raise ValueError("Something went wrong.")
 
@@ -109,8 +108,7 @@ def test_main_prints_json_error_and_exits(monkeypatch, capsys):
     }
 
 def test_main_prints_json_interrupted_output_and_exits(monkeypatch, capsys):
-    import run_agent
-
+    import devsentinel.cli.run_agent as run_agent
     def fake_run_agent_from_args():
         raise KeyboardInterrupt()
 

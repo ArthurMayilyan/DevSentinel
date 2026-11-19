@@ -2,15 +2,32 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server_context import build_agent_loop_mcp_context
-from mcp_server_handlers import (
+from devsentinel.mcp.mcp_server_context import build_devsentinel_mcp_context
+from devsentinel.mcp.mcp_server_handlers import (
     mcp_add_finding,
     mcp_list_files,
+    mcp_review_project,
     mcp_read_file,
     mcp_search_in_files,
     mcp_search_knowledge,
     mcp_write_report,
 )
+
+
+def test_high_level_review_uses_its_own_context(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "hello.py").write_text("VALUE = 1\n", encoding="utf-8")
+    context = build_devsentinel_mcp_context(report_path=str(tmp_path / "report.md"))
+    mcp_add_finding(
+        context=context, file="old.py", severity="HIGH", category="SECURITY",
+        issue="Previous issue", evidence="Previous evidence", recommendation="Fix it",
+    )
+
+    result = mcp_review_project(context=context, project_path=str(project))
+
+    assert result["findings_count"] == 0
+    assert len(context.state.findings) == 1
 
 
 def test_mcp_list_files_returns_files_and_updates_state(tmp_path):
@@ -23,7 +40,7 @@ def test_mcp_list_files_returns_files_and_updates_state(tmp_path):
         encoding="utf-8",
     )
 
-    context = build_agent_loop_mcp_context()
+    context = build_devsentinel_mcp_context()
 
     files = mcp_list_files(
         context=context,
@@ -52,7 +69,7 @@ def test_mcp_read_file_returns_content_and_updates_state(tmp_path):
         encoding="utf-8",
     )
 
-    context = build_agent_loop_mcp_context()
+    context = build_devsentinel_mcp_context()
 
     content = mcp_read_file(
         context=context,
@@ -79,7 +96,7 @@ def test_mcp_search_in_files_returns_matches(tmp_path):
         encoding="utf-8",
     )
 
-    context = build_agent_loop_mcp_context()
+    context = build_devsentinel_mcp_context()
 
     results = mcp_search_in_files(
         context=context,
@@ -101,7 +118,7 @@ def test_mcp_search_in_files_returns_matches(tmp_path):
 
 
 def test_mcp_search_knowledge_requires_store():
-    context = build_agent_loop_mcp_context()
+    context = build_devsentinel_mcp_context()
 
     with pytest.raises(ValueError):
         mcp_search_knowledge(
@@ -120,7 +137,7 @@ def test_mcp_search_knowledge_returns_results(tmp_path):
         encoding="utf-8",
     )
 
-    context = build_agent_loop_mcp_context(
+    context = build_devsentinel_mcp_context(
         knowledge_path=str(
             knowledge_path,
         )
@@ -139,7 +156,7 @@ def test_mcp_search_knowledge_returns_results(tmp_path):
 
 
 def test_mcp_add_finding_updates_state():
-    context = build_agent_loop_mcp_context()
+    context = build_devsentinel_mcp_context()
 
     result = mcp_add_finding(
         context=context,
@@ -168,7 +185,7 @@ def test_mcp_add_finding_updates_state():
 def test_mcp_write_report_writes_report_from_state(tmp_path):
     report_path = tmp_path / "report.md"
 
-    context = build_agent_loop_mcp_context(
+    context = build_devsentinel_mcp_context(
         report_path=str(
             report_path,
         )
@@ -204,4 +221,4 @@ def test_mcp_write_report_writes_report_from_state(tmp_path):
         report_path,
     )
 
-    
+

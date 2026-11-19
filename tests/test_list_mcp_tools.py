@@ -1,6 +1,6 @@
 import json
 
-from list_mcp_tools import run_from_args
+from devsentinel.cli.list_mcp_tools import run_from_args
 
 
 def test_run_from_args_lists_all_tools():

@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from review_run_artifacts import (
+from devsentinel.review.review_run_artifacts import (
     build_review_run_id,
     create_review_run_package,
 )
@@ -122,7 +122,7 @@ def test_create_review_run_package_writes_all_artifacts(tmp_path):
         encoding="utf-8",
     )
 
-    assert "AgentLoop Review Report" in html_content
+    assert "DevSentinel Review Report" in html_content
     assert "Hardcoded credential risk." in html_content
     assert "gpt-5.6-luna" in html_content
 

@@ -1,6 +1,6 @@
 import pytest
 
-from agent_config import AgentConfig
+from devsentinel.core.agent_config import AgentConfig
 
 
 def test_agent_config_has_default_max_steps():

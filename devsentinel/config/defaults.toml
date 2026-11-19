@@ -1,0 +1,88 @@
+[openai]
+model = "gpt-5.6-luna"
+max_output_tokens = 500
+request_timeout_seconds = 30.0
+review_max_content_chars = 12000
+
+[cli]
+openai_max_steps = 15
+openai_max_output_tokens = 250
+openai_request_timeout_seconds = 10.0
+
+[runtime]
+agent_mode_max_steps = 4
+command_timeout_seconds = 120.0
+
+[agent]
+max_steps = 8
+max_rejected_final_answers = 3
+max_rejected_tool_calls = 5
+max_invalid_llm_outputs = 3
+
+[review]
+default_reviewer = "deterministic"
+max_findings = 5
+max_files = 200
+max_file_size_bytes = 200000
+
+[rag]
+top_k = 3
+chunk_max_chars = 1000
+chunk_overlap_chars = 100
+agent_max_steps = 4
+retrieval_strategy = "default"
+
+[artifacts]
+default_report_path = "report.md"
+reviews_dir_name = "reviews"
+comparisons_dir_name = "comparisons"
+
+[presets.python-security]
+profile = "security"
+include_globs = [
+    "**/*.py",
+]
+exclude_globs = [
+    ".venv/**",
+    "__pycache__/**",
+    ".pytest_cache/**",
+    "tests/**",
+    "dist/**",
+    "build/**",
+]
+max_files = 200
+max_file_size_bytes = 200000
+
+[presets.typescript-security]
+profile = "security"
+include_globs = [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+]
+exclude_globs = [
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    "tests/**",
+]
+max_files = 200
+max_file_size_bytes = 200000
+
+[presets.general-security]
+profile = "security"
+include_globs = []
+exclude_globs = [
+    ".git/**",
+    ".venv/**",
+    "node_modules/**",
+    "__pycache__/**",
+    ".pytest_cache/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+]
+max_files = 200
+max_file_size_bytes = 200000

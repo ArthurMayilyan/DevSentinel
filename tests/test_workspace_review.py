@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from mcp_server_context import (
-    build_agent_loop_mcp_context,
+from devsentinel.mcp.mcp_server_context import (
+    build_devsentinel_mcp_context,
 )
-from workspace_review import review_workspace
+from devsentinel.review.workspace_review import review_workspace
 
 
 def create_python_workspace(tmp_path):
@@ -29,7 +29,7 @@ def test_review_workspace_uses_python_security_preset(tmp_path):
         tmp_path,
     )
 
-    context = build_agent_loop_mcp_context()
+    context = build_devsentinel_mcp_context()
 
     result = review_workspace(
         context=context,
@@ -59,3 +59,23 @@ def test_review_workspace_uses_python_security_preset(tmp_path):
     assert Path(
         result["artifacts"]["report_html_path"],
     ).exists()
+
+
+def test_workspace_reviews_do_not_share_findings(tmp_path):
+    insecure = create_python_workspace(tmp_path)
+    clean = tmp_path / "clean"
+    clean.mkdir()
+    (clean / "hello.py").write_text("def hello():\n    return 1\n", encoding="utf-8")
+    context = build_devsentinel_mcp_context()
+
+    first = review_workspace(
+        context=context, workspace_path=str(insecure), reviews_dir=str(tmp_path / "runs")
+    )
+    second = review_workspace(
+        context=context, workspace_path=str(clean), reviews_dir=str(tmp_path / "runs")
+    )
+
+    assert first["findings_count"] > 0
+    assert second["findings_count"] == 0
+    assert first["report_path"] != second["report_path"]
+    assert Path(second["report_path"]).is_file()

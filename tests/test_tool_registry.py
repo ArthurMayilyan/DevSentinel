@@ -1,9 +1,9 @@
 import pytest
 
-from tool_contracts import TOOL_ARGUMENT_CONTRACTS
-from runtime_tool_registry import ToolRegistry
-from tool_specs import TOOL_SPECS
-from tool_registry import ToolSpec
+from devsentinel.core.tool_contracts import TOOL_ARGUMENT_CONTRACTS
+from devsentinel.core.runtime_tool_registry import ToolRegistry
+from devsentinel.core.tool_specs import TOOL_SPECS
+from devsentinel.core.tool_registry import ToolSpec
 
 
 def dummy_read_file(path: str) -> str:

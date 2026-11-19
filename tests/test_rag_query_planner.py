@@ -1,6 +1,6 @@
 import pytest
 
-from rag_query_planner import plan_rag_subqueries
+from devsentinel.rag.rag_query_planner import plan_rag_subqueries
 
 
 def test_plan_rag_subqueries_returns_original_query_for_simple_unknown_query():

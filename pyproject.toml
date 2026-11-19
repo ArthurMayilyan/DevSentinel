@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devsentinel"
+version = "0.1.0"
+description = "Local AI-assisted engineering review platform"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "python-dotenv",
+    "openai",
+    "mcp[cli]>=2,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+devsentinel-mcp = "devsentinel.cli.run_mcp_server:main"
+devsentinel-web = "devsentinel.ui.web_ui:main"
+devsentinel-agent = "devsentinel.cli.run_agent:main"
+devsentinel-agent-mode = "devsentinel.cli.run_agent_mode:main"
+devsentinel-eval = "devsentinel.cli.run_eval_suite:main"
+devsentinel-live-smoke = "devsentinel.cli.run_live_openai_smoke:main"
+
+[tool.setuptools.packages.find]
+include = ["devsentinel*"]
+
+[tool.setuptools.package-data]
+"devsentinel.config" = ["defaults.toml"]
+"devsentinel.ui" = ["static/*.html"]

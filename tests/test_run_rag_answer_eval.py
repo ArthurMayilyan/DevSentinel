@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from run_rag_answer_eval import (
+from devsentinel.cli.run_rag_answer_eval import (
     build_answer_quality_gate,
     build_output,
     extractive_answer_builder,
@@ -10,7 +10,7 @@ from run_rag_answer_eval import (
     run_from_args,
     should_fail_due_to_answer_quality_gate,
 )
-from rag_answer_eval import RagAnswerEvalSummary, RagAnswerEvalResult
+from devsentinel.rag.rag_answer_eval import RagAnswerEvalSummary, RagAnswerEvalResult
 
 
 def create_answer_eval_fixture(

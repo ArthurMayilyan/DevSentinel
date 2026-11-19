@@ -1,4 +1,4 @@
-from agent_stop_reasons import (
+from devsentinel.core.agent_stop_reasons import (
     STOP_CODE_MAX_STEPS,
     STOP_CODE_REJECTED_FINAL_ANSWERS,
     STOP_CODE_REJECTED_TOOL_CALLS,

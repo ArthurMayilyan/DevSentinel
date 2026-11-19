@@ -1,6 +1,6 @@
 import pytest
 
-from project_path_safety import (
+from devsentinel.review.project_path_safety import (
     resolve_project_path,
     select_project_files,
 )
@@ -88,4 +88,31 @@ def test_select_project_files_include_glob_matches_root_level_files(tmp_path):
         str(
             app_path.resolve(),
         )
-    ]    
+    ]
+
+
+def test_select_project_files_skips_symlinks_outside_root(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    outside = tmp_path / "outside.py"
+    outside.write_text("SECRET_KEY = 'outside'\n", encoding="utf-8")
+    link = project / "linked.py"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        pytest.skip("Creating file symlinks requires additional Windows privileges")
+
+    result = select_project_files(project_path=str(project), allowed_root=str(project))
+    assert str(link) not in result.files
+    assert str(link) in result.skipped_files
+
+
+def test_select_project_files_bounds_large_scans(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    for index in range(1010):
+        (project / f"ignored_{index}.bin").touch()
+
+    result = select_project_files(project_path=str(project), max_files=1)
+    assert result.scan_truncated is True
+    assert len(result.skipped_files) <= 1001

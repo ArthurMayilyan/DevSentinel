@@ -1,4 +1,4 @@
-from rag_evidence import (
+from devsentinel.rag.rag_evidence import (
     deduplicate_evidence_items,
     evidence_item_from_dict,
     evidence_item_to_dict,

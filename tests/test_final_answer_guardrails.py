@@ -1,6 +1,6 @@
-from agent import Agent
-from agent_state import AgentState
-from trace import TraceRecorder
+from devsentinel.core.agent import Agent
+from devsentinel.core.agent_state import AgentState
+from devsentinel.core.trace import TraceRecorder
 
 
 class DummyLLM:

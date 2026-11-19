@@ -1,4 +1,4 @@
-from mcp_product_content import (
+from devsentinel.mcp.mcp_product_content import (
     build_review_project_prompt,
 )
 
@@ -9,7 +9,7 @@ def test_review_project_prompt_uses_configuration(
 ):
     config_path = (
         tmp_path
-        / "agentloop.toml"
+        / "devsentinel.toml"
     )
 
     config_path.write_text(
@@ -40,7 +40,7 @@ max_file_size_bytes = 654321
     )
 
     monkeypatch.setenv(
-        "AGENTLOOP_CONFIG_PATH",
+        "DEVSENTINEL_CONFIG_PATH",
         str(
             config_path,
         ),

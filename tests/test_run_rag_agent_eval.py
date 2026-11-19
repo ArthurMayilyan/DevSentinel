@@ -1,14 +1,14 @@
 import json
 from pathlib import Path
 
-from run_rag_agent_eval import (
+from devsentinel.cli.run_rag_agent_eval import (
     build_agent_quality_gate,
     format_rag_agent_eval_markdown_report,
     format_rag_agent_eval_summary,
     run_from_args,
     should_fail_due_to_agent_quality_gate,
 )
-from openai_client_factory import (
+from devsentinel.llm.openai_client_factory import (
     DEFAULT_OPENAI_MODEL,
 )
 
@@ -315,7 +315,7 @@ def test_run_from_args_supports_openai_llm_mode_with_guardrail_metrics(
         assert llm_name == "openai"
 
         # Explicit CLI argument must override the model
-        # configured in agentloop.toml.
+        # configured in devsentinel.toml.
         assert model == "gpt-5"
 
         if query == "small function":
@@ -336,7 +336,7 @@ def test_run_from_args_supports_openai_llm_mode_with_guardrail_metrics(
         )
 
     monkeypatch.setattr(
-        "run_rag_agent_eval.run_rag_agent",
+        "devsentinel.cli.run_rag_agent_eval.run_rag_agent",
         fake_run_rag_agent,
     )
 
@@ -360,7 +360,7 @@ def test_run_from_args_supports_openai_llm_mode_with_guardrail_metrics(
     assert output["llm"] == "openai"
 
     # Explicit --model value has higher priority than
-    # DEFAULT_OPENAI_MODEL / agentloop.toml.
+    # DEFAULT_OPENAI_MODEL / devsentinel.toml.
     assert output["model"] == "gpt-5"
 
     assert output["summary"]["total_cases"] == 2

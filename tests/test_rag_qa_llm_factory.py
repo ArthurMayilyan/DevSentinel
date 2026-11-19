@@ -1,7 +1,7 @@
 import pytest
 
-from rag_qa_llm import DeterministicRagQaLLM
-from rag_qa_llm_factory import (
+from devsentinel.rag.rag_qa_llm import DeterministicRagQaLLM
+from devsentinel.rag.rag_qa_llm_factory import (
     RAG_QA_LLM_DETERMINISTIC,
     SUPPORTED_RAG_QA_LLMS,
     build_rag_qa_llm,

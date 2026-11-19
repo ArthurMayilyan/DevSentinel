@@ -1,6 +1,6 @@
 import json
 
-from generate_mcp_host_config import run_from_args
+from devsentinel.cli.generate_mcp_host_config import run_from_args
 
 
 def test_run_from_args_generates_cursor_json():
@@ -9,7 +9,7 @@ def test_run_from_args_generates_cursor_json():
             "--host",
             "cursor",
             "--server-name",
-            "agentloop",
+            "devsentinel",
             "--python-executable",
             "python",
         ]
@@ -20,7 +20,7 @@ def test_run_from_args_generates_cursor_json():
     )
 
     assert "mcpServers" in payload
-    assert payload["mcpServers"]["agentloop"]["command"] == "python"
+    assert payload["mcpServers"]["devsentinel"]["command"] == "python"
 
 
 def test_run_from_args_generates_claude_code_command():
@@ -29,14 +29,14 @@ def test_run_from_args_generates_claude_code_command():
             "--host",
             "claude-code",
             "--server-name",
-            "agentloop",
+            "devsentinel",
             "--python-executable",
             "python",
         ]
     )
 
     assert output.startswith(
-        "claude mcp add agentloop -- python "
+        "claude mcp add devsentinel -- python "
     )
 
 
@@ -48,7 +48,7 @@ def test_run_from_args_writes_output_file(tmp_path):
             "--host",
             "cursor",
             "--server-name",
-            "agentloop",
+            "devsentinel",
             "--python-executable",
             "python",
             "--output",

@@ -4,9 +4,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from agent import Agent
-from trace import TraceRecorder
-from rag_store import InMemoryRagStore
+from devsentinel.core.agent import Agent
+from devsentinel.core.trace import TraceRecorder
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 class DummyLLM:

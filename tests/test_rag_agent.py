@@ -1,6 +1,6 @@
-from rag_agent import build_rag_qa_agent
-from rag_store import InMemoryRagStore
-from rag_strategy_factory import build_rag_search_engine_for_strategy
+from devsentinel.rag.rag_agent import build_rag_qa_agent
+from devsentinel.rag.rag_store import InMemoryRagStore
+from devsentinel.rag.rag_strategy_factory import build_rag_search_engine_for_strategy
 
 
 def build_test_store() -> InMemoryRagStore:

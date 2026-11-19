@@ -18,7 +18,7 @@ if str(
     )
 
 
-from app_settings import get_app_settings
+from devsentinel.config.app_settings import get_app_settings
 
 
 _SETTINGS = get_app_settings()
@@ -69,7 +69,8 @@ def main() -> None:
     run_command(
         [
             sys.executable,
-            "run_eval_suite.py",
+            "-m",
+            "devsentinel.cli.run_eval_suite",
             "--config",
             "./eval_suites/default.json",
             "--artifacts-dir",

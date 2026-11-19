@@ -1,11 +1,11 @@
 import subprocess
 from pathlib import Path
 
-from mcp_review_git_diff import (
+from devsentinel.mcp.mcp_review_git_diff import (
     mcp_review_git_diff,
 )
-from mcp_server_context import (
-    build_agent_loop_mcp_context,
+from devsentinel.mcp.mcp_server_context import (
+    build_devsentinel_mcp_context,
 )
 
 
@@ -56,14 +56,14 @@ def create_repository(
         repository_path,
         "config",
         "user.email",
-        "agentloop@example.com",
+        "devsentinel@example.com",
     )
 
     run_git(
         repository_path,
         "config",
         "user.name",
-        "AgentLoop Test",
+        "DevSentinel Test",
     )
 
     config_path = (
@@ -128,7 +128,7 @@ def test_mcp_review_git_diff_returns_serializable_payload(
     )
 
     context = (
-        build_agent_loop_mcp_context()
+        build_devsentinel_mcp_context()
     )
 
     payload = mcp_review_git_diff(

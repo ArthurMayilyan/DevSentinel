@@ -3,13 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from git_diff_review import (
+from devsentinel.review.git_diff_review import (
     get_git_changed_files,
     parse_git_name_status_z,
     review_git_diff,
 )
-from mcp_server_context import (
-    build_agent_loop_mcp_context,
+from devsentinel.mcp.mcp_server_context import (
+    build_devsentinel_mcp_context,
 )
 
 
@@ -62,14 +62,14 @@ def create_git_repository(
         repository_path,
         "config",
         "user.email",
-        "agentloop@example.com",
+        "devsentinel@example.com",
     )
 
     run_git(
         repository_path,
         "config",
         "user.name",
-        "AgentLoop Test",
+        "DevSentinel Test",
     )
 
     return repository_path
@@ -270,7 +270,7 @@ def test_review_git_diff_reviews_only_selected_changed_files(
     )
 
     context = (
-        build_agent_loop_mcp_context()
+        build_devsentinel_mcp_context()
     )
 
     result = review_git_diff(
@@ -426,7 +426,7 @@ def test_review_git_diff_staged_mode_reads_index_snapshot(
     )
 
     context = (
-        build_agent_loop_mcp_context()
+        build_devsentinel_mcp_context()
     )
 
     result = review_git_diff(
@@ -476,7 +476,7 @@ def test_review_git_diff_rejects_non_git_directory(
     tmp_path,
 ):
     context = (
-        build_agent_loop_mcp_context()
+        build_devsentinel_mcp_context()
     )
 
     with pytest.raises(

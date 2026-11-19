@@ -1,9 +1,9 @@
 import pytest
 
-from default_tool_registry import build_default_tool_registry
-from tool_specs import TOOL_SPECS
-from rag_store import InMemoryRagStore
-from tools import list_files, read_file, search_in_files, write_report
+from devsentinel.core.default_tool_registry import build_default_tool_registry
+from devsentinel.core.tool_specs import TOOL_SPECS
+from devsentinel.rag.rag_store import InMemoryRagStore
+from devsentinel.core.tools import list_files, read_file, search_in_files, write_report
 
 
 def fake_add_finding(**kwargs):

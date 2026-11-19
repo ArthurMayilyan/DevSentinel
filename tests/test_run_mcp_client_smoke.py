@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from run_mcp_client_smoke import run_from_args
+from devsentinel.cli.run_mcp_client_smoke import run_from_args
 
 
 def test_run_from_args_runs_mcp_client_smoke(

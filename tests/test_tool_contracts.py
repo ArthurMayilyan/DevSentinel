@@ -1,6 +1,6 @@
 import pytest
 
-from tool_contracts import (
+from devsentinel.core.tool_contracts import (
     TOOL_ARGUMENT_CONTRACTS,
     validate_tool_arguments,
     format_tool_contract_for_prompt,

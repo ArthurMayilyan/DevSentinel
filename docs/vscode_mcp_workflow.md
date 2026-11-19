@@ -1,6 +1,6 @@
-# AgentLoop MCP in VS Code
+# DevSentinel MCP in VS Code
 
-AgentLoop exposes a local MCP server for VS Code Agent mode.
+DevSentinel exposes a local MCP server for VS Code Agent mode.
 
 ## Server configuration
 
@@ -11,17 +11,17 @@ Example:
 ```json
 {
   "servers": {
-    "agentloop": {
+    "devsentinel": {
       "type": "stdio",
       "command": "C:\\Program Files\\Python311\\python.exe",
       "args": [
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\run_mcp_server.py",
+        "D:\\Projects\\DevSentinel\\run_mcp_server.py",
         "--transport",
         "stdio",
         "--knowledge-path",
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\knowledge_base\\security",
+        "D:\\Projects\\DevSentinel\\knowledge_base\\security",
         "--report-path",
-        "D:\\Projects\\AgentLoop\\agent_loop_from_scratch\\mcp_host_report.md"
+        "D:\\Projects\\DevSentinel\\mcp_host_report.md"
       ],
       "env": {}
     }
@@ -39,34 +39,34 @@ VS Code UI may show either a `Start` action above the server entry or only an `A
 2. Make sure this file exists: `.vscode/mcp.json`.
 3. Open Command Palette.
 4. Run `MCP: List Servers`.
-5. Select `agentloop`.
+5. Select `devsentinel`.
 6. Start or restart the server if VS Code offers that action.
 7. Open Copilot Chat.
 8. Select `Agent` mode.
-9. Confirm AgentLoop tools are visible.
+9. Confirm DevSentinel tools are visible.
 
 ### Option B — VS Code shows only `Add Server`
 
 1. Click `Add Server`.
 2. Choose a local command / stdio server.
-3. Server name: `agentloop`.
+3. Server name: `devsentinel`.
 4. Command: `C:\Program Files\Python311\python.exe`.
 5. Arguments:
 
    ```text
-   D:\Projects\AgentLoop\agent_loop_from_scratch\run_mcp_server.py
+   D:\Projects\DevSentinel\run_mcp_server.py
    --transport
    stdio
    --knowledge-path
-   D:\Projects\AgentLoop\agent_loop_from_scratch\knowledge_base\security
+   D:\Projects\DevSentinel\knowledge_base\security
    --report-path
-   D:\Projects\AgentLoop\agent_loop_from_scratch\mcp_host_report.md
+   D:\Projects\DevSentinel\mcp_host_report.md
    ```
 
 6. Save it to Workspace.
 7. Open Copilot Chat.
 8. Select `Agent` mode.
-9. Confirm AgentLoop tools are visible.
+9. Confirm DevSentinel tools are visible.
 
 Expected tools:
 
@@ -83,30 +83,30 @@ Expected tools:
 
 ## Resources
 
-AgentLoop exposes these MCP resources:
+DevSentinel exposes these MCP resources:
 
-- `agentloop://project-guide`
-- `agentloop://available-workflows`
-- `agentloop://code-review-policy`
-- `agentloop://current-state`
+- `devsentinel://project-guide`
+- `devsentinel://available-workflows`
+- `devsentinel://code-review-policy`
+- `devsentinel://current-state`
 
 In VS Code, use `Add Context` → `MCP Resources` to attach them to chat if your VS Code version shows MCP resources.
 
 ## Prompts
 
-AgentLoop exposes these MCP prompts:
+DevSentinel exposes these MCP prompts:
 
-- `/mcp.agentloop.review_project`
-- `/mcp.agentloop.review_file`
-- `/mcp.agentloop.answer_policy_question`
-- `/mcp.agentloop.write_security_report`
+- `/mcp.devsentinel.review_project`
+- `/mcp.devsentinel.review_file`
+- `/mcp.devsentinel.answer_policy_question`
+- `/mcp.devsentinel.write_security_report`
 
 ## Product workflow prompt
 
 Paste this into VS Code Copilot Chat in Agent mode:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 Call review_project for ./sample_project with security profile.
 Use include_globs **/*.py.
 Use max_files 200.
@@ -116,7 +116,7 @@ Return the review summary and generated report path.
 Expected result:
 
 - Copilot asks permission to use the `review_project` MCP tool.
-- AgentLoop runs the review workflow.
+- DevSentinel runs the review workflow.
 - `mcp_host_report.md` is generated.
 - The report contains concrete findings.
 
@@ -125,7 +125,7 @@ Expected result:
 Use this only if the host does not call `review_project` correctly:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 Review ./sample_project for security issues.
 Use list_files to discover files.
 Use read_file to inspect relevant files.
@@ -137,7 +137,7 @@ Return the generated report path.
 
 ## Real repository workflow prompt
 
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 ```text
 Call review_project for D:\Projects\SomeRepo with security profile.
 Use reviewer openai.
@@ -147,13 +147,13 @@ Use include_globs **/*.py.
 Use exclude_globs tests/**,__pycache__/**,.venv/**.
 Use max_files 200.
 Use max_file_size_bytes 200000.
-Use reviews_dir D:\Projects\AgentLoop\agent_loop_from_scratch\reviews.
+Use reviews_dir D:\Projects\DevSentinel\reviews.
 Return the review summary, run directory, HTML report path, and Markdown report path.
 ```
 
 Expected result:
 
-- AgentLoop reviews only files matching the requested scope.
+- DevSentinel reviews only files matching the requested scope.
 - Files outside `allowed_root` are rejected.
 - Large files and excluded paths are skipped.
 - A persistent review run package is created under the requested `reviews_dir`.
@@ -170,7 +170,7 @@ They serve different purposes and may be used independently or together.
 
 ## Review run package
 
-When `reviews_dir` is provided, AgentLoop creates a persistent package for every review run.
+When `reviews_dir` is provided, DevSentinel creates a persistent package for every review run.
 
 Example:
 
@@ -189,16 +189,16 @@ reviews/
 
 ## Compare review runs
 
-AgentLoop can compare two persisted review run packages.
+DevSentinel can compare two persisted review run packages.
 
 Example:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call compare_review_runs with:
-- old_run_dir: D:\Projects\AgentLoop\agent_loop_from_scratch\reviews\<old-run>
-- new_run_dir: D:\Projects\AgentLoop\agent_loop_from_scratch\reviews\<new-run>
+- old_run_dir: D:\Projects\DevSentinel\reviews\<old-run>
+- new_run_dir: D:\Projects\DevSentinel\reviews\<new-run>
 
 Return:
 - summary
@@ -217,7 +217,7 @@ For normal daily use, prefer `review_workspace` instead of configuring every `re
 Python example:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call review_workspace with:
 - workspace_path: D:\Projects\MyProject
@@ -232,7 +232,7 @@ Return:
 - HTML report path
 ```
 
-AgentLoop automatically applies safe file filters, scope limits, the workspace as the allowed root, and a persistent `reviews` directory inside the workspace.
+DevSentinel automatically applies safe file filters, scope limits, the workspace as the allowed root, and a persistent `reviews` directory inside the workspace.
 
 
 ## Git diff review
@@ -242,7 +242,7 @@ Use `review_git_diff` when you want to review only files changed between Git rev
 For committed changes:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call review_git_diff with:
 - repository_path: D:\Projects\MyProject
@@ -265,7 +265,7 @@ Return:
 For staged changes:
 
 ```text
-Use the agentloop MCP server.
+Use the devsentinel MCP server.
 
 Call review_git_diff with:
 - repository_path: D:\Projects\MyProject
@@ -284,4 +284,4 @@ Return:
 - HTML report path
 ```
 
-When `staged_only` is true, AgentLoop reviews the Git index snapshot rather than unstaged working-tree content.
+When `staged_only` is true, DevSentinel reviews the Git index snapshot rather than unstaged working-tree content.

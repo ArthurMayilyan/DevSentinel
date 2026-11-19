@@ -1,8 +1,8 @@
 import pytest
 
-from rag_strategy_factory import build_rag_search_engine_for_strategy
-from rag_store import InMemoryRagStore
-from rag_tool import DEFAULT_RAG_TOP_K, search_knowledge
+from devsentinel.rag.rag_strategy_factory import build_rag_search_engine_for_strategy
+from devsentinel.rag.rag_store import InMemoryRagStore
+from devsentinel.rag.rag_tool import DEFAULT_RAG_TOP_K, search_knowledge
 
 
 def test_search_knowledge_returns_serializable_chunks():

@@ -2,7 +2,7 @@ from argparse import Namespace
 
 import pytest
 
-from cli_task import build_task_from_args
+from devsentinel.cli.cli_task import build_task_from_args
 
 
 def test_build_task_from_args_returns_explicit_task():

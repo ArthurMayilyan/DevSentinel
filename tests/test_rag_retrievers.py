@@ -1,7 +1,7 @@
 import pytest
 
-from rag_eval import RagRetrievalEvalCase, evaluate_rag_retrieval_case
-from rag_retrievers import (
+from devsentinel.rag.rag_eval import RagRetrievalEvalCase, evaluate_rag_retrieval_case
+from devsentinel.rag.rag_retrievers import (
     BinaryOverlapRagRetriever,
     HybridLexicalRagRetriever,
     TermFrequencyRagRetriever,
@@ -9,7 +9,7 @@ from rag_retrievers import (
     score_hybrid_lexical_overlap,
     score_term_frequency_token_overlap,
 )
-from rag_store import InMemoryRagStore
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 def test_score_binary_token_overlap_counts_unique_query_token_matches():

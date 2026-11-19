@@ -1,11 +1,11 @@
 import pytest
 
-from agent_run_result import AgentRunResult
-from agent_stop_reasons import (
+from devsentinel.core.agent_run_result import AgentRunResult
+from devsentinel.core.agent_stop_reasons import (
     STOP_CODE_MAX_STEPS,
     STOP_MAX_STEPS,
 )
-from cli_output import format_cli_output, format_task_preview_output
+from devsentinel.cli.cli_output import format_cli_output, format_task_preview_output
 
 def test_format_cli_output_for_completed_result():
     result = AgentRunResult.completed("Done.")

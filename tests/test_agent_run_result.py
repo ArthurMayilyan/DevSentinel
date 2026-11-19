@@ -1,7 +1,7 @@
 import pytest
 
-from agent_run_result import AgentRunResult
-from agent_stop_reasons import (
+from devsentinel.core.agent_run_result import AgentRunResult
+from devsentinel.core.agent_stop_reasons import (
     STOP_CODE_INVALID_LLM_OUTPUTS,
     STOP_CODE_MAX_STEPS,
     STOP_INVALID_LLM_OUTPUTS,

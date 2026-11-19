@@ -1,6 +1,6 @@
 import pytest
 
-from rag_eval import (
+from devsentinel.rag.rag_eval import (
     RagRetrievalEvalCase,
     RagRetrievalEvalResult,
     RagRetrievedChunkEvalItem,
@@ -9,7 +9,7 @@ from rag_eval import (
     find_matched_rank,
     source_matches_expected_source,
 )
-from rag_store import InMemoryRagStore
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 def test_rag_retrieval_eval_case_requires_non_empty_name():
@@ -279,7 +279,7 @@ def test_source_matches_expected_source_rejects_backup_file_name():
 
 def test_source_matches_expected_source_matches_path_suffix():
     assert source_matches_expected_source(
-        source="D:\\Projects\\AgentLoop\\knowledge_base\\security.md",
+        source="D:\\Projects\\DevSentinel\\knowledge_base\\security.md",
         expected_source="knowledge_base/security.md",
     ) is True
 

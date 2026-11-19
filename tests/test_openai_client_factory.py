@@ -1,11 +1,11 @@
 import pytest
 
-from openai_client_factory import (
+from devsentinel.llm.openai_client_factory import (
     DEFAULT_OPENAI_MODEL,
     create_openai_client,
     create_openai_llm_adapter,
 )
-from openai_llm_adapter import (
+from devsentinel.llm.openai_llm_adapter import (
     DEFAULT_OPENAI_MAX_OUTPUT_TOKENS,
     DEFAULT_OPENAI_REQUEST_TIMEOUT_SECONDS,
     OpenAILLMAdapter,
@@ -89,7 +89,7 @@ def test_default_openai_model_is_luna():
     assert DEFAULT_OPENAI_MODEL == "gpt-5.6-luna"
 
 def test_load_dotenv_if_available_loads_env_file(tmp_path, monkeypatch):
-    from openai_client_factory import load_dotenv_if_available
+    from devsentinel.llm.openai_client_factory import load_dotenv_if_available
 
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 

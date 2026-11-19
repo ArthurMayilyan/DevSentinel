@@ -1,7 +1,7 @@
 import pytest
 
-from rag_runtime_tool import build_search_knowledge_runtime_tool
-from rag_store import InMemoryRagStore
+from devsentinel.rag.rag_runtime_tool import build_search_knowledge_runtime_tool
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 def test_search_knowledge_runtime_tool_injects_store():

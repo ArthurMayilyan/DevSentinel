@@ -4,12 +4,12 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from agent import Agent
-from tool_specs import TOOL_SPECS
-from tool_contracts import TOOL_ARGUMENT_CONTRACTS
-from trace import TraceRecorder
-from runtime_tool_registry import ToolRegistry
-from rag_store import InMemoryRagStore
+from devsentinel.core.agent import Agent
+from devsentinel.core.tool_specs import TOOL_SPECS
+from devsentinel.core.tool_contracts import TOOL_ARGUMENT_CONTRACTS
+from devsentinel.core.trace import TraceRecorder
+from devsentinel.core.runtime_tool_registry import ToolRegistry
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 class DummyLLM:

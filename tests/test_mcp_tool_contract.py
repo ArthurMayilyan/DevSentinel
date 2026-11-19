@@ -1,6 +1,6 @@
 import pytest
 
-from mcp_tool_contract import (
+from devsentinel.mcp.mcp_tool_contract import (
     McpToolSpec,
     mcp_tool_spec_to_dict,
     mcp_tool_spec_to_mcp_tool,

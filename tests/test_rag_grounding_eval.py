@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from rag_answer_eval import RagAnswerEvidence
-from rag_grounding_eval import (
+from devsentinel.rag.rag_answer_eval import RagAnswerEvidence
+from devsentinel.rag.rag_grounding_eval import (
     RagGroundingEvalCase,
     answer_contains_forbidden_text,
     evaluate_rag_grounding,
@@ -11,7 +11,7 @@ from rag_grounding_eval import (
     find_cited_sources_not_in_evidence,
     load_rag_grounding_eval_cases_from_json_file,
 )
-from rag_pipeline import RagPipelineResult
+from devsentinel.rag.rag_pipeline import RagPipelineResult
 
 
 def build_pipeline_result(

@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from rag_agent_eval import (
+from devsentinel.rag.rag_agent_eval import (
     RagAgentEvalCase,
     answer_contains_all_expected_text,
     evaluate_rag_agent_case,
@@ -11,7 +11,7 @@ from rag_agent_eval import (
     load_rag_agent_eval_cases_from_json_file,
     trace_has_search_knowledge_call,
 )
-from rag_agent_eval import evaluate_rag_agent_run_results
+from devsentinel.rag.rag_agent_eval import evaluate_rag_agent_run_results
 
 
 def test_answer_contains_all_expected_text_detects_all_expected_items():

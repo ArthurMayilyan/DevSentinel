@@ -1,6 +1,6 @@
 import pytest
 
-from review_profiles import (
+from devsentinel.review.review_profiles import (
     REVIEW_PROFILE_FULL,
     REVIEW_PROFILE_SECURITY,
     get_review_profile,

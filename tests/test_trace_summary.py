@@ -1,8 +1,8 @@
 import json
 
-from agent_run_result import AgentRunResult
-from agent_run_summary import build_agent_run_summary
-from trace import TraceRecorder
+from devsentinel.core.agent_run_result import AgentRunResult
+from devsentinel.core.agent_run_summary import build_agent_run_summary
+from devsentinel.core.trace import TraceRecorder
 
 
 def test_trace_recorder_writes_run_summary_file():

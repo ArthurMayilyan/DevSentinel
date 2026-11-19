@@ -2,7 +2,7 @@ import copy
 import json
 from pathlib import Path
 
-from evaluator import evaluate_run
+from devsentinel.core.evaluator import evaluate_run
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

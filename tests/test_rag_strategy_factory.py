@@ -1,11 +1,11 @@
 import pytest
 
-from rag_retrievers import (
+from devsentinel.rag.rag_retrievers import (
     BinaryOverlapRagRetriever,
     HybridLexicalRagRetriever,
     TermFrequencyRagRetriever,
 )
-from rag_strategy_factory import (
+from devsentinel.rag.rag_strategy_factory import (
     RETRIEVAL_STRATEGY_BINARY_OVERLAP,
     RETRIEVAL_STRATEGY_DEFAULT,
     RETRIEVAL_STRATEGY_HYBRID_LEXICAL,
@@ -14,7 +14,7 @@ from rag_strategy_factory import (
     build_rag_search_engine_for_strategy,
     validate_retrieval_strategy,
 )
-from rag_store import InMemoryRagStore
+from devsentinel.rag.rag_store import InMemoryRagStore
 
 
 def test_supported_retrieval_strategies_contains_runtime_strategies():

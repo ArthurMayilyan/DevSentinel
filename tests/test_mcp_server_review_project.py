@@ -3,8 +3,8 @@ import json
 
 from mcp import Client
 
-from agent_loop_mcp_server import create_agent_loop_mcp_server
-from mcp_server_context import build_agent_loop_mcp_context
+from devsentinel.mcp.devsentinel_mcp_server import create_devsentinel_mcp_server
+from devsentinel.mcp.mcp_server_context import build_devsentinel_mcp_context
 
 
 def run_async(coro):
@@ -82,13 +82,13 @@ async def call_review_project(
     project_path,
     report_path,
 ):
-    context = build_agent_loop_mcp_context(
+    context = build_devsentinel_mcp_context(
         report_path=str(
             report_path,
         )
     )
 
-    mcp = create_agent_loop_mcp_server(
+    mcp = create_devsentinel_mcp_server(
         context=context,
     )
 

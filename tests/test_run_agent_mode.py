@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from run_agent_mode import run_from_args
+from devsentinel.cli.run_agent_mode import run_from_args
 
 
 def create_knowledge_fixture(tmp_path):
