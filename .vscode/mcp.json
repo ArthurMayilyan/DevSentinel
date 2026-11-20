@@ -2,15 +2,16 @@
   "servers": {
     "devsentinel": {
       "type": "stdio",
-      "command": "C:\\Program Files\\Python311\\python.exe",
+      "command": "python",
       "args": [
-        "D:\\Projects\\DevSentinel\\run_mcp_server.py",
+        "-m",
+        "devsentinel.cli.run_mcp_server",
         "--transport",
         "stdio",
         "--knowledge-path",
-        "D:\\Projects\\DevSentinel\\knowledge_base\\security",
+        "knowledge_base/security",
         "--report-path",
-        "D:\\Projects\\DevSentinel\\mcp_host_report.md"
+        "mcp_host_report.md"
       ],
       "env": {}
     }

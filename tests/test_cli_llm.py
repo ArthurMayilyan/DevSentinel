@@ -19,7 +19,7 @@ class FakeOpenAIClient:
 def test_build_llm_from_args_returns_demo_llm():
     args = Namespace(
         llm="demo",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
     )
 
     llm = build_llm_from_args(args)
@@ -30,7 +30,7 @@ def test_build_llm_from_args_returns_demo_llm():
 def test_build_llm_from_args_returns_openai_adapter():
     args = Namespace(
         llm="openai",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
     )
 
     llm = build_llm_from_args(
@@ -39,14 +39,14 @@ def test_build_llm_from_args_returns_openai_adapter():
     )
 
     assert isinstance(llm, OpenAILLMAdapter)
-    assert llm.model == "gpt-5.6-luna"
+    assert llm.model == "gpt-6-luna"
     assert isinstance(llm.client, FakeOpenAIClient)
 
 
 def test_build_llm_from_args_rejects_unknown_backend():
     args = Namespace(
         llm="unknown",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
     )
 
     with pytest.raises(ValueError):
@@ -55,7 +55,7 @@ def test_build_llm_from_args_rejects_unknown_backend():
 def test_build_llm_from_args_passes_max_output_tokens_to_openai_adapter():
     args = Namespace(
         llm="openai",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
         max_output_tokens=250,
     )
 
@@ -69,7 +69,7 @@ def test_build_llm_from_args_passes_max_output_tokens_to_openai_adapter():
 def test_build_llm_from_args_passes_request_timeout_to_openai_adapter():
     args = Namespace(
         llm="openai",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
         max_output_tokens=250,
         request_timeout_seconds=5.0,
     )
@@ -84,7 +84,7 @@ def test_build_llm_from_args_passes_request_timeout_to_openai_adapter():
 def test_build_llm_from_args_uses_openai_cli_defaults():
     args = Namespace(
         llm="openai",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
     )
 
     llm = build_llm_from_args(

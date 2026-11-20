@@ -11,7 +11,7 @@ from devsentinel.cli.cli_run_metadata import build_run_metadata
 def test_build_run_metadata_for_demo_task():
     args = Namespace(
         llm="demo",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
         preset=None,
         path=None,
         knowledge_path=None,
@@ -41,7 +41,7 @@ def test_build_run_metadata_for_demo_task():
 def test_build_run_metadata_for_openai_preset_uses_resolved_defaults():
     args = Namespace(
         llm="openai",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
         preset="code-review",
         path="./sample_project",
         knowledge_path=None,
@@ -58,7 +58,7 @@ def test_build_run_metadata_for_openai_preset_uses_resolved_defaults():
     )
 
     assert metadata["llm"] == "openai"
-    assert metadata["model"] == "gpt-5.6-luna"
+    assert metadata["model"] == "gpt-6-luna"
     assert metadata["preset"] == "code-review"
     assert metadata["path"] == "./sample_project"
     assert metadata["knowledge_path"] is None
@@ -75,7 +75,7 @@ def test_build_run_metadata_for_openai_preset_uses_resolved_defaults():
 def test_build_run_metadata_for_openai_uses_explicit_limits():
     args = Namespace(
         llm="openai",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
         preset="code-review",
         path="./sample_project",
         knowledge_path=None,
@@ -99,7 +99,7 @@ def test_build_run_metadata_for_openai_uses_explicit_limits():
 def test_build_run_metadata_includes_knowledge_path():
     args = Namespace(
         llm="demo",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
         preset="code-review",
         path="./sample_project",
         knowledge_path="./knowledge_base",

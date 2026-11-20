@@ -121,7 +121,7 @@ def test_openai_review_reviewer_uses_configured_model():
     fake_client = FakeOpenAIClient()
 
     reviewer = OpenAIReviewReviewer(
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
         client=fake_client,
     )
 
@@ -138,7 +138,7 @@ def test_openai_review_reviewer_uses_configured_model():
     )
 
     assert fake_client.responses.calls[0]["model"] == (
-        "gpt-5.6-luna"
+        "gpt-6-luna"
     )
 
     assert "PASSWORD" in (

@@ -4,7 +4,10 @@ DevSentinel exposes a local MCP server for VS Code Agent mode.
 
 ## Server configuration
 
-Use `.vscode/mcp.json` in the project root.
+Use `.vscode/mcp.json` in the project root. The checked-in configuration uses
+`python` from `PATH` and paths relative to the project root. If DevSentinel is
+installed in `.venv`, point `command` to that environment's Python executable.
+Open the project root as the VS Code workspace.
 
 Example:
 
@@ -13,15 +16,16 @@ Example:
   "servers": {
     "devsentinel": {
       "type": "stdio",
-      "command": "C:\\Program Files\\Python311\\python.exe",
+      "command": "python",
       "args": [
-        "D:\\Projects\\DevSentinel\\run_mcp_server.py",
+        "-m",
+        "devsentinel.cli.run_mcp_server",
         "--transport",
         "stdio",
         "--knowledge-path",
-        "D:\\Projects\\DevSentinel\\knowledge_base\\security",
+        "knowledge_base/security",
         "--report-path",
-        "D:\\Projects\\DevSentinel\\mcp_host_report.md"
+        "mcp_host_report.md"
       ],
       "env": {}
     }
@@ -50,17 +54,18 @@ VS Code UI may show either a `Start` action above the server entry or only an `A
 1. Click `Add Server`.
 2. Choose a local command / stdio server.
 3. Server name: `devsentinel`.
-4. Command: `C:\Program Files\Python311\python.exe`.
+4. Command: `python` (or the absolute path to your `.venv` Python).
 5. Arguments:
 
    ```text
-   D:\Projects\DevSentinel\run_mcp_server.py
+   -m
+   devsentinel.cli.run_mcp_server
    --transport
    stdio
    --knowledge-path
-   D:\Projects\DevSentinel\knowledge_base\security
+   knowledge_base/security
    --report-path
-   D:\Projects\DevSentinel\mcp_host_report.md
+   mcp_host_report.md
    ```
 
 6. Save it to Workspace.
@@ -137,17 +142,17 @@ Return the generated report path.
 
 ## Real repository workflow prompt
 
-Use the devsentinel MCP server.
 ```text
-Call review_project for D:\Projects\SomeRepo with security profile.
+Use the devsentinel MCP server.
+Call review_project for <project-root> with security profile.
 Use reviewer openai.
-Use model gpt-5.6-luna.
-Use allowed_root D:\Projects.
+Use model gpt-6-luna.
+Use allowed_root <project-parent>.
 Use include_globs **/*.py.
 Use exclude_globs tests/**,__pycache__/**,.venv/**.
 Use max_files 200.
 Use max_file_size_bytes 200000.
-Use reviews_dir D:\Projects\DevSentinel\reviews.
+Use reviews_dir <repo-root>/reviews.
 Return the review summary, run directory, HTML report path, and Markdown report path.
 ```
 
@@ -184,7 +189,7 @@ reviews/
     findings.json
     reviewed_files.json
     run_config.json
-```    
+```
 
 
 ## Compare review runs
@@ -197,8 +202,9 @@ Example:
 Use the devsentinel MCP server.
 
 Call compare_review_runs with:
-- old_run_dir: D:\Projects\DevSentinel\reviews\<old-run>
-- new_run_dir: D:\Projects\DevSentinel\reviews\<new-run>
+- old_run_dir: <repo-root>/reviews/<older-run-id>
+- new_run_dir: <repo-root>/reviews/<newer-run-id>
+- comparisons_dir: <repo-root>/reviews/comparisons (optional)
 
 Return:
 - summary
@@ -220,10 +226,10 @@ Python example:
 Use the devsentinel MCP server.
 
 Call review_workspace with:
-- workspace_path: D:\Projects\MyProject
+- workspace_path: <project-root>
 - preset: python-security
 - reviewer: openai
-- model: gpt-5.6-luna
+- model: gpt-6-luna
 
 Return:
 - summary
@@ -245,7 +251,7 @@ For committed changes:
 Use the devsentinel MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\MyProject
+- repository_path: <project-root>
 - base_ref: main
 - target_ref: HEAD
 - preset: python-security
@@ -268,7 +274,7 @@ For staged changes:
 Use the devsentinel MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\MyProject
+- repository_path: <project-root>
 - staged_only: true
 - preset: python-security
 - reviewer: deterministic
