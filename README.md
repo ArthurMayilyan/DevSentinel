@@ -17,7 +17,7 @@ It combines:
 - centralized runtime configuration;
 - a lightweight local Web UI.
 
-The project is best described as an **engineering-grade / production-oriented prototype**, not a commercial security scanner.
+The project is best described as an **engineering-grade / production-oriented prototype**.
 
 ## Repository layout
 
@@ -71,9 +71,17 @@ use refs that exist in your repository.
 
 ## 3. Runtime requirements
 
-Use Python 3.11 or newer. Git is required for Git diff and staged review.
-From a checkout, create an environment and install the package and its test
-dependencies:
+The project has been developed and tested with Python 3.11.
+
+Example Python executable used by the VS Code MCP configuration:
+
+```text
+C:\Program Files\Python311\python.exe
+```
+
+Use the existing project environment/dependency setup for the checkout.
+
+Before using DevSentinel, verify the environment:
 
 ```powershell
 python --version
@@ -276,6 +284,7 @@ In the UI:
 
 ```text
 Repository / Workspace:
+D:\Projects\DevSentinel\
 <repo-root>
 
 Review mode:
