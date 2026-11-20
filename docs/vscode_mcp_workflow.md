@@ -146,7 +146,7 @@ Return the generated report path.
 Use the devsentinel MCP server.
 Call review_project for <project-root> with security profile.
 Use reviewer openai.
-Use model gpt-6-luna.
+Use model gpt-5.6-luna.
 Use allowed_root <project-parent>.
 Use include_globs **/*.py.
 Use exclude_globs tests/**,__pycache__/**,.venv/**.
@@ -229,7 +229,7 @@ Call review_workspace with:
 - workspace_path: <project-root>
 - preset: python-security
 - reviewer: openai
-- model: gpt-6-luna
+- model: gpt-5.6-luna
 
 Return:
 - summary

@@ -58,11 +58,10 @@ For daily engineering work, prefer **Git diff** or **staged review** over a full
 ## 2. Get the project
 
 ```powershell
-git clone --branch dev https://github.com/ArthurMayilyan/DevSentinel.git
+git clone https://github.com/ArthurMayilyan/DevSentinel.git
 Set-Location ./DevSentinel
 ```
 
-The `dev` branch contains the package layout and commands documented here.
 Run later shell commands from the project root. In MCP examples,
 `<repo-root>` means the absolute path to this checkout. Replace it with your
 own path when configuring an editor. Branch names and commit IDs are examples;
@@ -126,14 +125,14 @@ OPENAI_API_KEY=your-key-here
 
 Do **not** commit `.env`.
 
-The configured default is [`gpt-6-luna`](https://developers.openai.com/api/docs/models/gpt-6-luna),
-which is the model used by the OpenAI reviewer unless an explicit model or
+The configured default is `gpt-5.6-luna`, the model tested with this project.
+The OpenAI reviewer uses it unless an explicit model or
 `DEVSENTINEL_OPENAI_MODEL` overrides it.
 Use a model available to your API account.
 Before a release that uses OpenAI review, run the real integration check:
 
 ```powershell
-python -m devsentinel.cli.run_live_openai_smoke --model gpt-6-luna
+python -m devsentinel.cli.run_live_openai_smoke --model gpt-5.6-luna
 ```
 
 This command requires `OPENAI_API_KEY` and makes a live API request. The
@@ -163,7 +162,7 @@ Important configuration areas include:
 
 ```toml
 [openai]
-model = "gpt-6-luna"
+model = "gpt-5.6-luna"
 max_output_tokens = 500
 request_timeout_seconds = 30.0
 review_max_content_chars = 12000
@@ -853,16 +852,24 @@ Run CI/evaluation:
 python scripts/run_ci_checks.py
 ```
 
-The eval suite covers:
+Latest local run (20 November 2026, `python scripts/run_ci_checks.py`):
 
-```text
-retrieval
-answer
-grounding
-agent
-```
+| Check | How it is scored | Result |
+| --- | --- | --- |
+| Retrieval | Match the expected source and text within the top 3 results. Compare ranking with the term-frequency baseline; allow zero regressed cases and require at least one improved case. | Binary-overlap: 2/2 hits, 2/2 at rank 1, mean reciprocal rank 1.00; 2 improved, 0 regressed. |
+| Answer | Each answer must contain expected text and cite the expected source; the quality gate requires accuracy 1.00. | 2/2 passed (1.00). |
+| Grounding | Citations must come from retrieved evidence, forbidden unsupported text must be absent, and the answer or abstention must match evidence availability; the gate requires accuracy 1.00. | 2/2 passed (1.00). |
+| Agent | The trace must include `search_knowledge`; the answer must contain expected text, cite a source, and avoid forbidden text; the gate requires accuracy 1.00. | 3/3 passed (1.00). |
 
-RAG/agent changes should be evaluated for regressions rather than judged only by a few manual outputs.
+The same run had 886 passing tests and one skipped test. These are small,
+deterministic local fixtures in `eval_suites/default.json` and `eval_cases/`;
+they do not measure live OpenAI review or real-world vulnerability detection.
+
+Agent runtime guardrails validate tool arguments, require file inspection before
+adding a finding, check discovered files before reporting or finalizing, and
+stop after configured step or rejection limits. RAG answers also check evidence
+and source citations. Re-run the suite after changing retrieval, prompts,
+guardrails, or the agent runtime.
 
 ---
 

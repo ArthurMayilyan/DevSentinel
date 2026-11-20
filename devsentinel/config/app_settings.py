@@ -456,7 +456,7 @@ def load_app_settings(
             "openai.model",
             openai_section.get(
                 "model",
-                "gpt-6-luna",
+                "gpt-5.6-luna",
             ),
         ),
     )

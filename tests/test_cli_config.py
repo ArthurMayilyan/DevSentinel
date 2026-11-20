@@ -117,11 +117,11 @@ def test_cli_parser_accepts_openai_llm_and_custom_model():
         "--llm",
         "openai",
         "--model",
-        "gpt-6-luna",
+        "gpt-5.6-luna",
     ])
 
     assert args.llm == "openai"
-    assert args.model == "gpt-6-luna"
+    assert args.model == "gpt-5.6-luna"
 
 
 def test_cli_parser_rejects_unknown_llm_backend():
