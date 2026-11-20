@@ -58,10 +58,11 @@ For daily engineering work, prefer **Git diff** or **staged review** over a full
 ## 2. Get the project
 
 ```powershell
-git clone https://github.com/ArthurMayilyan/DevSentinel.git
+git clone --branch dev https://github.com/ArthurMayilyan/DevSentinel.git
 Set-Location ./DevSentinel
 ```
 
+The `dev` branch contains the package layout and commands documented here.
 Run later shell commands from the project root. In MCP examples,
 `<repo-root>` means the absolute path to this checkout. Replace it with your
 own path when configuring an editor. Branch names and commit IDs are examples;
@@ -71,17 +72,9 @@ use refs that exist in your repository.
 
 ## 3. Runtime requirements
 
-The project has been developed and tested with Python 3.11.
-
-Example Python executable used by the VS Code MCP configuration:
-
-```text
-C:\Program Files\Python311\python.exe
-```
-
-Use the existing project environment/dependency setup for the checkout.
-
-Before using DevSentinel, verify the environment:
+Use Python 3.11 or newer. Git is required for Git diff and staged review.
+From the checkout, create a virtual environment and install the package and
+its test dependencies:
 
 ```powershell
 python --version
@@ -284,7 +277,6 @@ In the UI:
 
 ```text
 Repository / Workspace:
-D:\Projects\DevSentinel\
 <repo-root>
 
 Review mode:
