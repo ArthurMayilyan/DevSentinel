@@ -22,7 +22,7 @@ def write_config(
 def test_load_app_settings_reads_project_config():
     settings = load_app_settings()
 
-    assert settings.openai.model == "gpt-5.6-luna"
+    assert settings.openai.model == "gpt-6-luna"
     assert settings.openai.request_timeout_seconds == 30.0
     assert settings.openai.max_output_tokens == 500
     assert settings.openai.review_max_content_chars == 12000

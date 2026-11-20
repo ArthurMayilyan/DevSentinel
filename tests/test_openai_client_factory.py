@@ -86,7 +86,7 @@ def test_create_openai_llm_adapter_passes_api_key_to_client():
     }
 
 def test_default_openai_model_is_luna():
-    assert DEFAULT_OPENAI_MODEL == "gpt-5.6-luna"
+    assert DEFAULT_OPENAI_MODEL == "gpt-6-luna"
 
 def test_load_dotenv_if_available_loads_env_file(tmp_path, monkeypatch):
     from devsentinel.llm.openai_client_factory import load_dotenv_if_available

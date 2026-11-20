@@ -1,5 +1,9 @@
 # DevSentinel
 
+[Repository](https://github.com/ArthurMayilyan/DevSentinel) · [Setup](#3-runtime-requirements) · [Web UI](#6-recommended-way-to-use-devsentinel-web-ui) · [MCP](#7-vs-code--mcp-setup)
+
+Agentic security code review with RAG, MCP, guardrails, and evals.
+
 DevSentinel is a local AI-assisted engineering review platform built to explore and demonstrate modern agentic engineering from first principles.
 
 It combines:
@@ -51,17 +55,17 @@ For daily engineering work, prefer **Git diff** or **staged review** over a full
 
 ---
 
-## 2. Project location used in the examples
+## 2. Get the project
 
-The examples below assume this checkout path:
-
-```text
-D:\Projects\DevSentinel
+```powershell
+git clone https://github.com/ArthurMayilyan/DevSentinel.git
+Set-Location ./DevSentinel
 ```
 
-Replace this path with your checkout location. Run shell commands from the
-project root unless noted otherwise. Branch names and commit IDs in later
-examples are placeholders; use refs that exist in your repository.
+Run later shell commands from the project root. In MCP examples,
+`<repo-root>` means the absolute path to this checkout. Replace it with your
+own path when configuring an editor. Branch names and commit IDs are examples;
+use refs that exist in your repository.
 
 ---
 
@@ -80,7 +84,6 @@ Use the existing project environment/dependency setup for the checkout.
 Before using DevSentinel, verify the environment:
 
 ```powershell
-Set-Location D:\Projects\DevSentinel
 python --version
 git --version
 python -m venv .venv
@@ -130,12 +133,14 @@ OPENAI_API_KEY=your-key-here
 
 Do **not** commit `.env`.
 
-Before using `reviewer: openai`, set `[openai].model` in `devsentinel.toml`
-or `DEVSENTINEL_OPENAI_MODEL` to a model available to your API account.
+The configured default is [`gpt-6-luna`](https://developers.openai.com/api/docs/models/gpt-6-luna),
+which is the model used by the OpenAI reviewer unless an explicit model or
+`DEVSENTINEL_OPENAI_MODEL` overrides it.
+Use a model available to your API account.
 Before a release that uses OpenAI review, run the real integration check:
 
 ```powershell
-python -m devsentinel.cli.run_live_openai_smoke --model YOUR_MODEL_ID
+python -m devsentinel.cli.run_live_openai_smoke --model gpt-6-luna
 ```
 
 This command requires `OPENAI_API_KEY` and makes a live API request. The
@@ -165,7 +170,7 @@ Important configuration areas include:
 
 ```toml
 [openai]
-model = "gpt-5.6-luna"
+model = "gpt-6-luna"
 max_output_tokens = 500
 request_timeout_seconds = 30.0
 review_max_content_chars = 12000
@@ -280,6 +285,7 @@ In the UI:
 ```text
 Repository / Workspace:
 D:\Projects\DevSentinel\
+<repo-root>
 
 Review mode:
 Workspace
@@ -370,13 +376,13 @@ Use the checked-in configuration:
 .vscode\mcp.json
 ```
 
-Before starting the server, edit `command` to the Python executable where you
-installed DevSentinel and update every absolute path if your checkout is
-elsewhere. The checked-in file uses `C:\Program Files\Python311\python.exe`;
-if you followed section 3, set `command` to
-`D:\Projects\DevSentinel\.venv\Scripts\python.exe` (adjusting the checkout
-path). A VS Code MCP server runs in its own process, so choosing the same
-interpreter matters.
+The checked-in file uses `python` from your `PATH`. If you installed DevSentinel
+in a virtual environment, change `command` to that environment's Python
+executable (for example, `<repo-root>/.venv/Scripts/python.exe` on Windows or
+`<repo-root>/.venv/bin/python` on macOS/Linux). A VS Code MCP server runs in
+its own process, so choosing the interpreter used in section 3 matters. Start
+VS Code with the project root as its workspace so the relative knowledge and
+report paths resolve there.
 
 Example configuration:
 
@@ -385,15 +391,16 @@ Example configuration:
   "servers": {
     "devsentinel": {
       "type": "stdio",
-      "command": "D:\\Projects\\DevSentinel\\.venv\\Scripts\\python.exe",
+      "command": "<repo-root>/.venv/Scripts/python.exe",
       "args": [
-        "D:\\Projects\\DevSentinel\\run_mcp_server.py",
+        "-m",
+        "devsentinel.cli.run_mcp_server",
         "--transport",
         "stdio",
         "--knowledge-path",
-        "D:\\Projects\\DevSentinel\\knowledge_base\\security",
+        "knowledge_base/security",
         "--report-path",
-        "D:\\Projects\\DevSentinel\\mcp_host_report.md"
+        "mcp_host_report.md"
       ],
       "env": {}
     }
@@ -473,7 +480,7 @@ Return the retrieved evidence and source files.
 Use the devsentinel MCP server.
 
 Call review_workspace with:
-- workspace_path: D:\Projects\DevSentinel
+- workspace_path: <repo-root>
 - preset: python-security
 - reviewer: deterministic
 
@@ -494,7 +501,7 @@ OpenAI/contextual version:
 Use the devsentinel MCP server.
 
 Call review_workspace with:
-- workspace_path: D:\Projects\DevSentinel\
+- workspace_path: <repo-root>
 - preset: python-security
 - reviewer: openai
 
@@ -513,7 +520,7 @@ For a branch `dev` containing changes relative to `main`:
 Use the devsentinel MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\DevSentinel
+- repository_path: <repo-root>
 - base_ref: main
 - target_ref: dev
 - preset: python-security
@@ -557,7 +564,7 @@ two commits. Check the refs with `git rev-parse HEAD~1 HEAD`:
 Use the devsentinel MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\DevSentinel
+- repository_path: <repo-root>
 - base_ref: HEAD~1
 - target_ref: HEAD
 - preset: python-security
@@ -585,7 +592,7 @@ Return only:
 Use the devsentinel MCP server.
 
 Call review_git_diff with:
-- repository_path: D:\Projects\DevSentinel
+- repository_path: <repo-root>
 - staged_only: true
 - preset: python-security
 - reviewer: deterministic
@@ -825,7 +832,18 @@ unchanged findings
 severity changes
 ```
 
-Use the `compare_review_runs` MCP tool. Follow the input schema exposed by the current MCP server/tool picker; that schema is authoritative for the current run-reference arguments.
+Call `compare_review_runs` with:
+
+```text
+old_run_dir: <repo-root>/reviews/<older-run-id>
+new_run_dir: <repo-root>/reviews/<newer-run-id>
+comparisons_dir: <repo-root>/reviews/comparisons  (optional)
+```
+
+`old_run_dir` and `new_run_dir` are required directories created by earlier
+reviews. `comparisons_dir` overrides the output location; if omitted, the tool
+writes under `reviews/comparisons` beside the newer run. The result includes a
+summary and paths to JSON, Markdown, and HTML comparison reports.
 
 ---
 
@@ -1076,7 +1094,7 @@ python run_mcp_server.py `
 
 ```text
 Call review_git_diff with:
-- repository_path: D:\Projects\DevSentinel
+- repository_path: <repo-root>
 - base_ref: main
 - target_ref: dev
 - preset: python-security
@@ -1087,7 +1105,7 @@ Call review_git_diff with:
 
 ```text
 Call review_git_diff with:
-- repository_path: D:\Projects\DevSentinel
+- repository_path: <repo-root>
 - staged_only: true
 - preset: python-security
 - reviewer: deterministic
@@ -1097,7 +1115,7 @@ Call review_git_diff with:
 
 ```text
 Call review_git_diff with:
-- repository_path: D:\Projects\DevSentinel
+- repository_path: <repo-root>
 - base_ref: <base>
 - target_ref: <target>
 - preset: python-security

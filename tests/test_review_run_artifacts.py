@@ -60,7 +60,7 @@ def test_create_review_run_package_writes_all_artifacts(tmp_path):
         ),
         profile="security",
         reviewer="openai",
-        model="gpt-5.6-luna",
+        model="gpt-6-luna",
         status="completed",
         summary="Security review completed.",
         findings=findings,
@@ -80,7 +80,7 @@ def test_create_review_run_package_writes_all_artifacts(tmp_path):
         ),
         run_config={
             "reviewer": "openai",
-            "model": "gpt-5.6-luna",
+            "model": "gpt-6-luna",
         },
     )
 
@@ -124,7 +124,7 @@ def test_create_review_run_package_writes_all_artifacts(tmp_path):
 
     assert "DevSentinel Review Report" in html_content
     assert "Hardcoded credential risk." in html_content
-    assert "gpt-5.6-luna" in html_content
+    assert "gpt-6-luna" in html_content
 
     findings_payload = json.loads(
         Path(
