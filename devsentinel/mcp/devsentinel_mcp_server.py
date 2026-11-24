@@ -41,6 +41,7 @@ from devsentinel.config.reviewer_config import (
     DEFAULT_OPENAI_REVIEW_MODEL,
     DEFAULT_REVIEWER,
 )
+from devsentinel.core.tool_path_utils import ToolPathRejectedError
 from devsentinel.review.workspace_review_presets import (
     WORKSPACE_PRESET_PYTHON_SECURITY,
 )
@@ -57,6 +58,27 @@ def import_mcp_server_class():
         ) from exc
 
     return MCPServer
+
+
+def call_file_tool(
+    function,
+    /,
+    **kwargs,
+):
+    """Run a low-level file tool and report path rejections as ToolError.
+
+    Newer MCP SDKs (2.3+) send the message of a deliberately raised ToolError
+    to the client and replace any other exception's text with a generic
+    "Error executing tool ...". A root-confinement rejection is deliberate,
+    and its message holds only the code, the reason and the requested path,
+    so the client sees why the call was refused.
+    """
+    from mcp.server.mcpserver.exceptions import ToolError
+
+    try:
+        return function(**kwargs)
+    except ToolPathRejectedError as error:
+        raise ToolError(str(error)) from error
 
 
 def create_devsentinel_mcp_server(
@@ -78,7 +100,8 @@ def create_devsentinel_mcp_server(
         path: str,
     ) -> list[str]:
         """List files under a local project path."""
-        return mcp_list_files(
+        return call_file_tool(
+            mcp_list_files,
             context=context,
             path=path,
         )
@@ -88,7 +111,8 @@ def create_devsentinel_mcp_server(
         path: str,
     ) -> str:
         """Read a local text file by path."""
-        return mcp_read_file(
+        return call_file_tool(
+            mcp_read_file,
             context=context,
             path=path,
         )
@@ -99,7 +123,8 @@ def create_devsentinel_mcp_server(
         query: str,
     ) -> list[dict]:
         """Search for text inside files under a local path."""
-        return mcp_search_in_files(
+        return call_file_tool(
+            mcp_search_in_files,
             context=context,
             path=path,
             query=query,
