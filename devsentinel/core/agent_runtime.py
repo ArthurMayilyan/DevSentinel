@@ -38,6 +38,8 @@ class AgentRuntimeRequest:
     preset: str = ""
     path: str = ""
     max_findings: int = DEFAULT_CODE_REVIEW_MAX_FINDINGS
+    # Root for model-facing file tools; defaults to path, then launch dir.
+    project_root: str = ""
 
     # RAG/shared options
     knowledge_path: str = ""
@@ -245,6 +247,7 @@ def run_code_review_mode(
         max_invalid_llm_outputs=request.max_invalid_llm_outputs,
         max_output_tokens=request.max_output_tokens,
         request_timeout_seconds=request.request_timeout_seconds,
+        project_root=request.project_root,
     )
 
     report_markdown = format_code_review_markdown_report(

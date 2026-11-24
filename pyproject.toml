@@ -23,6 +23,7 @@ devsentinel-web = "devsentinel.ui.web_ui:main"
 devsentinel-agent = "devsentinel.cli.run_agent:main"
 devsentinel-agent-mode = "devsentinel.cli.run_agent_mode:main"
 devsentinel-eval = "devsentinel.cli.run_eval_suite:main"
+devsentinel-injection-eval = "devsentinel.cli.run_injection_eval:main"
 devsentinel-live-smoke = "devsentinel.cli.run_live_openai_smoke:main"
 
 [tool.setuptools.packages.find]

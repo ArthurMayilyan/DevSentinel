@@ -72,6 +72,7 @@ def mcp_list_files(
 ) -> list[str]:
     files = list_project_files(
         path,
+        scope=context.project_scope,
     )
 
     for file in files:
@@ -90,6 +91,7 @@ def mcp_read_file(
 ) -> str:
     content = read_project_file(
         path,
+        scope=context.project_scope,
     )
 
     append_unique(
@@ -109,6 +111,7 @@ def mcp_search_in_files(
     return search_project_files(
         path=path,
         query=query,
+        scope=context.project_scope,
     )
 
 

@@ -8,6 +8,7 @@ from devsentinel.core.agent_modes import (
     list_agent_modes,
 )
 from devsentinel.review.code_review_runtime import SUPPORTED_CODE_REVIEW_LLMS
+from devsentinel.cli.cli_project_scope import PROJECT_ROOT_HELP
 from devsentinel.review.task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS, SUPPORTED_TASK_PRESETS
 from devsentinel.core.agent_runtime import (
     AgentRuntimeRequest,
@@ -65,6 +66,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--path",
         default="",
+    )
+
+    parser.add_argument(
+        "--project-root",
+        default="",
+        help=PROJECT_ROOT_HELP,
     )
 
     parser.add_argument(
@@ -160,6 +167,7 @@ def run_from_args(
         task=args.task,
         preset=args.preset,
         path=args.path,
+        project_root=args.project_root,
         max_findings=args.max_findings,
         knowledge_path=args.knowledge_path,
         index_path=args.index_path,

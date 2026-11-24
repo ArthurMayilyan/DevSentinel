@@ -98,6 +98,8 @@ async def run_mcp_client_smoke(
         knowledge_path=knowledge_path,
         index_path=index_path,
         report_path=report_path,
+        project_root=project_path,
+        path_base_dir=str(Path.cwd()),
     )
 
     report_file = Path(report_path)
