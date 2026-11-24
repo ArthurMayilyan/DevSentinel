@@ -13,6 +13,15 @@ from devsentinel.core.agent_stop_reasons import (
 )
 from devsentinel.core.trace import TraceRecorder
 from devsentinel.rag.rag_store import InMemoryRagStore
+from devsentinel.core.tool_path_utils import build_project_scope
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+# File tools are confined to sample_project; relative paths such as
+# "sample_project\app.py" are resolved from the repository root.
+SAMPLE_PROJECT_SCOPE = build_project_scope(
+    root=REPOSITORY_ROOT / "sample_project",
+    base_dir=REPOSITORY_ROOT,
+)
 
 
 class CallsSearchKnowledgeWithoutRagStoreLLM:
@@ -167,6 +176,7 @@ def test_run_with_result_returns_completed_result():
     agent = Agent(
         llm=CompleteReviewLLM(),
         trace_recorder=TraceRecorder(),
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(max_steps=20),
     )
 
@@ -185,6 +195,7 @@ def test_run_with_result_returns_stopped_result():
     agent = Agent(
         llm=AlwaysInvalidLLMOutput(),
         trace_recorder=TraceRecorder(),
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(
             max_steps=20,
             max_invalid_llm_outputs=2,
@@ -206,6 +217,7 @@ def test_run_remains_backward_compatible_for_completed_result():
     agent = Agent(
         llm=CompleteReviewLLM(),
         trace_recorder=TraceRecorder(),
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(max_steps=20),
     )
 
@@ -220,6 +232,7 @@ def test_run_remains_backward_compatible_for_stopped_result():
     agent = Agent(
         llm=NeverCompletesLLM(),
         trace_recorder=TraceRecorder(),
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(max_steps=1),
     )
 
@@ -280,6 +293,7 @@ def test_run_with_result_writes_summary_for_completed_result():
     agent = Agent(
         llm=CompleteReviewLLM(),
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(max_steps=20),
     )
 
@@ -308,6 +322,7 @@ def test_run_with_result_writes_summary_for_stopped_result():
     agent = Agent(
         llm=AlwaysInvalidLLMOutput(),
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(
             max_steps=20,
             max_invalid_llm_outputs=2,
@@ -344,6 +359,7 @@ def test_run_with_result_executes_search_knowledge_tool():
     agent = Agent(
         llm=RagAwareReviewLLM(),
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(max_steps=20),
         rag_store=rag_store,
     )
@@ -383,6 +399,7 @@ def test_run_with_result_rejects_search_knowledge_without_rag_store():
     agent = Agent(
         llm=CallsSearchKnowledgeWithoutRagStoreLLM(),
         trace_recorder=TraceRecorder(),
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(
             max_steps=20,
             max_rejected_tool_calls=2,

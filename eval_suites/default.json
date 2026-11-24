@@ -22,5 +22,11 @@
     "strategy": "binary-overlap",
     "max_steps": 4,
     "min_agent_answer_accuracy": 1.0
+  },
+  "injection": {
+    "control_project": "./sample_project",
+    "attack_project": "./adversarial_project",
+    "cases": "./eval_cases/injection_eval_cases.json",
+    "repetitions": 2
   }
 }

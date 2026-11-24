@@ -1,4 +1,6 @@
-from devsentinel.core.tools import list_files, read_file, search_in_files, write_report
+from functools import partial
+
+from devsentinel.core.tools import build_project_file_tools, write_report
 from devsentinel.core.tool_specs import IssueCategory, IssueSeverity
 from devsentinel.core.agent_state import AgentState
 from devsentinel.core.runtime_tool_registry import ToolRegistry
@@ -19,7 +21,11 @@ from devsentinel.core.agent_run_result import AgentRunResult
 from devsentinel.core.agent_run_summary import build_agent_run_summary
 from typing import Any
 from devsentinel.rag.rag_store import InMemoryRagStore
-from devsentinel.core.tool_path_utils import normalize_tool_path
+from devsentinel.core.tool_path_utils import (
+    ProjectScope,
+    ToolPathRejectedError,
+    normalize_tool_path,
+)
 
 
 ALLOWED_SEVERITIES = {item.value for item in IssueSeverity}
@@ -41,8 +47,19 @@ class Agent:
         config: AgentConfig | None = None,
         run_metadata: dict[str, Any] | None = None,
         rag_store: InMemoryRagStore | None = None,
+        project_scope: ProjectScope | None = None,
+        report_path: str | None = None,
     ):
+        if (
+            project_scope is not None
+            and not isinstance(project_scope, ProjectScope)
+        ):
+            raise ValueError(
+                "project_scope must be a ProjectScope or None."
+            )
+
         self.llm = llm
+        self.project_scope = project_scope
         self.trace_recorder = trace_recorder
 
         if config is not None:
@@ -78,11 +95,16 @@ class Agent:
 
         self.run_metadata = run_metadata
 
+        # File tools are bound to the explicit project scope. Without one,
+        # every file tool call is rejected (project_root_not_configured).
         base_tool_functions = {
-            "list_files": list_files,
-            "read_file": read_file,
-            "search_in_files": search_in_files,
-            "write_report": write_report,
+            **build_project_file_tools(
+                scope=project_scope,
+            ),
+            "write_report": partial(
+                write_report,
+                report_path=report_path,
+            ),
             "add_finding": self.add_finding,
         }
 
@@ -372,6 +394,21 @@ class Agent:
                     llm_arguments=llm_arguments,
                 )
 
+            except ToolPathRejectedError as error:
+                # Path refused before any file content was read. Counted
+                # against max_rejected_tool_calls like other rejections.
+                self.reject_tool_call(
+                    trace_step=trace_step,
+                    state=state,
+                    messages=messages,
+                    reason=str(error),
+                    rejection=error.to_trace_dict(
+                        tool_name=tool_name,
+                    ),
+                )
+
+                continue
+
             except Exception as error:
                 error_message = repr(error)
 
@@ -533,11 +570,16 @@ class Agent:
         state: AgentState,
         messages: list[dict],
         reason: str,
+        rejection: dict | None = None,
     ) -> None:
         state.rejected_tool_call_count += 1
-        
+
         trace_step["tool_result"] = None
         trace_step["error"] = reason
+
+        if rejection is not None:
+            trace_step["rejection"] = rejection
+
         state.errors.append(reason)
         trace_step["state_after"] = state.to_dict()
 

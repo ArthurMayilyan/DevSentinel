@@ -8,6 +8,7 @@ from typing import Any
 from devsentinel.cli.run_rag_answer_eval import run_from_args as run_answer_eval_from_args
 from devsentinel.cli.run_rag_grounding_eval import run_from_args as run_grounding_eval_from_args
 from devsentinel.cli.run_rag_agent_eval import run_from_args as run_agent_eval_from_args
+from devsentinel.cli.run_injection_eval import run_from_args as run_injection_eval_from_args
 from devsentinel.cli.run_rag_eval_profiles import (
     discover_profile_configs,
     run_profile_configs,
@@ -23,6 +24,16 @@ ALLOWED_SUITE_CONFIG_KEYS = {
     "answer",
     "grounding",
     "agent",
+    "injection",
+}
+
+# Optional section. The suite always runs the injection eval as a dry run
+# (scripted fake LLM, no network calls).
+ALLOWED_INJECTION_CONFIG_KEYS = {
+    "control_project",
+    "attack_project",
+    "cases",
+    "repetitions",
 }
 
 ALLOWED_GROUNDING_CONFIG_KEYS = {
@@ -141,7 +152,10 @@ def load_eval_suite_config(
         config["answer"],
     )
 
-    
+    if "injection" in config:
+        validate_injection_suite_config(
+            config["injection"],
+        )
 
     return config
 
@@ -336,6 +350,63 @@ def validate_answer_suite_config(
         raise ValueError("min_answer_accuracy must be between 0 and 1.")
 
 
+def validate_injection_suite_config(
+    config: Any,
+) -> None:
+    if not isinstance(config, dict):
+        raise ValueError("injection config must be an object.")
+
+    unknown_keys = sorted(
+        set(config.keys()) - ALLOWED_INJECTION_CONFIG_KEYS
+    )
+
+    if unknown_keys:
+        raise ValueError(
+            "injection config contains unsupported keys: "
+            + ", ".join(unknown_keys)
+        )
+
+    for key in ("control_project", "attack_project", "cases"):
+        if not config.get(key):
+            raise ValueError(f"injection config must contain {key}.")
+
+    repetitions = config.get(
+        "repetitions",
+        1,
+    )
+
+    if type(repetitions) is not int or repetitions <= 0:
+        raise ValueError("injection repetitions must be a positive integer.")
+
+
+def run_injection_suite(
+    *,
+    config: dict[str, Any],
+    artifacts_dir: Path,
+) -> dict[str, Any]:
+    return run_injection_eval_from_args(
+        [
+            "--control-project",
+            config["control_project"],
+            "--attack-project",
+            config["attack_project"],
+            "--cases",
+            config["cases"],
+            "--repetitions",
+            str(
+                config.get(
+                    "repetitions",
+                    1,
+                )
+            ),
+            "--output-dir",
+            str(artifacts_dir),
+            "--artifacts-dir",
+            str(artifacts_dir / "traces"),
+        ]
+    )
+
+
 def run_retrieval_suite(
     *,
     config: dict[str, Any],
@@ -492,18 +563,24 @@ def build_eval_suite_summary(
     answer_output: dict[str, Any],
     grounding_output: dict[str, Any],
     agent_output: dict[str, Any],
+    injection_output: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     retrieval_passed = retrieval_summary["passed"]
     answer_passed = answer_output["quality_gate"]["passed"]
     grounding_passed = grounding_output["quality_gate"]["passed"]
     agent_passed = agent_output["quality_gate"]["passed"]
+    injection_passed = (
+        injection_output is None
+        or injection_output["quality_gate"]["passed"]
+    )
 
-    return {
+    summary = {
         "passed": (
             retrieval_passed
             and answer_passed
             and grounding_passed
             and agent_passed
+            and injection_passed
         ),
         "retrieval": {
             "passed": retrieval_passed,
@@ -539,6 +616,16 @@ def build_eval_suite_summary(
         },
     }
 
+    if injection_output is not None:
+        summary["injection"] = {
+            "passed": injection_passed,
+            "mode": injection_output["metadata"]["mode"],
+            "runs_per_condition": injection_output["metadata"]["repetitions_per_condition"],
+            "quality_gate": injection_output["quality_gate"],
+        }
+
+    return summary
+
 
 def format_eval_suite_summary(
     summary: dict[str, Any],
@@ -557,6 +644,14 @@ def format_eval_suite_summary(
             f"agent: {'passed' if summary['agent']['passed'] else 'failed'}",
             f"agent_strategy: {summary['agent']['strategy']}",
             f"agent_answer_accuracy: {summary['agent']['agent_answer_accuracy']:.2f}",
+            *(
+                [
+                    f"injection ({summary['injection']['mode']}): "
+                    f"{'passed' if summary['injection']['passed'] else 'failed'}",
+                ]
+                if "injection" in summary
+                else []
+            ),
         ]
     )
 
@@ -627,6 +722,25 @@ def format_eval_suite_markdown_summary(
             "",
         ]
     )     
+
+    if "injection" in summary:
+        gate = summary["injection"]["quality_gate"]
+
+        lines.extend(
+            [
+                "## Injection eval",
+                "",
+                f"Passed: **{str(summary['injection']['passed']).lower()}**",
+                f"Mode: **{summary['injection']['mode']}**",
+                f"Runs per condition: **{summary['injection']['runs_per_condition']}**",
+                f"Runs with canary token in output: **{gate['canary_leak_runs']}**",
+                "Out-of-root attempts that returned content: "
+                f"**{gate['out_of_root_attempts_that_returned_content']}**",
+                "Premature completions not blocked: "
+                f"**{gate['premature_completions_not_blocked']}**",
+                "",
+            ]
+        )
 
     if summary["retrieval"]["failed_profiles"]:
         lines.extend(
@@ -747,11 +861,20 @@ def run_from_args(
         artifacts_dir=agent_artifacts_dir,
     )    
 
+    injection_output = None
+
+    if "injection" in config:
+        injection_output = run_injection_suite(
+            config=config["injection"],
+            artifacts_dir=artifacts_dir / "injection",
+        )
+
     summary = build_eval_suite_summary(
         retrieval_summary=retrieval_summary,
         answer_output=answer_output,
         grounding_output=grounding_output,
         agent_output=agent_output,
+        injection_output=injection_output,
     )
 
     write_eval_suite_artifacts(

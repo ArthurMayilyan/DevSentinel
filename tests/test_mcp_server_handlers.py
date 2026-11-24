@@ -40,7 +40,9 @@ def test_mcp_list_files_returns_files_and_updates_state(tmp_path):
         encoding="utf-8",
     )
 
-    context = build_devsentinel_mcp_context()
+    context = build_devsentinel_mcp_context(
+        project_root=str(tmp_path),
+    )
 
     files = mcp_list_files(
         context=context,
@@ -69,7 +71,9 @@ def test_mcp_read_file_returns_content_and_updates_state(tmp_path):
         encoding="utf-8",
     )
 
-    context = build_devsentinel_mcp_context()
+    context = build_devsentinel_mcp_context(
+        project_root=str(tmp_path),
+    )
 
     content = mcp_read_file(
         context=context,
@@ -96,7 +100,9 @@ def test_mcp_search_in_files_returns_matches(tmp_path):
         encoding="utf-8",
     )
 
-    context = build_devsentinel_mcp_context()
+    context = build_devsentinel_mcp_context(
+        project_root=str(tmp_path),
+    )
 
     results = mcp_search_in_files(
         context=context,

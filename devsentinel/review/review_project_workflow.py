@@ -39,6 +39,10 @@ from devsentinel.review.finding_types import (
 )
 
 from devsentinel.core.tools import read_file as read_project_file
+from devsentinel.core.tool_path_utils import (
+    ProjectScope,
+    build_project_scope,
+)
 from devsentinel.core.tools import render_report_from_state
 from devsentinel.core.tool_specs import IssueCategory, IssueSeverity
 
@@ -140,9 +144,11 @@ def read_file_for_review(
     *,
     context: DevSentinelMcpContext,
     path: str,
+    scope: ProjectScope,
 ) -> str:
     content = read_project_file(
         path,
+        scope=scope,
     )
 
     append_unique(
@@ -638,6 +644,13 @@ def review_project(
         max_file_size_bytes=max_file_size_bytes,
     )
 
+    # Reads are confined to the selected project directory, the same
+    # boundary select_project_files used to choose the files.
+    review_scope = build_project_scope(
+        root=selected_files.project_path,
+        max_file_size_bytes=max_file_size_bytes,
+    )
+
     if report_path:
         context.report_path = report_path
     elif report_dir:
@@ -664,6 +677,7 @@ def review_project(
         content = read_file_for_review(
             context=context,
             path=file_path,
+            scope=review_scope,
         )
 
         findings = detect_findings_with_reviewer(

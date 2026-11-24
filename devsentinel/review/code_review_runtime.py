@@ -10,6 +10,7 @@ from devsentinel.cli.cli_output import format_cli_output
 from devsentinel.cli.cli_run_metadata import build_run_metadata
 from devsentinel.cli.cli_task import build_task_from_args
 from devsentinel.rag.rag_loader import load_rag_store_from_path
+from devsentinel.cli.cli_project_scope import build_cli_project_scope
 from devsentinel.review.task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS
 from devsentinel.core.trace import TraceRecorder
 from devsentinel.llm.openai_client_factory import (
@@ -94,6 +95,7 @@ def run_code_review_agent(
     max_output_tokens: int | None = None,
     request_timeout_seconds: float | None = None,
     openai_client_class: Any = None,
+    project_root: str = "",
 ) -> dict[str, Any]:
     validate_code_review_llm(
         llm_name,
@@ -123,11 +125,18 @@ def run_code_review_agent(
         args,
     )
 
+    project_scope = build_cli_project_scope(
+        project_root=project_root or None,
+        path=args.path,
+        launch_dir=Path.cwd(),
+    )
+
     run_metadata = build_run_metadata(
         args=args,
         task=resolved_task,
         config=config,
     )
+    run_metadata["project_root"] = str(project_scope.root)
 
     rag_store = None
 
@@ -149,6 +158,7 @@ def run_code_review_agent(
         trace_recorder=trace_recorder,
         run_metadata=run_metadata,
         rag_store=rag_store,
+        project_scope=project_scope,
     )
 
     result = agent.run_with_result(
