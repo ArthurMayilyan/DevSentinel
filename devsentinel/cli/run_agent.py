@@ -9,6 +9,7 @@ from devsentinel.cli.cli_llm import build_llm_from_args
 from devsentinel.cli.cli_task import build_task_from_args
 from devsentinel.cli.cli_run_metadata import build_run_metadata
 from devsentinel.rag.rag_loader import load_rag_store_from_path
+from devsentinel.cli.cli_project_scope import build_cli_project_scope
 
 
 def build_summary_path(trace_recorder: TraceRecorder) -> Path:
@@ -29,11 +30,17 @@ def run_agent_from_args(
         return format_task_preview_output(task=task)
 
     config = build_agent_config_from_args(args)
+    project_scope = build_cli_project_scope(
+        project_root=args.project_root,
+        path=args.path,
+        launch_dir=Path.cwd(),
+    )
     run_metadata = build_run_metadata(
         args=args,
         task=task,
         config=config,
     )
+    run_metadata["project_root"] = str(project_scope.root)
 
     rag_store = None
 
@@ -54,6 +61,7 @@ def run_agent_from_args(
         trace_recorder=trace_recorder,
         run_metadata=run_metadata,
         rag_store=rag_store,
+        project_scope=project_scope,
     )
 
     result = agent.run_with_result(task)

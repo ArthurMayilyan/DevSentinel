@@ -1,56 +1,96 @@
+from collections.abc import Callable
+from functools import partial
 from pathlib import Path
+from typing import Any
 
 from devsentinel.core.agent_state import AgentState
-from devsentinel.core.tool_path_utils import normalize_tool_path
+from devsentinel.core.tool_path_utils import (
+    ProjectScope,
+    display_tool_path,
+    iter_files_within_root,
+    require_project_scope,
+    resolve_file_for_read,
+    resolve_search_location,
+)
 from devsentinel.config.app_settings import get_app_settings
 
 
 _SETTINGS = get_app_settings()
 
-def list_files(path: str) -> list[str]:
-    base_path = Path(path)
 
-    if not base_path.exists():
-        raise FileNotFoundError(f"Path does not exist: {path}")
+def is_absolute_request(
+    path: str,
+) -> bool:
+    return Path(path.strip()).is_absolute()
 
-    if not base_path.is_dir():
+
+def list_files(
+    path: str,
+    *,
+    scope: ProjectScope | None = None,
+) -> list[str]:
+    active_scope = require_project_scope(
+        scope=scope,
+        requested=path,
+    )
+
+    directory = resolve_search_location(
+        scope=active_scope,
+        requested=path,
+    )
+
+    if not directory.is_dir():
         raise NotADirectoryError(f"Path is not a directory: {path}")
 
     return [
-        str(file)
-        for file in base_path.rglob("*")
-        if file.is_file()
+        display_tool_path(
+            scope=active_scope,
+            path=file_path,
+            absolute=is_absolute_request(path),
+        )
+        for file_path in iter_files_within_root(
+            root=active_scope.root,
+            start=directory,
+        )
     ]
 
 
-def read_file(path: str) -> str:
-    normalized_path = normalize_tool_path(
-        path,
+def read_file(
+    path: str,
+    *,
+    scope: ProjectScope | None = None,
+) -> str:
+    file_path = resolve_file_for_read(
+        scope=scope,
+        requested=path,
     )
-
-    file_path = Path(
-        normalized_path,
-    )
-
-    if not file_path.exists():
-        raise FileNotFoundError(f"File does not exist: {path}")
-
-    if not file_path.is_file():
-        raise ValueError(f"Path is not a file: {path}")
 
     return file_path.read_text(encoding="utf-8")
 
 
-def search_in_files(query: str, path: str) -> list[dict]:
-    base_path = Path(path)
+def search_in_files(
+    query: str,
+    path: str,
+    *,
+    scope: ProjectScope | None = None,
+) -> list[dict]:
+    active_scope = require_project_scope(
+        scope=scope,
+        requested=path,
+    )
 
-    if not base_path.exists():
-        raise FileNotFoundError(f"Path does not exist: {path}")
+    location = resolve_search_location(
+        scope=active_scope,
+        requested=path,
+    )
 
     results = []
 
-    for file_path in base_path.rglob("*"):
-        if not file_path.is_file():
+    for file_path in iter_files_within_root(
+        root=active_scope.root,
+        start=location,
+    ):
+        if file_path.stat().st_size > active_scope.max_file_size_bytes:
             continue
 
         try:
@@ -61,12 +101,32 @@ def search_in_files(query: str, path: str) -> list[dict]:
         for line_number, line in enumerate(content.splitlines(), start=1):
             if query in line:
                 results.append({
-                    "file": str(file_path),
+                    "file": display_tool_path(
+                        scope=active_scope,
+                        path=file_path,
+                        absolute=is_absolute_request(path),
+                    ),
                     "line": line_number,
                     "text": line.strip()
                 })
 
     return results
+
+
+def build_project_file_tools(
+    *,
+    scope: ProjectScope | None,
+) -> dict[str, Callable[..., Any]]:
+    """Return list_files/read_file/search_in_files bound to one project scope.
+
+    With scope=None every call is rejected with project_root_not_configured;
+    the tools never fall back to the process working directory.
+    """
+    return {
+        "list_files": partial(list_files, scope=scope),
+        "read_file": partial(read_file, scope=scope),
+        "search_in_files": partial(search_in_files, scope=scope),
+    }
 
 def render_report_from_state(state: AgentState) -> str:
     lines = []
@@ -138,25 +198,27 @@ def render_report_from_state(state: AgentState) -> str:
 
 def write_report(
     state: AgentState,
+    *,
+    report_path: str | None = None,
 ) -> str:
     markdown = render_report_from_state(
         state,
     )
 
-    report_path = Path(
-        _SETTINGS.artifacts.default_report_path,
+    report_file = Path(
+        report_path or _SETTINGS.artifacts.default_report_path,
     )
 
-    report_path.write_text(
+    report_file.write_text(
         markdown,
         encoding="utf-8",
     )
 
     state.report_written = True
     state.report_path = str(
-        report_path,
+        report_file,
     )
 
     return str(
-        report_path,
+        report_file,
     )

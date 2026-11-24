@@ -4,6 +4,15 @@ from pathlib import Path
 from devsentinel.core.agent import Agent
 from devsentinel.core.tool_specs import TOOL_SPECS
 from devsentinel.core.agent_config import AgentConfig
+from devsentinel.core.tool_path_utils import build_project_scope
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+# File tools are confined to sample_project; relative paths such as
+# "sample_project\app.py" are resolved from the repository root.
+SAMPLE_PROJECT_SCOPE = build_project_scope(
+    root=REPOSITORY_ROOT / "sample_project",
+    base_dir=REPOSITORY_ROOT,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -89,6 +98,7 @@ def test_final_answer_too_early_is_rejected_then_agent_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -125,6 +135,7 @@ def test_unknown_tool_is_rejected_then_agent_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -160,6 +171,7 @@ def test_write_report_with_markdown_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -234,6 +246,7 @@ def test_add_finding_before_file_inspection_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -279,6 +292,7 @@ def test_write_report_before_full_inspection_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -324,6 +338,7 @@ def test_add_finding_invalid_severity_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -372,6 +387,7 @@ def test_add_finding_invalid_category_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -420,6 +436,7 @@ def test_tool_arguments_must_be_dict_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -472,6 +489,7 @@ def test_runtime_accepts_windows_style_read_file_path_after_recovery():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -512,6 +530,7 @@ def test_read_file_missing_required_path_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -560,6 +579,7 @@ def test_read_file_unexpected_argument_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -611,6 +631,7 @@ def test_empty_final_answer_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -657,6 +678,7 @@ def test_non_string_final_answer_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -707,6 +729,7 @@ def test_tool_call_missing_tool_name_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -757,6 +780,7 @@ def test_tool_name_must_be_string_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -807,6 +831,7 @@ def test_invalid_llm_output_type_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -858,6 +883,7 @@ def test_missing_llm_output_type_is_rejected_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -911,6 +937,7 @@ def test_llm_output_must_be_dict_then_recovers():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         max_steps=20,
     )
 
@@ -960,6 +987,7 @@ def test_agent_stops_after_rejected_final_answer_limit():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(
             max_steps=20,
             max_rejected_final_answers=2,
@@ -995,6 +1023,7 @@ def test_agent_stops_after_rejected_tool_call_limit():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(
             max_steps=20,
             max_rejected_tool_calls=2,
@@ -1030,6 +1059,7 @@ def test_agent_stops_after_invalid_llm_output_limit():
     agent = Agent(
         llm=llm,
         trace_recorder=trace_recorder,
+        project_scope=SAMPLE_PROJECT_SCOPE,
         config=AgentConfig(
             max_steps=20,
             max_invalid_llm_outputs=2,

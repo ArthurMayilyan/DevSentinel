@@ -7,6 +7,7 @@ from devsentinel.llm.openai_llm_adapter import (
 from devsentinel.core.agent_config import AgentConfig
 from devsentinel.review.task_presets import DEFAULT_CODE_REVIEW_MAX_FINDINGS, SUPPORTED_TASK_PRESETS
 from devsentinel.cli.cli_defaults import resolve_cli_max_steps
+from devsentinel.cli.cli_project_scope import PROJECT_ROOT_HELP
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -31,6 +32,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--path",
         default=None,
         help="Path used by task preset.",
+    )
+
+    parser.add_argument(
+        "--project-root",
+        default=None,
+        help=PROJECT_ROOT_HELP,
     )
 
     parser.add_argument(

@@ -99,7 +99,17 @@ def build_current_state_resource(
         for finding in context.state.findings
     ) or "- none"
 
+    project_root = (
+        str(context.project_scope.root)
+        if context.project_scope is not None
+        else "not configured (file tools reject all paths)"
+    )
+
     return f"""# DevSentinel Current State
+
+## Project Root
+
+- {project_root}
 
 ## Discovered Files
 
