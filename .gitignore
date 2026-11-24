@@ -13,6 +13,9 @@ dist/
 .env.*
 !.env.example
 
+# Personal interview preparation notes
+*[Ii]nterview*
+
 # Runtime traces and review runs
 traces/
 run_summaries/
